@@ -1,0 +1,59 @@
+<!DOCTYPE html><html lang="ko" data-theme="light"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>로그인 - 통합 사내 그룹웨어</title>
+  <meta name="description" content="사내 그룹웨어 시스템 - 로그인">
+
+  <!-- Google Fonts & FontAwesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&amp;family=Inter:wght@300;400;500;600;700;800&amp;family=Noto+Sans+KR:wght@300;400;500;700;900&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ==========================================
+       LOGIN VIEW
+       ========================================== -->
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <div class="logo-box" style="margin: 0 auto 0.75rem; width: 44px; height: 44px; font-size: 1.4rem;">
+          <i class="fa-solid fa-cubes"></i>
+        </div>
+        <h2 style="font-size: 1.35rem; margin-bottom: 0.25rem;">통합 그룹웨어 로그인</h2>
+        <p style="font-size: 0.8rem; color: var(--text-muted);">계정 정보를 입력하여 시스템을 시작하세요</p>
+      </div>
+
+      <form id="loginForm" onsubmit="doLogin(event)">
+        <div class="form-group">
+          <label class="form-label" for="loginUser">사용자 선택</label>
+          <select id="loginUser" class="form-control">
+            <option value="20260601">홍길동 (개발팀 사원)</option>
+            <option value="20260102">김우주 (개발팀 팀장)</option>
+            <option value="20260010">김영훈 (기획팀 부서장)</option>
+            <option value="20260901">이다니엘 (인사팀 팀장)</option>
+            <option value="admin">최고 관리자 (System Admin)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="loginPw">비밀번호</label>
+          <input type="password" id="loginPw" class="form-control" value="••••••••" required="">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+          로그인
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notifications Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  
+  
+
+
+</body></html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html><html lang="ko" data-theme="light"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>공지사항 - 통합 사내 그룹웨어</title>
+  <meta name="description" content="사내 그룹웨어 시스템 - 공지사항">
+
+  <!-- Google Fonts & FontAwesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&amp;family=Inter:wght@300;400;500;600;700;800&amp;family=Noto+Sans+KR:wght@300;400;500;700;900&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ==========================================
+       참고 화면: 관리자가 "공지 작성" 또는 상세보기의 "수정" 버튼을
+       눌렀을 때 뜨는 공지 작성/수정 모달 오픈 상태 (수정 예시로 채움)
+       ========================================== -->
+  <div class="app-wrapper" id="appWrapper"><header class="header">
+      <div class="header-left">
+        <a href="02_main.html" class="logo" style="text-decoration:none;">
+          <div class="logo-box"><i class="fa-solid fa-cubes"></i></div>
+          <span style="margin-left: 0.5rem;">GROUPWARE</span>
+        </a>      </div>
+
+      <div class="header-right">
+        <a class="icon-btn" href="08_mail.html" title="받은 메일함">
+          <i class="fa-solid fa-envelope"></i>
+          <span class="badge" id="headerMsgBadge" style="display: none;">0</span>
+        </a>
+        <a class="user-dropdown" href="09_mypage.html">
+          <div class="user-avatar" id="headerAvatar">최</div>
+          <div class="user-details">
+            <span class="user-name-text" id="headerName">최고관리자</span>
+            <span class="user-role-text" id="headerDept">IT기획팀 · 관리자</span>
+          </div>
+        </a>
+        <a class="icon-btn" href="01_login.html" title="로그아웃" style="color: var(--color-danger); border-color: rgba(248,113,113,0.2);">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Navigation Body -->
+    <div class="main-body" id="mainBody"><aside class="sidebar">
+      <ul class="sidebar-menu">
+        <li class="sidebar-item" id="menu-dashboard"><a href="02_main.html"><i class="fa-solid fa-chart-line"></i> 대시보드</a></li>
+
+        <li class="sidebar-group-label">업무</li>
+        <li class="sidebar-item sub" id="menu-calendar"><a href="03_calendar.html"><i class="fa-solid fa-calendar-days"></i> 일정 캘린더</a></li>
+        <li class="sidebar-item sub" id="menu-approval"><a href="06_approval.html"><i class="fa-solid fa-signature"></i> 전자결재</a></li>
+        <li class="sidebar-item sub active" id="menu-notice"><a href="04_notice.html"><i class="fa-solid fa-bullhorn"></i> 공지사항</a></li>
+        <li class="sidebar-item sub" id="menu-archive"><a href="05_archive.html"><i class="fa-solid fa-file-shield"></i> 자료실</a></li>
+
+        <li class="sidebar-group-label">조직 · 소통</li>
+        <li class="sidebar-item sub" id="menu-org"><a href="07_org.html"><i class="fa-solid fa-sitemap"></i> 조직도</a></li>
+        <li class="sidebar-item sub" id="menu-mail"><a href="08_mail.html"><i class="fa-solid fa-paper-plane"></i> 메일함</a></li>
+
+        <li class="sidebar-group-label">근태관리</li>
+        <li class="sidebar-item sub" id="menu-attendance"><a href="10_attendance.html"><i class="fa-solid fa-clock"></i> 출결 현황</a></li>
+
+        <li class="sidebar-item" id="menu-mypage"><a href="09_mypage.html"><i class="fa-solid fa-user-gear"></i> 마이페이지</a></li>
+
+        <li class="sidebar-group-label" id="adminGroupLabel" style="display: block;">관리자</li>
+        <li class="sidebar-item sub" id="menu-admin" style="display: block;"><a href="11_admin.html"><i class="fa-solid fa-gears"></i> 계정·인사정보 관리</a></li>
+        <li class="sidebar-item sub" id="menu-adminAttendance" style="display: block;"><a href="12_admin_attendance.html"><i class="fa-solid fa-user-clock"></i> 직원 출결 관리</a></li>
+      </ul>
+    </aside>
+
+      <!-- Center Dynamic View Content Area -->
+      <main class="view-content">
+
+        <!-- ==========================================
+             SCREEN: NOTICE (관리자 계정 - 공지 작성 버튼 노출)
+             ========================================== -->
+        <div class="card">
+          <div class="card-header">
+            <h2>공지사항 목록</h2>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="text" class="form-control" id="noticeSearch" placeholder="제목 검색..." style="width: 220px; font-size: 0.85rem;">
+              <a class="btn btn-primary" id="btnCreateNotice" href="04-2_notice_write_modal.html"><i class="fa-solid fa-pen"></i> 공지 작성</a>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th style="width: 80px;">번호</th>
+                  <th>제목</th>
+                  <th style="width: 150px;">작성자</th>
+                  <th style="width: 120px;">등록일</th>
+                  <th style="width: 100px;">조회수</th>
+                </tr>
+              </thead>
+              <tbody id="noticeTableBody">
+    <tr class="clickable" onclick="viewNotice(1)">
+      <td><i class="fa-solid fa-thumbtack" style="color:var(--color-danger)"></i> PIN</td>
+      <td>
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <span class="badge badge-danger">중요</span>
+          <strong>[전사] 2026년 하반기 전사 조직 개편 및 인사 발령 안내</strong>
+        </div>
+      </td>
+      <td>인사본부</td>
+      <td style="font-family:'Fira Code'; font-size:0.85rem;">2026-06-30</td>
+      <td style="font-family:'Fira Code'; text-align:center;">42</td>
+    </tr>
+  </tbody>
+            </table>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       DYNAMIC MODALS (used on this page) - OPEN 상태 참고
+       ========================================== -->
+  <div class="modal-overlay active" id="modalOverlay">
+
+    <!-- Notice Write/Edit Modal (열림 상태 - "수정" 진입 예시로 기존 값이 채워진 상태) -->
+    <div class="modal-content" id="modal-notice-write" style="display:block;">
+      <div class="modal-header">
+        <h3 id="noticeWriteModalTitle">공지사항 수정</h3>
+        <a class="icon-btn" href="04-1_notice_detail_modal.html"><i class="fa-solid fa-xmark"></i></a>
+      </div>
+      <form>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="nWriteTitle">공지 제목</label>
+            <input type="text" id="nWriteTitle" class="form-control" value="[전사] 2026년 하반기 전사 조직 개편 및 인사 발령 안내">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="nWriteContent">공지 본문 내용</label>
+            <textarea id="nWriteContent" class="form-control">안녕하십니까. 경영지원본부입니다.
+2026년 하반기를 맞이하여 다음과 같이 조직 개편 및 보직 인사를 공지합니다.
+
+[부서 개편 안내]
+- 기획본부 산하 전략 기획팀 확대 재편
+- 연구 개발본부 산하 모바일 서비스 개발셀 신설</textarea>
+          </div>
+          <div class="form-group">
+            <label class="remember-me">
+              <input type="checkbox" id="nWritePin" checked> 중요 공지 (목록 최상단 고정 및 PIN 고정 아이콘 표출)
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <a class="btn btn-secondary" href="04-1_notice_detail_modal.html">취소</a>
+          <a class="btn btn-primary" id="nWriteSubmitBtn" href="04_notice.html">수정하기</a>
+        </div>
+      </form>
+    </div>
+
+  </div>
+
+  <!-- Toast Notifications Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+
+</body></html>

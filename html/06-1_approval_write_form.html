@@ -1,0 +1,194 @@
+<!DOCTYPE html><html lang="ko" data-theme="light"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>전자결재 - 통합 사내 그룹웨어</title>
+  <meta name="description" content="사내 그룹웨어 시스템 - 전자결재">
+
+  <!-- Google Fonts & FontAwesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&amp;family=Inter:wght@300;400;500;600;700;800&amp;family=Noto+Sans+KR:wght@300;400;500;700;900&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ==========================================
+       참고 화면: "결재 상신 (기안)" 탭에서 3종 서식 중 하나
+       (연차휴가신청서)를 클릭했을 때 펼쳐지는 기안 작성 폼
+       ========================================== -->
+  <div class="app-wrapper" id="appWrapper"><header class="header">
+      <div class="header-left">
+        <a href="02_main.html" class="logo" style="text-decoration:none;">
+          <div class="logo-box"><i class="fa-solid fa-cubes"></i></div>
+          <span style="margin-left: 0.5rem;">GROUPWARE</span>
+        </a>      </div>
+
+      <div class="header-right">
+        <a class="icon-btn" href="08_mail.html" title="받은 메일함">
+          <i class="fa-solid fa-envelope"></i>
+          <span class="badge" id="headerMsgBadge" style="display: flex;">4</span>
+        </a>
+        <a class="user-dropdown" href="09_mypage.html">
+          <div class="user-avatar" id="headerAvatar">홍</div>
+          <div class="user-details">
+            <span class="user-name-text" id="headerName">홍길동</span>
+            <span class="user-role-text" id="headerDept">개발팀 · 사원</span>
+          </div>
+        </a>
+        <a class="icon-btn" href="01_login.html" title="로그아웃" style="color: var(--color-danger); border-color: rgba(248,113,113,0.2);">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Navigation Body -->
+    <div class="main-body" id="mainBody"><aside class="sidebar">
+      <ul class="sidebar-menu">
+        <li class="sidebar-item" id="menu-dashboard"><a href="02_main.html"><i class="fa-solid fa-chart-line"></i> 대시보드</a></li>
+
+        <li class="sidebar-group-label">업무</li>
+        <li class="sidebar-item sub" id="menu-calendar"><a href="03_calendar.html"><i class="fa-solid fa-calendar-days"></i> 일정 캘린더</a></li>
+        <li class="sidebar-item sub active" id="menu-approval"><a href="06_approval.html"><i class="fa-solid fa-signature"></i> 전자결재</a></li>
+        <li class="sidebar-item sub" id="menu-notice"><a href="04_notice.html"><i class="fa-solid fa-bullhorn"></i> 공지사항</a></li>
+        <li class="sidebar-item sub" id="menu-archive"><a href="05_archive.html"><i class="fa-solid fa-file-shield"></i> 자료실</a></li>
+
+        <li class="sidebar-group-label">조직 · 소통</li>
+        <li class="sidebar-item sub" id="menu-org"><a href="07_org.html"><i class="fa-solid fa-sitemap"></i> 조직도</a></li>
+        <li class="sidebar-item sub" id="menu-mail"><a href="08_mail.html"><i class="fa-solid fa-paper-plane"></i> 메일함</a></li>
+
+        <li class="sidebar-group-label">근태관리</li>
+        <li class="sidebar-item sub" id="menu-attendance"><a href="10_attendance.html"><i class="fa-solid fa-clock"></i> 출결 현황</a></li>
+
+        <li class="sidebar-item" id="menu-mypage"><a href="09_mypage.html"><i class="fa-solid fa-user-gear"></i> 마이페이지</a></li>
+
+        <li class="sidebar-group-label" id="adminGroupLabel" style="display: none;">관리자</li>
+        <li class="sidebar-item sub" id="menu-admin" style="display: none;"><a href="11_admin.html"><i class="fa-solid fa-gears"></i> 계정·인사정보 관리</a></li>
+        <li class="sidebar-item sub" id="menu-adminAttendance" style="display: none;"><a href="12_admin_attendance.html"><i class="fa-solid fa-user-clock"></i> 직원 출결 관리</a></li>
+      </ul>
+    </aside>
+
+      <!-- Center Dynamic View Content Area -->
+      <main class="view-content">
+
+        <!-- ==========================================
+             SCREEN: APPROVAL
+             ========================================== -->
+        <div class="grid-12">
+
+          <!-- Left Submenu tabs -->
+          <div class="col-3">
+            <div class="card" style="padding: 1.25rem;">
+              <h4 style="margin-bottom: 1rem; font-size: 0.95rem;">전자결재 메뉴</h4>
+              <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.25rem;">
+                <li><a class="org-node active" id="appTab-write" href="06-1_approval_write_form.html"><i class="fa-solid fa-file-pen"></i> 결재 상신 (기안)</a></li>
+                <li><a class="org-node" id="appTab-inbox" href="06-2_approval_inbox.html"><i class="fa-solid fa-inbox"></i> 받은 결재함 <span class="badge badge-warning" id="inboxCountBadge" style="margin-left:auto;">2</span></a></li>
+                <li><a class="org-node" id="appTab-outbox" href="06-3_approval_outbox.html"><i class="fa-solid fa-paper-plane"></i> 보낸 기안함</a></li>
+                <li><a class="org-node" id="appTab-ref" href="06-4_approval_ref.html"><i class="fa-solid fa-eye"></i> 참조 문서함</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Right Content boxes -->
+          <div class="col-9">
+
+            <!-- Tab View: Write Approval -->
+            <div id="approval-view-write" class="approval-tab-content">
+              <div class="card">
+                <h3 style="margin-bottom: 1rem;">새 결재 상신</h3>
+                <div class="grid-3" style="margin-bottom: 1.5rem;">
+                  <div class="approval-stat-box active-choice" style="border-color:var(--color-primary);">
+                    <i class="fa-solid fa-umbrella-beach" style="font-size: 1.8rem; color: var(--color-primary); margin-bottom: 0.5rem;"></i>
+                    <div style="font-weight: 700; font-size: 0.9rem;">연차휴가신청서</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">팀장 전결 승인 건</div>
+                  </div>
+                  <div class="approval-stat-box">
+                    <i class="fa-solid fa-receipt" style="font-size: 1.8rem; color: var(--color-success); margin-bottom: 0.5rem;"></i>
+                    <div style="font-weight: 700; font-size: 0.9rem;">지출결의서</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">팀장 거쳐 부서장 최종</div>
+                  </div>
+                  <div class="approval-stat-box">
+                    <i class="fa-solid fa-file-shield" style="font-size: 1.8rem; color: var(--color-accent); margin-bottom: 0.5rem;"></i>
+                    <div style="font-weight: 700; font-size: 0.9rem;">프로젝트 품의서</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">2단계 정식 상신 및 참조</div>
+                  </div>
+                </div>
+
+                <!-- Dynamic Approval Form Container (연차휴가신청서 선택 시 펼쳐지는 상태) -->
+                <div id="approvalFormContainer" style="display:block; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+                  <h4 style="margin-bottom:1rem; color:var(--color-primary)">연차휴가신청서 기안 서식 작성</h4>
+                  <form>
+                    <div class="form-group">
+                      <label class="form-label" for="draftTitle">기안문 제목</label>
+                      <input type="text" id="draftTitle" class="form-control" value="[기안] 연차휴가신청서 상신 건">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label" for="draftContent">상세 기안 사유 및 내역</label>
+                      <textarea id="draftContent" class="form-control">하반기 개인 휴가 연차 사용을 기안합니다.
+사유: 가족 여행
+업무 대행자: 정진국 사원</textarea>
+                    </div>
+
+                    <div class="grid-2">
+                      <div class="form-group">
+                        <label class="form-label" for="draftLeaveStart">휴가 시작일</label>
+                        <select id="draftLeaveStart" class="form-control">
+                          <option>6월 8일</option>
+                          <option selected>6월 9일</option>
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label" for="draftLeaveEnd">휴가 종료일</label>
+                        <select id="draftLeaveEnd" class="form-control">
+                          <option selected>6월 10일</option>
+                          <option>6월 11일</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="grid-2">
+                      <div class="form-group">
+                        <label class="form-label" for="draftSigner1">1차 승인자 (팀장)</label>
+                        <select id="draftSigner1" class="form-control">
+                          <option value="20260102" selected>김우주 팀장 (개발팀)</option>
+                          <option value="20260901">이다니엘 팀장 (인사팀)</option>
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label" for="draftSigner2">최종 승인자 (부서장)</label>
+                        <select id="draftSigner2" class="form-control">
+                          <option value="20260010" selected>김영훈 부서장 (기획팀)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label">참조 대상 지정</label>
+                      <div style="display:flex; align-items:center; gap:0.75rem;">
+                        <a class="btn btn-secondary btn-sm" href="06-6_approval_ref_picker_modal.html"><i class="fa-solid fa-sitemap"></i> 조직도에서 선택</a>
+                        <span id="refSelectionSummary" style="font-size:0.85rem; color:var(--text-secondary);">선택된 참조 대상: 인사팀(부서)</span>
+                      </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.5rem;">
+                      <a class="btn btn-secondary" href="06_approval.html">작성 취소</a>
+                      <a class="btn btn-primary" href="06-3_approval_outbox.html">결재 상신</a>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Toast Notifications Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+
+</body></html>

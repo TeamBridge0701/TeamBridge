@@ -1,0 +1,167 @@
+<!DOCTYPE html><html lang="ko" data-theme="light"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>전자결재 - 통합 사내 그룹웨어</title>
+  <meta name="description" content="사내 그룹웨어 시스템 - 전자결재">
+
+  <!-- Google Fonts & FontAwesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&amp;family=Inter:wght@300;400;500;600;700;800&amp;family=Noto+Sans+KR:wght@300;400;500;700;900&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ==========================================
+       참고 화면: 기안 작성 폼에서 "조직도에서 선택" 버튼을 눌렀을 때 뜨는
+       참조(CC) 대상 선택 팝업 오픈 상태 (부서 체크 + 개별 직원 체크 예시)
+       ========================================== -->
+  <div class="app-wrapper" id="appWrapper"><header class="header">
+      <div class="header-left">
+        <a href="02_main.html" class="logo" style="text-decoration:none;">
+          <div class="logo-box"><i class="fa-solid fa-cubes"></i></div>
+          <span style="margin-left: 0.5rem;">GROUPWARE</span>
+        </a>      </div>
+
+      <div class="header-right">
+        <a class="icon-btn" href="08_mail.html" title="받은 메일함">
+          <i class="fa-solid fa-envelope"></i>
+          <span class="badge" id="headerMsgBadge" style="display: flex;">4</span>
+        </a>
+        <a class="user-dropdown" href="09_mypage.html">
+          <div class="user-avatar" id="headerAvatar">홍</div>
+          <div class="user-details">
+            <span class="user-name-text" id="headerName">홍길동</span>
+            <span class="user-role-text" id="headerDept">개발팀 · 사원</span>
+          </div>
+        </a>
+        <a class="icon-btn" href="01_login.html" title="로그아웃" style="color: var(--color-danger); border-color: rgba(248,113,113,0.2);">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Navigation Body -->
+    <div class="main-body" id="mainBody"><aside class="sidebar">
+      <ul class="sidebar-menu">
+        <li class="sidebar-item" id="menu-dashboard"><a href="02_main.html"><i class="fa-solid fa-chart-line"></i> 대시보드</a></li>
+
+        <li class="sidebar-group-label">업무</li>
+        <li class="sidebar-item sub" id="menu-calendar"><a href="03_calendar.html"><i class="fa-solid fa-calendar-days"></i> 일정 캘린더</a></li>
+        <li class="sidebar-item sub active" id="menu-approval"><a href="06_approval.html"><i class="fa-solid fa-signature"></i> 전자결재</a></li>
+        <li class="sidebar-item sub" id="menu-notice"><a href="04_notice.html"><i class="fa-solid fa-bullhorn"></i> 공지사항</a></li>
+        <li class="sidebar-item sub" id="menu-archive"><a href="05_archive.html"><i class="fa-solid fa-file-shield"></i> 자료실</a></li>
+
+        <li class="sidebar-group-label">조직 · 소통</li>
+        <li class="sidebar-item sub" id="menu-org"><a href="07_org.html"><i class="fa-solid fa-sitemap"></i> 조직도</a></li>
+        <li class="sidebar-item sub" id="menu-mail"><a href="08_mail.html"><i class="fa-solid fa-paper-plane"></i> 메일함</a></li>
+
+        <li class="sidebar-group-label">근태관리</li>
+        <li class="sidebar-item sub" id="menu-attendance"><a href="10_attendance.html"><i class="fa-solid fa-clock"></i> 출결 현황</a></li>
+
+        <li class="sidebar-item" id="menu-mypage"><a href="09_mypage.html"><i class="fa-solid fa-user-gear"></i> 마이페이지</a></li>
+
+        <li class="sidebar-group-label" id="adminGroupLabel" style="display: none;">관리자</li>
+        <li class="sidebar-item sub" id="menu-admin" style="display: none;"><a href="11_admin.html"><i class="fa-solid fa-gears"></i> 계정·인사정보 관리</a></li>
+        <li class="sidebar-item sub" id="menu-adminAttendance" style="display: none;"><a href="12_admin_attendance.html"><i class="fa-solid fa-user-clock"></i> 직원 출결 관리</a></li>
+      </ul>
+    </aside>
+
+      <!-- Center Dynamic View Content Area -->
+      <main class="view-content">
+        <div class="grid-12">
+          <div class="col-3">
+            <div class="card" style="padding: 1.25rem;">
+              <h4 style="margin-bottom: 1rem; font-size: 0.95rem;">전자결재 메뉴</h4>
+              <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.25rem;">
+                <li><a class="org-node active" id="appTab-write" href="06-1_approval_write_form.html"><i class="fa-solid fa-file-pen"></i> 결재 상신 (기안)</a></li>
+                <li><a class="org-node" id="appTab-inbox" href="06-2_approval_inbox.html"><i class="fa-solid fa-inbox"></i> 받은 결재함</a></li>
+                <li><a class="org-node" id="appTab-outbox" href="06-3_approval_outbox.html"><i class="fa-solid fa-paper-plane"></i> 보낸 기안함</a></li>
+                <li><a class="org-node" id="appTab-ref" href="06-4_approval_ref.html"><i class="fa-solid fa-eye"></i> 참조 문서함</a></li>
+              </ul>
+            </div>
+          </div>
+          <div class="col-9">
+            <div class="card">
+              <h3 style="margin-bottom: 1rem;">새 결재 상신</h3>
+              <p style="font-size:0.85rem; color:var(--text-muted);">연차휴가신청서 기안 작성 중 - 참조 대상 선택 팝업이 열린 상태입니다.</p>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       DYNAMIC MODALS (used on this page) - OPEN 상태 참고
+       ========================================== -->
+  <div class="modal-overlay active" id="modalOverlay">
+
+    <!-- Reference (CC) Picker Modal - org-chart style (열림 상태, 인사팀 부서 전체 + 개별 1명 선택 예시) -->
+    <div class="modal-content" id="modal-ref-picker" style="display:block; max-width: 720px;">
+      <div class="modal-header">
+        <h3>참조 대상 선택</h3>
+        <a class="icon-btn" href="06-1_approval_write_form.html"><i class="fa-solid fa-xmark"></i></a>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">부서 앞 체크박스는 부서 전체를 참조로 지정하고, 부서명을 클릭하면 오른쪽 목록만 그 부서로 필터됩니다. 개별 직원은 오른쪽 목록에서 체크하세요.</p>
+        <div class="org-container" style="height: 380px;">
+          <div class="org-tree">
+            <ul id="refDeptTree" style="list-style:none;">
+              <li><a class="org-node" id="refDeptNode-all"><i class="fa-solid fa-building"></i> 전체보기</a></li>
+              <li style="margin-left: 0.75rem; display:flex; align-items:center; gap:0.4rem;">
+                <input type="checkbox" checked> <a class="org-node active" id="refDeptNode-인사팀" style="flex:1;">인사팀</a>
+              </li>
+              <li style="margin-left: 0.75rem; display:flex; align-items:center; gap:0.4rem;">
+                <input type="checkbox"> <a class="org-node" id="refDeptNode-기획팀" style="flex:1;">기획팀</a>
+              </li>
+              <li style="margin-left: 0.75rem; display:flex; align-items:center; gap:0.4rem;">
+                <input type="checkbox"> <a class="org-node" id="refDeptNode-개발팀" style="flex:1;">개발팀</a>
+              </li>
+              <li style="margin-left: 0.75rem; display:flex; align-items:center; gap:0.4rem;">
+                <input type="checkbox"> <a class="org-node" id="refDeptNode-디자인팀" style="flex:1;">디자인팀</a>
+              </li>
+              <li style="margin-left: 0.75rem; display:flex; align-items:center; gap:0.4rem;">
+                <input type="checkbox"> <a class="org-node" id="refDeptNode-총무팀" style="flex:1;">총무팀</a>
+              </li>
+            </ul>
+          </div>
+          <div class="org-members">
+            <div class="table-container">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 50px;"></th>
+                    <th>이름</th>
+                    <th>부서</th>
+                    <th>직급</th>
+                  </tr>
+                </thead>
+                <tbody id="refMemberTableBody">
+      <tr>
+        <td style="text-align:center;"><input type="checkbox" checked></td>
+        <td><strong>이다니엘</strong></td>
+        <td>인사팀</td>
+        <td><span class="badge badge-primary">팀장</span></td>
+      </tr>
+    </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a type="button" class="btn btn-secondary" href="06-1_approval_write_form.html">취소</a>
+        <a type="button" class="btn btn-primary" href="06-1_approval_write_form.html">확인</a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Toast Notifications Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+
+</body></html>

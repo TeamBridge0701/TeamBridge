@@ -1,0 +1,140 @@
+<!DOCTYPE html><html lang="ko" data-theme="light"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>메일함 - 통합 사내 그룹웨어</title>
+  <meta name="description" content="사내 그룹웨어 시스템 - 메일함">
+
+  <!-- Google Fonts & FontAwesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&amp;family=Inter:wght@300;400;500;600;700;800&amp;family=Noto+Sans+KR:wght@300;400;500;700;900&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ==========================================
+       참고 화면: 메일함 "보낸 메일함" 탭 - 발신 메일이 있는 상태
+       ========================================== -->
+  <div class="app-wrapper" id="appWrapper"><header class="header">
+      <div class="header-left">
+        <a href="02_main.html" class="logo" style="text-decoration:none;">
+          <div class="logo-box"><i class="fa-solid fa-cubes"></i></div>
+          <span style="margin-left: 0.5rem;">GROUPWARE</span>
+        </a>      </div>
+
+      <div class="header-right">
+        <a class="icon-btn" href="08_mail.html" title="받은 메일함">
+          <i class="fa-solid fa-envelope"></i>
+          <span class="badge" id="headerMsgBadge" style="display: flex;">4</span>
+        </a>
+        <a class="user-dropdown" href="09_mypage.html">
+          <div class="user-avatar" id="headerAvatar">홍</div>
+          <div class="user-details">
+            <span class="user-name-text" id="headerName">홍길동</span>
+            <span class="user-role-text" id="headerDept">개발팀 · 사원</span>
+          </div>
+        </a>
+        <a class="icon-btn" href="01_login.html" title="로그아웃" style="color: var(--color-danger); border-color: rgba(248,113,113,0.2);">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Navigation Body -->
+    <div class="main-body" id="mainBody"><aside class="sidebar">
+      <ul class="sidebar-menu">
+        <li class="sidebar-item" id="menu-dashboard"><a href="02_main.html"><i class="fa-solid fa-chart-line"></i> 대시보드</a></li>
+
+        <li class="sidebar-group-label">업무</li>
+        <li class="sidebar-item sub" id="menu-calendar"><a href="03_calendar.html"><i class="fa-solid fa-calendar-days"></i> 일정 캘린더</a></li>
+        <li class="sidebar-item sub" id="menu-approval"><a href="06_approval.html"><i class="fa-solid fa-signature"></i> 전자결재</a></li>
+        <li class="sidebar-item sub" id="menu-notice"><a href="04_notice.html"><i class="fa-solid fa-bullhorn"></i> 공지사항</a></li>
+        <li class="sidebar-item sub" id="menu-archive"><a href="05_archive.html"><i class="fa-solid fa-file-shield"></i> 자료실</a></li>
+
+        <li class="sidebar-group-label">조직 · 소통</li>
+        <li class="sidebar-item sub" id="menu-org"><a href="07_org.html"><i class="fa-solid fa-sitemap"></i> 조직도</a></li>
+        <li class="sidebar-item sub active" id="menu-mail"><a href="08_mail.html"><i class="fa-solid fa-paper-plane"></i> 메일함</a></li>
+
+        <li class="sidebar-group-label">근태관리</li>
+        <li class="sidebar-item sub" id="menu-attendance"><a href="10_attendance.html"><i class="fa-solid fa-clock"></i> 출결 현황</a></li>
+
+        <li class="sidebar-item" id="menu-mypage"><a href="09_mypage.html"><i class="fa-solid fa-user-gear"></i> 마이페이지</a></li>
+
+        <li class="sidebar-group-label" id="adminGroupLabel" style="display: none;">관리자</li>
+        <li class="sidebar-item sub" id="menu-admin" style="display: none;"><a href="11_admin.html"><i class="fa-solid fa-gears"></i> 계정·인사정보 관리</a></li>
+        <li class="sidebar-item sub" id="menu-adminAttendance" style="display: none;"><a href="12_admin_attendance.html"><i class="fa-solid fa-user-clock"></i> 직원 출결 관리</a></li>
+      </ul>
+    </aside>
+
+      <!-- Center Dynamic View Content Area -->
+      <main class="view-content">
+
+        <!-- ==========================================
+             SCREEN: MAIL
+             ========================================== -->
+        <div class="card">
+          <div class="messenger-container">
+            <!-- Left Side Tabs -->
+            <div class="messenger-menu">
+              <div class="messenger-menu-item" id="mailTab-received">
+                <a href="08_mail.html" style="color:inherit; text-decoration:none;"><i class="fa-solid fa-inbox"></i> 받은 메일함 <span class="badge badge-primary" id="receivedCountBadge" style="margin-left: auto; display: inline-flex;">4</span></a>
+              </div>
+              <div class="messenger-menu-item active" id="mailTab-sent">
+                <a href="08-1_mail_sent.html" style="color:inherit; text-decoration:none;"><i class="fa-solid fa-paper-plane"></i> 보낸 메일함</a>
+              </div>
+              <div class="messenger-menu-item" id="mailTab-write" style="margin-top: 1rem; background-color: var(--color-primary); color:#fff;">
+                <a href="08-2_mail_write.html" style="color:inherit; text-decoration:none;"><i class="fa-solid fa-pen-nib"></i> 메일 쓰기</a>
+              </div>
+            </div>
+
+            <!-- Right Side Mailbox views -->
+            <div style="overflow-y:auto; padding-left: 1rem;">
+
+              <!-- Sent List View (데이터가 있는 상태) -->
+              <div id="mailListContainer">
+                <h3 id="mailViewTitle" style="margin-bottom: 1rem;">보낸 메일함</h3>
+                <div class="table-container">
+                  <table class="table">
+                    <thead>
+                      <tr id="mailTableHeader">
+      <th>받는 사람</th>
+      <th>제목</th>
+      <th>발신 시각</th>
+    </tr>
+                    </thead>
+                    <tbody id="mailTableBody">
+        <tr class="clickable" onclick="viewMailDetail(9)">
+          <td><strong>김영훈 부서장</strong></td>
+          <td>지출결의서 재상신 안내드립니다 <i class="fa-solid fa-paperclip" style="color:var(--text-muted); font-size:0.75rem;"></i></td>
+          <td style="font-family:'Fira Code'; font-size:0.8rem;">2026-06-30 15:02</td>
+        </tr>
+        <tr class="clickable" onclick="viewMailDetail(3)">
+          <td><strong>김우주 팀장</strong></td>
+          <td>모바일 캘린더 라이브러리 연동 검토 건</td>
+          <td style="font-family:'Fira Code'; font-size:0.8rem;">2026-06-29 17:30</td>
+        </tr>
+        <tr class="clickable" onclick="viewMailDetail(14)">
+          <td><strong>이다니엘 팀장</strong></td>
+          <td>연차 사용 계획서 제출드립니다 <i class="fa-solid fa-paperclip" style="color:var(--text-muted); font-size:0.75rem;"></i></td>
+          <td style="font-family:'Fira Code'; font-size:0.8rem;">2026-06-15 09:20</td>
+        </tr>
+      </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Toast Notifications Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+
+</body></html>

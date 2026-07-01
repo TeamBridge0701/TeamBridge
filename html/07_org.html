@@ -1,0 +1,193 @@
+<!DOCTYPE html><html lang="ko" data-theme="light"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>조직도 - 통합 사내 그룹웨어</title>
+  <meta name="description" content="사내 그룹웨어 시스템 - 조직도">
+
+  <!-- Google Fonts & FontAwesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&amp;family=Inter:wght@300;400;500;600;700;800&amp;family=Noto+Sans+KR:wght@300;400;500;700;900&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ==========================================
+       CORE APPLICATION WRAPPER
+       (header/sidebar injected by common.js initPage())
+       ========================================== -->
+  <div class="app-wrapper" id="appWrapper"><header class="header">
+      <div class="header-left">
+        <a href="02_main.html" class="logo" style="text-decoration:none;">
+          <div class="logo-box"><i class="fa-solid fa-cubes"></i></div>
+          <span style="margin-left: 0.5rem;">GROUPWARE</span>
+        </a>      </div>
+
+      <div class="header-right">
+        <button class="icon-btn" onclick="navigateTo('mail')" title="받은 메일함">
+          <i class="fa-solid fa-envelope"></i>
+          <span class="badge" id="headerMsgBadge" style="display: flex;">4</span>
+        </button>
+        <div class="user-dropdown" onclick="navigateTo('mypage')">
+          <div class="user-avatar" id="headerAvatar">홍</div>
+          <div class="user-details">
+            <span class="user-name-text" id="headerName">홍길동</span>
+            <span class="user-role-text" id="headerDept">개발팀 · 사원</span>
+          </div>
+        </div>
+        <button class="icon-btn" onclick="doLogout()" title="로그아웃" style="color: var(--color-danger); border-color: rgba(248,113,113,0.2);">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Navigation Body -->
+    <div class="main-body" id="mainBody"><aside class="sidebar">
+      <ul class="sidebar-menu">
+        <li class="sidebar-item" id="menu-dashboard"><a href="02_main.html"><i class="fa-solid fa-chart-line"></i> 대시보드</a></li>
+
+        <li class="sidebar-group-label">업무</li>
+        <li class="sidebar-item sub" id="menu-calendar"><a href="03_calendar.html"><i class="fa-solid fa-calendar-days"></i> 일정 캘린더</a></li>
+        <li class="sidebar-item sub" id="menu-approval"><a href="06_approval.html"><i class="fa-solid fa-signature"></i> 전자결재</a></li>
+        <li class="sidebar-item sub" id="menu-notice"><a href="04_notice.html"><i class="fa-solid fa-bullhorn"></i> 공지사항</a></li>
+        <li class="sidebar-item sub" id="menu-archive"><a href="05_archive.html"><i class="fa-solid fa-file-shield"></i> 자료실</a></li>
+
+        <li class="sidebar-group-label">조직 · 소통</li>
+        <li class="sidebar-item sub active" id="menu-org"><a href="07_org.html"><i class="fa-solid fa-sitemap"></i> 조직도</a></li>
+        <li class="sidebar-item sub" id="menu-mail"><a href="08_mail.html"><i class="fa-solid fa-paper-plane"></i> 메일함</a></li>
+
+        <li class="sidebar-group-label">근태관리</li>
+        <li class="sidebar-item sub" id="menu-attendance"><a href="10_attendance.html"><i class="fa-solid fa-clock"></i> 출결 현황</a></li>
+
+        <li class="sidebar-item" id="menu-mypage"><a href="09_mypage.html"><i class="fa-solid fa-user-gear"></i> 마이페이지</a></li>
+
+        <li class="sidebar-group-label" id="adminGroupLabel" style="display: none;">관리자</li>
+        <li class="sidebar-item sub" id="menu-admin" style="display: none;"><a href="11_admin.html"><i class="fa-solid fa-gears"></i> 계정·인사정보 관리</a></li>
+        <li class="sidebar-item sub" id="menu-adminAttendance" style="display: none;"><a href="12_admin_attendance.html"><i class="fa-solid fa-user-clock"></i> 직원 출결 관리</a></li>
+      </ul>
+    </aside>
+
+      <!-- Center Dynamic View Content Area -->
+      <main class="view-content">
+
+        <!-- ==========================================
+             SCREEN: ORG CHART
+             ========================================== -->
+        <div class="org-container">
+          <!-- Left Side Tree -->
+          <div class="org-tree">
+            <h3 style="font-size: 1rem; margin-bottom: 1rem;">사내 조직 현황</h3>
+            <ul style="list-style:none;">
+              <li><a class="org-node active" id="org-all" onclick="filterOrg('all')"><i class="fa-solid fa-building"></i> 주식회사 코퍼레이션</a></li>
+              <li style="margin-left: 0.75rem;"><a class="org-node" id="org-인사팀" onclick="filterOrg('인사팀')"><i class="fa-solid fa-users"></i> 인사팀</a></li>
+              <li style="margin-left: 0.75rem;"><a class="org-node" id="org-기획팀" onclick="filterOrg('기획팀')"><i class="fa-solid fa-compass"></i> 기획팀</a></li>
+              <li style="margin-left: 0.75rem;"><a class="org-node" id="org-개발팀" onclick="filterOrg('개발팀')"><i class="fa-solid fa-code"></i> 개발팀</a></li>
+              <li style="margin-left: 0.75rem;"><a class="org-node" id="org-디자인팀" onclick="filterOrg('디자인팀')"><i class="fa-solid fa-palette"></i> 디자인팀</a></li>
+              <li style="margin-left: 0.75rem;"><a class="org-node" id="org-총무팀" onclick="filterOrg('총무팀')"><i class="fa-solid fa-briefcase"></i> 총무팀</a></li>
+            </ul>
+          </div>
+
+          <!-- Right Side Members Grid -->
+          <div class="org-members">
+            <h3 style="margin-bottom: 1rem;" id="orgTitle">임직원 목록 (전체)</h3>
+            <div class="table-container">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>사진</th>
+                    <th>이름</th>
+                    <th>부서</th>
+                    <th>직급</th>
+                    <th>상태</th>
+                  </tr>
+                </thead>
+                <tbody id="orgMemberTableBody">
+    <tr class="clickable" onclick="viewOrgMemberDetail('20260010')">
+      <td><a href="07-1_org_member_modal.html" style="display:block; color:inherit; text-decoration:none;"><div class="user-avatar" style="width:24px; height:24px; font-size:0.7rem;">김</div></a></td>
+      <td><a href="07-1_org_member_modal.html" style="color:inherit; text-decoration:none;"><strong>김영훈</strong></a></td>
+      <td>기획팀</td>
+      <td><span class="badge badge-primary">부서장</span></td>
+      <td><span class="badge badge-muted">퇴근</span></td>
+    </tr>
+  
+    <tr class="clickable" onclick="viewOrgMemberDetail('20260102')">
+      <td><div class="user-avatar" style="width:24px; height:24px; font-size:0.7rem;">김</div></td>
+      <td><strong>김우주</strong></td>
+      <td>개발팀</td>
+      <td><span class="badge badge-primary">팀장</span></td>
+      <td><span class="badge badge-success">출근 (근무중)</span></td>
+    </tr>
+  
+    <tr class="clickable" onclick="viewOrgMemberDetail('20260901')">
+      <td><div class="user-avatar" style="width:24px; height:24px; font-size:0.7rem;">이</div></td>
+      <td><strong>이다니엘</strong></td>
+      <td>인사팀</td>
+      <td><span class="badge badge-primary">팀장</span></td>
+      <td><span class="badge badge-primary">휴가</span></td>
+    </tr>
+  
+    <tr class="clickable" onclick="viewOrgMemberDetail('20260601')">
+      <td><div class="user-avatar" style="width:24px; height:24px; font-size:0.7rem;">홍</div></td>
+      <td><strong>홍길동</strong></td>
+      <td>개발팀</td>
+      <td><span class="badge badge-primary">사원</span></td>
+      <td><span class="badge badge-warning">미출근</span></td>
+    </tr>
+  
+    <tr class="clickable" onclick="viewOrgMemberDetail('20260803')">
+      <td><div class="user-avatar" style="width:24px; height:24px; font-size:0.7rem;">정</div></td>
+      <td><strong>정진국</strong></td>
+      <td>디자인팀</td>
+      <td><span class="badge badge-primary">사원</span></td>
+      <td><span class="badge badge-warning">미출근</span></td>
+    </tr>
+  </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       DYNAMIC MODALS (used on this page)
+       ========================================== -->
+  <div class="modal-overlay" id="modalOverlay">
+
+    <!-- Org Member Info Modal -->
+    <div class="modal-content" id="modal-org-member" style="display:none;">
+      <div class="modal-header">
+        <h3 id="mOrgName">임직원 정보</h3>
+        <button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div style="text-align:center; margin-bottom:1rem;">
+          <div class="profile-avatar-large" style="width:90px; height:90px; font-size:2rem;" id="mOrgAvatar">홍</div>
+          <div id="mOrgDept" style="color:var(--text-secondary); font-size:0.9rem;">개발팀 · 사번 20260601</div>
+        </div>
+        <div style="background-color:var(--bg-tertiary); padding:1rem; border-radius:8px; border:1px solid var(--border-color); font-size:0.85rem;">
+          <div style="margin-bottom:0.35rem;">연락처: <strong id="mOrgPhone">-</strong></div>
+          <div style="margin-bottom:0.35rem;">이메일: <strong id="mOrgEmail">-</strong></div>
+          <div>상태: <strong id="mOrgStatus">-</strong></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="mOrgMailBtn"><i class="fa-solid fa-envelope"></i> 메일 보내기</button>
+        <button class="btn btn-secondary" onclick="closeModal()">닫기</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Toast Notifications Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  
+  
+
+
+</body></html>

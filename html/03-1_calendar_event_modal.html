@@ -1,0 +1,163 @@
+<!DOCTYPE html><html lang="ko" data-theme="light"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>일정 캘린더 - 통합 사내 그룹웨어</title>
+  <meta name="description" content="사내 그룹웨어 시스템 - 일정 캘린더">
+
+  <!-- Google Fonts & FontAwesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&amp;family=Inter:wght@300;400;500;600;700;800&amp;family=Noto+Sans+KR:wght@300;400;500;700;900&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ==========================================
+       참고 화면: 캘린더에서 날짜 칸을 클릭했을 때 뜨는
+       "새 일정 등록" 모달 오픈 상태 (js 적용 후 결과 참고용, JS 없음)
+       ========================================== -->
+  <div class="app-wrapper" id="appWrapper"><header class="header">
+      <div class="header-left">
+        <a href="02_main.html" class="logo" style="text-decoration:none;">
+          <div class="logo-box"><i class="fa-solid fa-cubes"></i></div>
+          <span style="margin-left: 0.5rem;">GROUPWARE</span>
+        </a>      </div>
+
+      <div class="header-right">
+        <a class="icon-btn" href="08_mail.html" title="받은 메일함">
+          <i class="fa-solid fa-envelope"></i>
+          <span class="badge" id="headerMsgBadge" style="display: flex;">4</span>
+        </a>
+        <a class="user-dropdown" href="09_mypage.html">
+          <div class="user-avatar" id="headerAvatar">홍</div>
+          <div class="user-details">
+            <span class="user-name-text" id="headerName">홍길동</span>
+            <span class="user-role-text" id="headerDept">개발팀 · 사원</span>
+          </div>
+        </a>
+        <a class="icon-btn" href="01_login.html" title="로그아웃" style="color: var(--color-danger); border-color: rgba(248,113,113,0.2);">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Navigation Body -->
+    <div class="main-body" id="mainBody"><aside class="sidebar">
+      <ul class="sidebar-menu">
+        <li class="sidebar-item" id="menu-dashboard"><a href="02_main.html"><i class="fa-solid fa-chart-line"></i> 대시보드</a></li>
+
+        <li class="sidebar-group-label">업무</li>
+        <li class="sidebar-item sub active" id="menu-calendar"><a href="03_calendar.html"><i class="fa-solid fa-calendar-days"></i> 일정 캘린더</a></li>
+        <li class="sidebar-item sub" id="menu-approval"><a href="06_approval.html"><i class="fa-solid fa-signature"></i> 전자결재</a></li>
+        <li class="sidebar-item sub" id="menu-notice"><a href="04_notice.html"><i class="fa-solid fa-bullhorn"></i> 공지사항</a></li>
+        <li class="sidebar-item sub" id="menu-archive"><a href="05_archive.html"><i class="fa-solid fa-file-shield"></i> 자료실</a></li>
+
+        <li class="sidebar-group-label">조직 · 소통</li>
+        <li class="sidebar-item sub" id="menu-org"><a href="07_org.html"><i class="fa-solid fa-sitemap"></i> 조직도</a></li>
+        <li class="sidebar-item sub" id="menu-mail"><a href="08_mail.html"><i class="fa-solid fa-paper-plane"></i> 메일함</a></li>
+
+        <li class="sidebar-group-label">근태관리</li>
+        <li class="sidebar-item sub" id="menu-attendance"><a href="10_attendance.html"><i class="fa-solid fa-clock"></i> 출결 현황</a></li>
+
+        <li class="sidebar-item" id="menu-mypage"><a href="09_mypage.html"><i class="fa-solid fa-user-gear"></i> 마이페이지</a></li>
+
+        <li class="sidebar-group-label" id="adminGroupLabel" style="display: none;">관리자</li>
+        <li class="sidebar-item sub" id="menu-admin" style="display: none;"><a href="11_admin.html"><i class="fa-solid fa-gears"></i> 계정·인사정보 관리</a></li>
+        <li class="sidebar-item sub" id="menu-adminAttendance" style="display: none;"><a href="12_admin_attendance.html"><i class="fa-solid fa-user-clock"></i> 직원 출결 관리</a></li>
+      </ul>
+    </aside>
+
+      <!-- Center Dynamic View Content Area -->
+      <main class="view-content">
+
+        <!-- ==========================================
+             SCREEN: CALENDAR
+             ========================================== -->
+        <div class="card">
+          <div class="calendar-wrapper">
+            <div class="calendar-controls">
+              <div style="display: flex; align-items: center; gap: 1rem;">
+                <h2>2026년 6월</h2>
+                <div style="display: flex; gap: 0.25rem;">
+                  <button class="btn btn-secondary btn-sm" disabled><i class="fa-solid fa-chevron-left"></i></button>
+                  <button class="btn btn-secondary btn-sm" disabled><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+              </div>
+              <a class="btn btn-primary" href="03-1_calendar_event_modal.html"><i class="fa-solid fa-plus"></i> 일정 추가</a>
+            </div>
+
+            <!-- Calendar Grid (15일 칸을 클릭해 일정 등록 모달을 연 상태) -->
+            <div class="calendar-grid" id="fullCalendarGrid">
+    <div class="mini-cal-day-header" style="padding:0.75rem 0;">일요일</div>
+    <div class="mini-cal-day-header" style="padding:0.75rem 0;">월요일</div>
+    <div class="mini-cal-day-header" style="padding:0.75rem 0;">화요일</div>
+    <div class="mini-cal-day-header" style="padding:0.75rem 0;">수요일</div>
+    <div class="mini-cal-day-header" style="padding:0.75rem 0;">목요일</div>
+    <div class="mini-cal-day-header" style="padding:0.75rem 0;">금요일</div>
+    <div class="mini-cal-day-header" style="padding:0.75rem 0;">토요일</div>
+
+    <div class="cal-cell other-month">
+      <div class="cal-cell-header"><span class="cal-day-num">31</span></div>
+    </div>
+    <!-- 1~14, 16~29일은 실제 화면과 동일 (참고용 생략) -->
+      <div class="cal-cell" style="grid-column: 1 / 2;">
+        <div class="cal-cell-header"><span class="cal-day-num">15</span></div>
+      </div>
+    </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       DYNAMIC MODALS (used on this page) - OPEN 상태 참고
+       ========================================== -->
+  <div class="modal-overlay active" id="modalOverlay">
+
+    <!-- Calendar Event Register Modal (열림 상태, 6월 15일 선택 + 입력 예시) -->
+    <div class="modal-content" id="modal-calendar-write" style="display:block;">
+      <div class="modal-header">
+        <h3>새 일정 등록</h3>
+        <a class="icon-btn" href="03_calendar.html"><i class="fa-solid fa-xmark"></i></a>
+      </div>
+      <form>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="cEventDate">날짜 선택 (6월)</label>
+            <select id="cEventDate" class="form-control">
+              <option>6월 14일</option>
+              <option selected>6월 15일</option>
+              <option>6월 16일</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cEventTitle">일정 제목</label>
+            <input type="text" id="cEventTitle" class="form-control" value="개발 1팀 스프린트 회고">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cEventCategory">일정 구분</label>
+            <select id="cEventCategory" class="form-control">
+              <option value="personal">개인 일정 (본인 캘린더만 노출)</option>
+              <option value="team" selected>팀 일정 (소속 부서원 연동)</option>
+              <option value="company">회사 일정 (전사 노출)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <a class="btn btn-secondary" href="03_calendar.html">취소</a>
+          <a class="btn btn-primary" href="03_calendar.html">등록</a>
+        </div>
+      </form>
+    </div>
+
+  </div>
+
+  <!-- Toast Notifications Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+
+</body></html>
