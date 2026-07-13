@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="ko" data-theme="light"><head>
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>로그인 - 통합 사내 그룹웨어</title>
@@ -6,8 +8,8 @@
 
   <!-- 구글 폰트 및 폰트어썸 아이콘 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&amp;family=Inter:wght@300;400;500;600;700;800&amp;family=Noto+Sans+KR:wght@300;400;500;700;900&amp;display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <link rel="stylesheet" href="css/style.css">
@@ -16,6 +18,11 @@
 
   <!-- ==========================================
        로그인 화면
+       - 이 페이지는 유일하게 헤더/사이드바가 없는 화면이다
+         (initPage()를 호출하지 않고, js/login.js가 직접 로그인만 처리한다).
+       - 폼 제출(submit) 시 js/login.js의 doLogin() 함수가 실행된다.
+       - 실제 서버 인증이 없는 프로토타입이라, 비밀번호 칸은 있지만
+         값을 검사하지 않고 "아이디(사번)"만 확인한다.
        ========================================== -->
   <div class="login-wrapper">
     <div class="login-card">
@@ -30,11 +37,13 @@
       <form id="loginForm" onsubmit="doLogin(event)">
         <div class="form-group">
           <label class="form-label" for="loginUser">아이디</label>
-          <input type="text" id="loginUser" class="form-control" placeholder="사번 또는 아이디를 입력하세요" required="">
+          <!-- js/common.js의 state.users 목록에 있는 사번을 입력하면 로그인된다.
+               예: 20260601(사원), 20260102(팀장), 20260010(부서장), admin(관리자) -->
+          <input type="text" id="loginUser" class="form-control" placeholder="사번 또는 아이디를 입력하세요" required>
         </div>
         <div class="form-group">
           <label class="form-label" for="loginPw">비밀번호</label>
-          <input type="password" id="loginPw" class="form-control" value="••••••••" required="">
+          <input type="password" id="loginPw" class="form-control" value="••••••••" required>
         </div>
         <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
           로그인
@@ -43,11 +52,10 @@
     </div>
   </div>
 
-  <!-- 토스트 알림 컨테이너 -->
+  <!-- 토스트 알림 컨테이너 - showToast()가 여기에 알림 메시지를 추가한다 -->
   <div id="toast-container" class="toast-container"></div>
 
-  
-  
-
-
-</body></html>
+  <script src="js/common.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>

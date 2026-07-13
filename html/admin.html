@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>관리자 패널 - 통합 사내 그룹웨어</title>
+  <meta name="description" content="사내 그룹웨어 시스템 - 관리자 패널">
+
+  <!-- 구글 폰트 및 폰트어썸 아이콘 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ==========================================
+       핵심 애플리케이션 래퍼 (모든 화면 html이 공통으로 갖는 뼈대.
+       구조에 대한 자세한 설명은 main.html의 주석 참고)
+       헤더/사이드바는 정적 마크업이며, js/common.js의
+       initApplicationHeader()가 동적인 값만 채워 넣는다.
+       ========================================== -->
+  <div class="app-wrapper" id="appWrapper">
+
+    <!-- 상단 헤더 -->
+    <header class="header">
+      <div class="header-left">
+        <a href="main.html" class="logo" style="text-decoration:none;">
+          <div class="logo-box"><i class="fa-solid fa-cubes"></i></div>
+          <span style="margin-left: 0.5rem;">GROUPWARE</span>
+        </a>
+      </div>
+
+      <div class="header-right">
+        <button class="icon-btn" onclick="navigateTo('chat')" title="실시간 채팅">
+          <i class="fa-solid fa-comment-dots"></i>
+          <span class="badge" id="headerChatBadge">0</span>
+        </button>
+        <div class="user-dropdown" onclick="navigateTo('mypage')">
+          <div class="user-avatar" id="headerAvatar">홍</div>
+          <div class="user-details">
+            <span class="user-name-text" id="headerName">홍길동</span>
+            <span class="user-role-text" id="headerDept">개발팀 사원</span>
+          </div>
+        </div>
+        <button class="icon-btn" onclick="doLogout()" title="로그아웃" style="color: var(--color-danger); border-color: rgba(248,113,113,0.2);">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- 메인 내비게이션 영역 -->
+    <div class="main-body" id="mainBody">
+
+      <!-- 좌측 사이드바 -->
+      <aside class="sidebar">
+        <ul class="sidebar-menu">
+          <li class="sidebar-item" id="menu-dashboard"><a href="main.html"><i class="fa-solid fa-chart-line"></i> 대시보드</a></li>
+
+          <li class="sidebar-group-label">업무</li>
+          <li class="sidebar-item sub" id="menu-calendar"><a href="calendar.html"><i class="fa-solid fa-calendar-days"></i> 일정 캘린더</a></li>
+          <li class="sidebar-item sub" id="menu-approval"><a href="approval.html"><i class="fa-solid fa-signature"></i> 전자결재</a></li>
+          <li class="sidebar-item sub" id="menu-notice"><a href="notice.html"><i class="fa-solid fa-bullhorn"></i> 공지사항</a></li>
+          <li class="sidebar-item sub" id="menu-archive"><a href="archive.html"><i class="fa-solid fa-file-shield"></i> 자료실</a></li>
+
+          <li class="sidebar-group-label">조직 · 소통</li>
+          <li class="sidebar-item sub" id="menu-org"><a href="org.html"><i class="fa-solid fa-sitemap"></i> 조직도</a></li>
+          <li class="sidebar-item sub" id="menu-chat"><a href="chat.html"><i class="fa-solid fa-comment-dots"></i> 실시간 채팅</a></li>
+
+          <li class="sidebar-group-label">근태관리</li>
+          <li class="sidebar-item sub" id="menu-attendance"><a href="attendance.html"><i class="fa-solid fa-clock"></i> 출결 현황</a></li>
+
+          <li class="sidebar-item" id="menu-mypage"><a href="mypage.html"><i class="fa-solid fa-user-gear"></i> 마이페이지</a></li>
+
+          <!-- 관리자 전용 메뉴 - 기본 숨김, 로그인 사용자가 admin이면 JS가 보여준다 -->
+          <li class="sidebar-group-label" id="adminGroupLabel" style="display: none;">관리자</li>
+          <li class="sidebar-item sub" id="menu-admin" style="display: none;"><a href="admin.html"><i class="fa-solid fa-gears"></i> 계정·인사정보 관리</a></li>
+          <li class="sidebar-item sub" id="menu-adminAttendance" style="display: none;"><a href="admin-attendance.html"><i class="fa-solid fa-user-clock"></i> 직원 출결 관리</a></li>
+        </ul>
+      </aside>
+
+      <!-- 중앙 동적 화면 콘텐츠 영역 -->
+      <main class="view-content">
+
+        <!-- ==========================================
+             화면: 관리자 포털 (role이 'admin'일 때만 사이드바에 노출)
+             js/admin.js의 renderAdminPanel()이 아래 표를 그린다.
+             ========================================== -->
+        <div class="card">
+          <div class="card-header">
+            <h2>임직원 계정 및 인사 정보 관리 (관리자 전용)</h2>
+            <div style="display: flex; gap: 0.5rem;">
+              <!-- 실시간 검색창: 제출 없이 onkeyup으로 즉시 필터링만 한다 -->
+              <form onsubmit="event.preventDefault();" style="display:flex;">
+                <input type="text" class="form-control" id="adminUserSearch" placeholder="이름 검색..." onkeyup="searchAdminUsers(this.value)" style="width: 220px; font-size: 0.85rem;">
+              </form>
+              <button class="btn btn-primary btn-sm" onclick="openCreateUserModal()"><i class="fa-solid fa-user-plus"></i> 신규 사원 등록</button>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>사번</th>
+                  <th>이름</th>
+                  <th>부서</th>
+                  <th>직급</th>
+                  <th>연락처</th>
+                  <th>상태</th>
+                  <th style="width: 280px; text-align: center;">작업</th>
+                </tr>
+              </thead>
+              <tbody id="adminUserTableBody">
+                <!-- Mock 데이터 (JS 렌더링 시 대체됨) -->
+                <tr>
+                  <td style="font-family:'Fira Code'; font-size:0.85rem;">20260601</td>
+                  <td><strong>홍길동</strong></td>
+                  <td>개발팀</td>
+                  <td><span class="badge badge-primary">사원</span></td>
+                  <td style="font-family:'Fira Code'; font-size:0.85rem;">010-1234-5678</td>
+                  <td><span class="badge badge-success">재직</span></td>
+                  <td style="text-align:center;">
+                    <div style="display:flex; gap:0.25rem; justify-content:center;">
+                      <button class="btn btn-secondary btn-sm" onclick="openEditUserModal('20260601')">수정</button>
+                      <button class="btn btn-danger btn-sm" onclick="toggleUserStatus('20260601', '정지')">계정 정지</button>
+                      <button class="btn btn-secondary btn-sm" onclick="resetUserPassword('20260601')">PW 리셋</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-family:'Fira Code'; font-size:0.85rem;">20260102</td>
+                  <td><strong>김우주</strong></td>
+                  <td>개발팀</td>
+                  <td><span class="badge badge-primary">팀장</span></td>
+                  <td style="font-family:'Fira Code'; font-size:0.85rem;">010-9876-5432</td>
+                  <td><span class="badge badge-success">재직</span></td>
+                  <td style="text-align:center;">
+                    <div style="display:flex; gap:0.25rem; justify-content:center;">
+                      <button class="btn btn-secondary btn-sm" onclick="openEditUserModal('20260102')">수정</button>
+                      <button class="btn btn-danger btn-sm" onclick="toggleUserStatus('20260102', '정지')">계정 정지</button>
+                      <button class="btn btn-secondary btn-sm" onclick="resetUserPassword('20260102')">PW 리셋</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-family:'Fira Code'; font-size:0.85rem;">20260010</td>
+                  <td><strong>김영훈</strong></td>
+                  <td>기획팀</td>
+                  <td><span class="badge badge-primary">부서장</span></td>
+                  <td style="font-family:'Fira Code'; font-size:0.85rem;">010-1111-2222</td>
+                  <td><span class="badge badge-success">재직</span></td>
+                  <td style="text-align:center;">
+                    <div style="display:flex; gap:0.25rem; justify-content:center;">
+                      <button class="btn btn-secondary btn-sm" onclick="openEditUserModal('20260010')">수정</button>
+                      <button class="btn btn-danger btn-sm" onclick="toggleUserStatus('20260010', '정지')">계정 정지</button>
+                      <button class="btn btn-secondary btn-sm" onclick="resetUserPassword('20260010')">PW 리셋</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-family:'Fira Code'; font-size:0.85rem;">20260901</td>
+                  <td><strong>이다니엘</strong></td>
+                  <td>인사팀</td>
+                  <td><span class="badge badge-primary">팀장</span></td>
+                  <td style="font-family:'Fira Code'; font-size:0.85rem;">010-3333-4444</td>
+                  <td><span class="badge badge-success">재직</span></td>
+                  <td style="text-align:center;">
+                    <div style="display:flex; gap:0.25rem; justify-content:center;">
+                      <button class="btn btn-secondary btn-sm" onclick="openEditUserModal('20260901')">수정</button>
+                      <button class="btn btn-danger btn-sm" onclick="toggleUserStatus('20260901', '정지')">계정 정지</button>
+                      <button class="btn btn-secondary btn-sm" onclick="resetUserPassword('20260901')">PW 리셋</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-family:'Fira Code'; font-size:0.85rem;">20260803</td>
+                  <td><strong>정진국</strong></td>
+                  <td>디자인팀</td>
+                  <td><span class="badge badge-primary">사원</span></td>
+                  <td style="font-family:'Fira Code'; font-size:0.85rem;">010-5555-6666</td>
+                  <td><span class="badge badge-success">재직</span></td>
+                  <td style="text-align:center;">
+                    <div style="display:flex; gap:0.25rem; justify-content:center;">
+                      <button class="btn btn-secondary btn-sm" onclick="openEditUserModal('20260803')">수정</button>
+                      <button class="btn btn-danger btn-sm" onclick="toggleUserStatus('20260803', '정지')">계정 정지</button>
+                      <button class="btn btn-secondary btn-sm" onclick="resetUserPassword('20260803')">PW 리셋</button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       동적 모달 (이 페이지에서 사용)
+       ========================================== -->
+  <div class="modal-overlay" id="modalOverlay">
+
+    <!-- 관리자: 사용자 등록/수정 모달 - "신규 사원 등록" 버튼 또는 표의
+         "수정" 버튼(openCreateUserModal/openEditUserModal)으로 열린다 -->
+    <div class="modal-content" id="modal-admin-user" style="display:none;">
+      <div class="modal-header">
+        <h3 id="adminModalTitle">신규 사원 등록</h3>
+        <button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="submitNewUser(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="adminUserName">사원 이름</label>
+            <input type="text" id="adminUserName" class="form-control" required placeholder="예: 홍길동">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="adminUserDept">소속 부서</label>
+            <select id="adminUserDept" class="form-control">
+              <option value="인사팀">인사팀</option>
+              <option value="기획팀">기획팀</option>
+              <option value="개발팀">개발팀</option>
+              <option value="디자인팀">디자인팀</option>
+              <option value="총무팀">총무팀</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="adminUserPos">인사 직급</label>
+            <select id="adminUserPos" class="form-control">
+              <option value="사원">사원</option>
+              <option value="대리">대리</option>
+              <option value="과장">과장</option>
+              <option value="팀장">팀장</option>
+              <option value="부서장">부서장</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="adminUserPhone">연락처</label>
+            <input type="text" id="adminUserPhone" class="form-control" required placeholder="010-0000-0000">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">취소</button>
+          <button type="submit" class="btn btn-primary" id="adminSubmitBtn">등록하기</button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+
+  <!-- 토스트 알림 컨테이너 -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="js/common.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

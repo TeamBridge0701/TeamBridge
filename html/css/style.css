@@ -1,5 +1,26 @@
+    /* ===================================================================
+       style.css - 모든 화면(html)이 공통으로 불러 쓰는 유일한 스타일시트
+
+       아래 번호 순서대로 읽으면 전체 구조가 파악된다:
+         1. 디자인 토큰 및 테마  - 색상/그림자 등 CSS 변수(--color-primary 등)
+         2. 전역 리셋 및 레이아웃 - 브라우저 기본 스타일 초기화 + 페이지 뼈대
+         3. 헤더 및 내비게이션  - 상단 헤더바
+         4. 사이드바 및 라우팅 레이아웃 - 좌측 메뉴 + 중앙 콘텐츠 영역
+         5. 재사용 UI 컴포넌트 - 카드/표/배지/폼/버튼처럼 여러 화면에서 반복 사용
+         6. 화면별 스타일 - 로그인/대시보드/조직도/캘린더/채팅 등 화면 전용 스타일
+         7. 모달 오버레이 - 팝업창 + 토스트 알림
+
+       참고: 지금은 :root[data-theme="light"] 라이트 테마만 정의되어 있고
+       다크 테마(:root[data-theme="dark"])는 아직 없다. data-theme 속성 자체는
+       각 html의 <html lang="ko" data-theme="light">에 이미 붙어 있으므로,
+       나중에 다크 테마를 추가하려면 여기에 [data-theme="dark"] 블록만
+       새로 정의하면 된다.
+    =================================================================== */
+
     /* -----------------------------------------------------------
        1. 디자인 토큰 및 테마
+       --색상/그림자 이름들은 모든 화면 css에서 var(--color-primary)처럼
+       가져다 쓴다. 브랜드 색을 바꾸고 싶으면 이 블록만 고치면 전체에 반영된다.
     ----------------------------------------------------------- */
     :root[data-theme="light"] {
       --bg-primary: #f8fafc;
@@ -106,6 +127,9 @@
       gap: 1.5rem;
     }
 
+    /* 글자를 그라데이션 색으로 칠하는 트릭: background에 그라데이션을 깔고
+       -webkit-background-clip:text로 배경을 글자 모양대로만 잘라낸 뒤,
+       -webkit-text-fill-color:transparent로 원래 글자색을 투명하게 만든다 */
     .logo {
       display: flex;
       align-items: center;
@@ -130,36 +154,6 @@
       font-size: 1rem;
       box-shadow: var(--shadow-glow);
       -webkit-text-fill-color: #fff; /* logo-box 텍스트 채우기 색 초기화 */
-    }
-
-    .role-indicator {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      background-color: var(--bg-tertiary);
-      border: 1px solid var(--border-color);
-      padding: 0.3rem 0.6rem;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 600;
-    }
-
-    .role-badge {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background-color: var(--color-primary);
-    }
-
-    .role-select {
-      background: none;
-      border: none;
-      color: var(--text-primary);
-      font-family: inherit;
-      font-size: 0.8rem;
-      font-weight: 600;
-      outline: none;
-      cursor: pointer;
     }
 
     .header-right {
@@ -612,7 +606,9 @@
       font-family: 'Fira Code', monospace;
     }
 
-    /* 조직도 */
+    /* 조직도 - "좌측 부서 트리 + 우측 직원 표" 2단 레이아웃. org.html뿐 아니라
+       채팅의 새 대화/초대 모달, 결재의 참조인 선택 모달도 이 클래스들을
+       그대로 재사용해서 같은 모양의 "부서 선택 → 직원 선택" 피커를 만든다. */
     .org-container {
       display: grid;
       grid-template-columns: 240px 1fr;
@@ -660,7 +656,8 @@
       overflow-y: auto;
     }
 
-    /* 메신저 */
+    /* 메신저 (참고: 현재 어떤 html에서도 쓰이지 않는 클래스들이다.
+       실시간 채팅 화면은 이 대신 아래 ".chat-*" 클래스들을 사용한다) */
     .messenger-container {
       display: grid;
       grid-template-columns: 200px 1fr;
@@ -748,6 +745,61 @@
       font-weight: 600;
     }
 
+    /* 여러 날짜에 걸친 일정을 하루씩 끊지 않고 하나의 막대로 이어 붙이는
+       월간 캘린더 전용 레이아웃(js/calendar.js의 renderCalendarGrid 참고).
+       출결 현황의 하루짜리 캘린더(js/attendance.js)는 이 클래스들을 쓰지
+       않고 기존 .calendar-grid/.cal-cell을 그대로 쓴다. */
+    .cal-month {
+      display: flex;
+      flex-direction: column;
+      border-top: 1px solid var(--border-color);
+      border-left: 1px solid var(--border-color);
+    }
+    .cal-weekday-row {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+    }
+    /* 한 주(1행) = 날짜 칸 7개 + 그 위에 겹쳐 그리는 일정 막대 레이어.
+       일정이 많아 막대 줄(레인)이 늘어나면 js에서 min-height를 늘려준다. */
+    .cal-week {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      min-height: 100px;
+    }
+    .cal-week .cal-cell {
+      height: 100%;
+    }
+    /* 날짜 칸들 위에 절대 위치로 겹쳐서, 같은 7열 그리드로 일정 막대를 배치한다.
+       레이어 자체는 클릭을 무시하고(pointer-events:none) 통과시켜서 빈 공간을
+       클릭하면 그 밑의 날짜 칸(cal-cell)이 클릭되게 하고, 막대 자체만 클릭되게 한다. */
+    .cal-event-layer {
+      position: absolute;
+      top: 26px;
+      left: 0;
+      right: 0;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-auto-rows: 20px;
+      row-gap: 3px;
+      padding: 0 4px;
+      pointer-events: none;
+    }
+    .cal-event-layer .cal-event-bar {
+      cursor: pointer;
+      pointer-events: auto;
+    }
+    /* 일정이 이번 주 이전부터/다음 주까지 이어질 때는 그 방향의 모서리를
+       각지게 만들어 "잘려서 계속 이어진다"는 느낌을 준다 */
+    .cal-event-bar.continues-prev {
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+    .cal-event-bar.continues-next {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+
     /* 대시보드 미니 캘린더 위젯 */
     .mini-cal-grid {
       display: grid;
@@ -781,6 +833,7 @@
       cursor: pointer;
       font-weight: 600;
     }
+    /* ::after로 날짜 숫자 밑에 작은 점 하나를 그려서 "이 날 일정이 있다"고 표시한다 */
     .mini-cal-day.has-event::after {
       content: '';
       position: absolute;
@@ -1014,6 +1067,9 @@
       color: var(--text-muted);
       margin: 0.25rem 0;
     }
+    /* 채팅 한 줄(아바타 + 말풍선). 기본은 상대방 메시지(왼쪽 정렬)이고,
+       .out 클래스(내가 보낸 메시지)가 붙으면 flex-direction을 뒤집어서
+       아바타-말풍선 순서를 그대로 유지한 채 전체를 오른쪽으로 보낸다 */
     .chat-row {
       display: flex;
       gap: 0.6rem;
@@ -1088,6 +1144,8 @@
       font-weight: 700;
       white-space: nowrap;
     }
+    /* "OOO님이 입력 중..." 표시용 점 3개. 각 점의 애니메이션 시작 시각을
+       조금씩 늦춰서(animation-delay) 위아래로 순차 통통 튀는 것처럼 보이게 한다 */
     .chat-typing {
       display: inline-flex;
       align-items: center;
@@ -1140,6 +1198,12 @@
 
     /* -----------------------------------------------------------
        7. 모달 오버레이
+       주의: 각 모달(.modal-content)은 style="display:none"으로 개별
+       숨겨져 있고, js의 openModal()이 그중 하나만 display:block으로
+       바꾼다. 이 .modal-overlay 배경 자체는 display 대신 opacity +
+       pointer-events로 켜고 끈다 - 그래야 opacity 트랜지션(서서히
+       나타나는 효과)이 애니메이션으로 보이기 때문이다(display는
+       transition이 안 먹는다).
     ----------------------------------------------------------- */
     .modal-overlay {
       position: fixed;
@@ -1193,7 +1257,9 @@
       gap: 0.5rem;
     }
 
-    /* 토스트 알림 */
+    /* 토스트 알림 - 평소엔 화면 오른쪽 밖으로 밀려나 있다가(translateX(120%))
+       showToast()가 .show 클래스를 붙이면 제자리로 미끄러져 들어온다.
+       border-left 색으로 알림 종류(성공/실패/경고)를 구분한다. */
     .toast-container {
       position: fixed;
       bottom: 24px;

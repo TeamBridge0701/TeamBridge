@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>직원 출결 관리 - 통합 사내 그룹웨어</title>
+  <meta name="description" content="사내 그룹웨어 시스템 - 직원 출결 관리">
+
+  <!-- 구글 폰트 및 폰트어썸 아이콘 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ==========================================
+       핵심 애플리케이션 래퍼 (모든 화면 html이 공통으로 갖는 뼈대.
+       구조에 대한 자세한 설명은 main.html의 주석 참고)
+       헤더/사이드바는 정적 마크업이며, js/common.js의
+       initApplicationHeader()가 동적인 값만 채워 넣는다.
+       ========================================== -->
+  <div class="app-wrapper" id="appWrapper">
+
+    <!-- 상단 헤더 -->
+    <header class="header">
+      <div class="header-left">
+        <a href="main.html" class="logo" style="text-decoration:none;">
+          <div class="logo-box"><i class="fa-solid fa-cubes"></i></div>
+          <span style="margin-left: 0.5rem;">GROUPWARE</span>
+        </a>
+      </div>
+
+      <div class="header-right">
+        <button class="icon-btn" onclick="navigateTo('chat')" title="실시간 채팅">
+          <i class="fa-solid fa-comment-dots"></i>
+          <span class="badge" id="headerChatBadge">0</span>
+        </button>
+        <div class="user-dropdown" onclick="navigateTo('mypage')">
+          <div class="user-avatar" id="headerAvatar">홍</div>
+          <div class="user-details">
+            <span class="user-name-text" id="headerName">홍길동</span>
+            <span class="user-role-text" id="headerDept">개발팀 사원</span>
+          </div>
+        </div>
+        <button class="icon-btn" onclick="doLogout()" title="로그아웃" style="color: var(--color-danger); border-color: rgba(248,113,113,0.2);">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- 메인 내비게이션 영역 -->
+    <div class="main-body" id="mainBody">
+
+      <!-- 좌측 사이드바 -->
+      <aside class="sidebar">
+        <ul class="sidebar-menu">
+          <li class="sidebar-item" id="menu-dashboard"><a href="main.html"><i class="fa-solid fa-chart-line"></i> 대시보드</a></li>
+
+          <li class="sidebar-group-label">업무</li>
+          <li class="sidebar-item sub" id="menu-calendar"><a href="calendar.html"><i class="fa-solid fa-calendar-days"></i> 일정 캘린더</a></li>
+          <li class="sidebar-item sub" id="menu-approval"><a href="approval.html"><i class="fa-solid fa-signature"></i> 전자결재</a></li>
+          <li class="sidebar-item sub" id="menu-notice"><a href="notice.html"><i class="fa-solid fa-bullhorn"></i> 공지사항</a></li>
+          <li class="sidebar-item sub" id="menu-archive"><a href="archive.html"><i class="fa-solid fa-file-shield"></i> 자료실</a></li>
+
+          <li class="sidebar-group-label">조직 · 소통</li>
+          <li class="sidebar-item sub" id="menu-org"><a href="org.html"><i class="fa-solid fa-sitemap"></i> 조직도</a></li>
+          <li class="sidebar-item sub" id="menu-chat"><a href="chat.html"><i class="fa-solid fa-comment-dots"></i> 실시간 채팅</a></li>
+
+          <li class="sidebar-group-label">근태관리</li>
+          <li class="sidebar-item sub" id="menu-attendance"><a href="attendance.html"><i class="fa-solid fa-clock"></i> 출결 현황</a></li>
+
+          <li class="sidebar-item" id="menu-mypage"><a href="mypage.html"><i class="fa-solid fa-user-gear"></i> 마이페이지</a></li>
+
+          <!-- 관리자 전용 메뉴 - 기본 숨김, 로그인 사용자가 admin이면 JS가 보여준다 -->
+          <li class="sidebar-group-label" id="adminGroupLabel" style="display: none;">관리자</li>
+          <li class="sidebar-item sub" id="menu-admin" style="display: none;"><a href="admin.html"><i class="fa-solid fa-gears"></i> 계정·인사정보 관리</a></li>
+          <li class="sidebar-item sub" id="menu-adminAttendance" style="display: none;"><a href="admin-attendance.html"><i class="fa-solid fa-user-clock"></i> 직원 출결 관리</a></li>
+        </ul>
+      </aside>
+
+      <!-- 중앙 동적 화면 콘텐츠 영역 -->
+      <main class="view-content">
+
+        <!-- ==========================================
+             화면: 관리자 - 직원 출결 관리 (role이 'admin'일 때만 노출)
+             attendance.html은 "내 기록"만 보여주지만, 이 화면은 관리자가
+             날짜를 골라 전 직원의 출퇴근을 직접 조회/수정할 수 있다.
+             ========================================== -->
+        <div class="card">
+          <div class="card-header">
+            <h2>직원 출결 관리 (관리자 전용)</h2>
+            <div style="display: flex; gap: 0.5rem;">
+              <!-- 날짜 선택 + 이름 검색: 둘 다 바꾸는 즉시 표가 다시 그려진다 -->
+              <form onsubmit="event.preventDefault();" style="display:flex; gap:0.5rem;">
+                <select id="adminAttDate" class="form-control" style="width: 110px; font-size: 0.85rem;" onchange="renderAdminAttendance()">
+                  <!-- Mock 데이터 (JS 렌더링 시 대체됨) -->
+                  <option value="1">6월 1일</option>
+                  <option value="2">6월 2일</option>
+                  <option value="3">6월 3일</option>
+                  <option value="4">6월 4일</option>
+                  <option value="5">6월 5일</option>
+                  <option value="6">6월 6일</option>
+                  <option value="7">6월 7일</option>
+                  <option value="8">6월 8일</option>
+                  <option value="9">6월 9일</option>
+                  <option value="10">6월 10일</option>
+                  <option value="11">6월 11일</option>
+                  <option value="12">6월 12일</option>
+                  <option value="13">6월 13일</option>
+                  <option value="14">6월 14일</option>
+                  <option value="15">6월 15일</option>
+                  <option value="16">6월 16일</option>
+                  <option value="17">6월 17일</option>
+                  <option value="18">6월 18일</option>
+                  <option value="19">6월 19일</option>
+                  <option value="20">6월 20일</option>
+                  <option value="21">6월 21일</option>
+                  <option value="22">6월 22일</option>
+                  <option value="23">6월 23일</option>
+                  <option value="24">6월 24일</option>
+                  <option value="25">6월 25일</option>
+                  <option value="26">6월 26일</option>
+                  <option value="27">6월 27일</option>
+                  <option value="28">6월 28일</option>
+                  <option value="29">6월 29일</option>
+                  <option value="30" selected>6월 30일 (오늘)</option>
+                </select>
+                <input type="text" class="form-control" id="adminAttendanceSearch" placeholder="이름 검색..." onkeyup="searchAdminAttendance(this.value)" style="width: 200px; font-size: 0.85rem;">
+              </form>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>사번</th>
+                  <th>이름</th>
+                  <th>부서</th>
+                  <th>직급</th>
+                  <th style="width: 110px;">출근 시간</th>
+                  <th style="width: 110px;">퇴근 시간</th>
+                  <th style="width: 110px;">상태</th>
+                  <th style="width: 80px; text-align: center;">저장</th>
+                </tr>
+              </thead>
+              <tbody id="adminAttendanceTableBody">
+                <!-- Mock 데이터 (JS 렌더링 시 대체됨) - 기본 선택 날짜(6월 30일, 오늘) 기준.
+                     각 행의 input/select id는 "attIn-사번"/"attOut-사번"/"attStatus-사번"
+                     규칙으로 만들어져, "저장" 버튼(saveEmployeeAttendance)이 그 사번의
+                     값만 찾아 읽을 수 있게 되어 있다. -->
+                <tr>
+                  <td style="font-family:'Fira Code'; font-size:0.85rem;">20260601</td>
+                  <td><strong>홍길동</strong></td>
+                  <td>개발팀</td>
+                  <td><span class="badge badge-primary">사원</span></td>
+                  <td><input type="text" class="form-control" id="attIn-20260601" value="" placeholder="09:00" style="font-size:0.85rem;"></td>
+                  <td><input type="text" class="form-control" id="attOut-20260601" value="" placeholder="18:00" style="font-size:0.85rem;"></td>
+                  <td>
+                    <select class="form-control" id="attStatus-20260601" style="font-size:0.85rem;">
+                      <option value="정상">정상</option>
+                      <option value="지각">지각</option>
+                      <option value="휴가">휴가</option>
+                    </select>
+                  </td>
+                  <td style="text-align:center;">
+                    <button class="btn btn-primary btn-sm" onclick="saveEmployeeAttendance('20260601')">저장</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-family:'Fira Code'; font-size:0.85rem;">20260102</td>
+                  <td><strong>김우주</strong></td>
+                  <td>개발팀</td>
+                  <td><span class="badge badge-primary">팀장</span></td>
+                  <td><input type="text" class="form-control" id="attIn-20260102" value="08:55" placeholder="09:00" style="font-size:0.85rem;"></td>
+                  <td><input type="text" class="form-control" id="attOut-20260102" value="" placeholder="18:00" style="font-size:0.85rem;"></td>
+                  <td>
+                    <select class="form-control" id="attStatus-20260102" style="font-size:0.85rem;">
+                      <option value="정상" selected>정상</option>
+                      <option value="지각">지각</option>
+                      <option value="휴가">휴가</option>
+                    </select>
+                  </td>
+                  <td style="text-align:center;">
+                    <button class="btn btn-primary btn-sm" onclick="saveEmployeeAttendance('20260102')">저장</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-family:'Fira Code'; font-size:0.85rem;">20260010</td>
+                  <td><strong>김영훈</strong></td>
+                  <td>기획팀</td>
+                  <td><span class="badge badge-primary">부서장</span></td>
+                  <td><input type="text" class="form-control" id="attIn-20260010" value="08:50" placeholder="09:00" style="font-size:0.85rem;"></td>
+                  <td><input type="text" class="form-control" id="attOut-20260010" value="18:10" placeholder="18:00" style="font-size:0.85rem;"></td>
+                  <td>
+                    <select class="form-control" id="attStatus-20260010" style="font-size:0.85rem;">
+                      <option value="정상" selected>정상</option>
+                      <option value="지각">지각</option>
+                      <option value="휴가">휴가</option>
+                    </select>
+                  </td>
+                  <td style="text-align:center;">
+                    <button class="btn btn-primary btn-sm" onclick="saveEmployeeAttendance('20260010')">저장</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-family:'Fira Code'; font-size:0.85rem;">20260901</td>
+                  <td><strong>이다니엘</strong></td>
+                  <td>인사팀</td>
+                  <td><span class="badge badge-primary">팀장</span></td>
+                  <td><input type="text" class="form-control" id="attIn-20260901" value="" placeholder="09:00" style="font-size:0.85rem;"></td>
+                  <td><input type="text" class="form-control" id="attOut-20260901" value="" placeholder="18:00" style="font-size:0.85rem;"></td>
+                  <td>
+                    <select class="form-control" id="attStatus-20260901" style="font-size:0.85rem;">
+                      <option value="정상">정상</option>
+                      <option value="지각">지각</option>
+                      <option value="휴가" selected>휴가</option>
+                    </select>
+                  </td>
+                  <td style="text-align:center;">
+                    <button class="btn btn-primary btn-sm" onclick="saveEmployeeAttendance('20260901')">저장</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-family:'Fira Code'; font-size:0.85rem;">20260803</td>
+                  <td><strong>정진국</strong></td>
+                  <td>디자인팀</td>
+                  <td><span class="badge badge-primary">사원</span></td>
+                  <td><input type="text" class="form-control" id="attIn-20260803" value="" placeholder="09:00" style="font-size:0.85rem;"></td>
+                  <td><input type="text" class="form-control" id="attOut-20260803" value="" placeholder="18:00" style="font-size:0.85rem;"></td>
+                  <td>
+                    <select class="form-control" id="attStatus-20260803" style="font-size:0.85rem;">
+                      <option value="정상">정상</option>
+                      <option value="지각">지각</option>
+                      <option value="휴가">휴가</option>
+                    </select>
+                  </td>
+                  <td style="text-align:center;">
+                    <button class="btn btn-primary btn-sm" onclick="saveEmployeeAttendance('20260803')">저장</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- 토스트 알림 컨테이너 -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="js/common.js"></script>
+  <script src="js/admin-attendance.js"></script>
+</body>
+</html>
