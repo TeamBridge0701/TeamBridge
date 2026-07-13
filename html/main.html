@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>대시보드 - 통합 사내 그룹웨어</title>
+  <meta name="description" content="사내 그룹웨어 시스템 - 대시보드">
+
+  <!-- 구글 폰트 및 폰트어썸 아이콘 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ==========================================
+       핵심 애플리케이션 래퍼 (모든 화면 html이 공통으로 갖는 뼈대)
+
+       - #appWrapper: 안에 상단 헤더 + #mainBody가 들어간다.
+       - #mainBody: 안에 좌측 사이드바 + <main class="view-content">가 들어간다.
+       - <main class="view-content">: 페이지마다 실제로 다른 부분은
+         이 안쪽뿐이다. main.html은 대시보드, notice.html은 공지 목록...
+         이런 식으로 화면별 js 파일(dashboard.js 등)이 내용을 채운다.
+
+       아래 헤더/사이드바는 모든 화면 html에 똑같이 복사되어 있는 정적
+       마크업이다 (나중에 layout.html을 타임리프 조각으로 연결해 중복을
+       없앨 예정 - layout.html 참고). js/common.js의 initApplicationHeader()가
+       사용자 이름/아바타/안읽은 채팅 수, 관리자 메뉴 노출 여부, 현재 메뉴
+       강조(active) 표시 등 "동적으로 바뀌는 값"만 채워 넣는다.
+       ========================================== -->
+  <div class="app-wrapper" id="appWrapper">
+
+    <!-- 상단 헤더 -->
+    <header class="header">
+      <div class="header-left">
+        <a href="main.html" class="logo" style="text-decoration:none;">
+          <div class="logo-box"><i class="fa-solid fa-cubes"></i></div>
+          <span style="margin-left: 0.5rem;">GROUPWARE</span>
+        </a>
+      </div>
+
+      <div class="header-right">
+        <button class="icon-btn" onclick="navigateTo('chat')" title="실시간 채팅">
+          <i class="fa-solid fa-comment-dots"></i>
+          <span class="badge" id="headerChatBadge">0</span>
+        </button>
+        <div class="user-dropdown" onclick="navigateTo('mypage')">
+          <div class="user-avatar" id="headerAvatar">홍</div>
+          <div class="user-details">
+            <span class="user-name-text" id="headerName">홍길동</span>
+            <span class="user-role-text" id="headerDept">개발팀 사원</span>
+          </div>
+        </div>
+        <button class="icon-btn" onclick="doLogout()" title="로그아웃" style="color: var(--color-danger); border-color: rgba(248,113,113,0.2);">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- 메인 내비게이션 영역 (사이드바 + 콘텐츠를 가로로 배치) -->
+    <div class="main-body" id="mainBody">
+
+      <!-- 좌측 사이드바 -->
+      <aside class="sidebar">
+        <ul class="sidebar-menu">
+          <li class="sidebar-item" id="menu-dashboard"><a href="main.html"><i class="fa-solid fa-chart-line"></i> 대시보드</a></li>
+
+          <li class="sidebar-group-label">업무</li>
+          <li class="sidebar-item sub" id="menu-calendar"><a href="calendar.html"><i class="fa-solid fa-calendar-days"></i> 일정 캘린더</a></li>
+          <li class="sidebar-item sub" id="menu-approval"><a href="approval.html"><i class="fa-solid fa-signature"></i> 전자결재</a></li>
+          <li class="sidebar-item sub" id="menu-notice"><a href="notice.html"><i class="fa-solid fa-bullhorn"></i> 공지사항</a></li>
+          <li class="sidebar-item sub" id="menu-archive"><a href="archive.html"><i class="fa-solid fa-file-shield"></i> 자료실</a></li>
+
+          <li class="sidebar-group-label">조직 · 소통</li>
+          <li class="sidebar-item sub" id="menu-org"><a href="org.html"><i class="fa-solid fa-sitemap"></i> 조직도</a></li>
+          <li class="sidebar-item sub" id="menu-chat"><a href="chat.html"><i class="fa-solid fa-comment-dots"></i> 실시간 채팅</a></li>
+
+          <li class="sidebar-group-label">근태관리</li>
+          <li class="sidebar-item sub" id="menu-attendance"><a href="attendance.html"><i class="fa-solid fa-clock"></i> 출결 현황</a></li>
+
+          <li class="sidebar-item" id="menu-mypage"><a href="mypage.html"><i class="fa-solid fa-user-gear"></i> 마이페이지</a></li>
+
+          <!-- 관리자 전용 메뉴 - 기본 숨김, 로그인 사용자가 admin이면 JS가 보여준다 -->
+          <li class="sidebar-group-label" id="adminGroupLabel" style="display: none;">관리자</li>
+          <li class="sidebar-item sub" id="menu-admin" style="display: none;"><a href="admin.html"><i class="fa-solid fa-gears"></i> 계정·인사정보 관리</a></li>
+          <li class="sidebar-item sub" id="menu-adminAttendance" style="display: none;"><a href="admin-attendance.html"><i class="fa-solid fa-user-clock"></i> 직원 출결 관리</a></li>
+        </ul>
+      </aside>
+
+      <!-- 중앙 동적 화면 콘텐츠 영역 -->
+      <main class="view-content">
+
+        <!-- ==========================================
+             화면: 대시보드 (로그인 후 처음 보이는 홈 화면)
+             아래 내용은 js/dashboard.js의 renderDashboard()가 다시 그린다.
+             ========================================== -->
+        <div style="margin-bottom: 1.25rem;">
+          <h2 style="font-size: 1.35rem;">안녕하세요, <span id="dashGreetingName">홍길동 사원</span>님! 👋</h2>
+          <p style="font-size: 0.85rem; color: var(--text-secondary);">오늘도 즐거운 하루 되세요.</p>
+        </div>
+
+        <div class="grid-12">
+          <!-- 좌측 프로필 위젯 -->
+          <div class="col-3">
+            <div class="card profile-card-large">
+              <div class="profile-avatar-large" id="dashAvatar">홍</div>
+              <h3 id="dashName">홍길동</h3>
+              <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1.25rem;" id="dashRoleDept">개발팀 · 사원</p>
+
+              <button class="btn btn-primary" style="width: 100%; margin-bottom: 0.5rem;" id="btnCommute" onclick="commute()">출근하기</button>
+
+              <div class="commute-info-box">
+                <div class="commute-row">
+                  <span>상태</span>
+                  <span class="commute-val" id="dashCommuteStatus" style="color: var(--text-muted);">미출근</span>
+                </div>
+                <div class="commute-row">
+                  <span>출근 시각</span>
+                  <span class="commute-val" id="dashCheckinTime">-</span>
+                </div>
+                <div class="commute-row">
+                  <span>퇴근 시각</span>
+                  <span class="commute-val" id="dashWorkTimer">-</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 월간 근태 요약 -->
+            <div class="card" style="padding: 1.25rem; text-align: center; margin-top: 0.25rem;">
+              <h4 class="card-title" style="font-size: 0.9rem; justify-content: center; margin-bottom: 1rem;">
+                <i class="fa-solid fa-calendar-days" style="color: var(--color-primary);"></i> 근태 현황 (이번 달)
+              </h4>
+              <div style="width: 88px; height: 88px; border-radius: 50%; background: conic-gradient(var(--color-primary) 0% 95%, var(--bg-tertiary) 95% 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+                <div style="width: 66px; height: 66px; border-radius: 50%; background: var(--bg-secondary); display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                  <div style="font-size: 1rem; font-weight: 800;">95%</div>
+                  <div style="font-size: 0.6rem; color: var(--text-muted);">출근율</div>
+                </div>
+              </div>
+              <div class="commute-info-box" style="text-align: left;">
+                <div class="commute-row"><span>출근일수</span><span class="commute-val">20일</span></div>
+                <div class="commute-row"><span>지각</span><span class="commute-val">1회</span></div>
+                <div class="commute-row"><span>조퇴</span><span class="commute-val">0회</span></div>
+                <div class="commute-row"><span>연차 사용</span><span class="commute-val">2일</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 중앙 위젯 -->
+          <div class="col-6" style="display: flex; flex-direction: column; gap: 0.25rem;">
+
+            <!-- 오늘 일정 -->
+            <div class="card">
+              <div class="card-header">
+                <h4 class="card-title"><i class="fa-solid fa-calendar-check" style="color: var(--color-accent);"></i> 오늘 일정</h4>
+                <button class="btn btn-secondary btn-sm" onclick="navigateTo('calendar')">전체 일정 보기</button>
+              </div>
+              <div id="dashTodaySchedule">
+                <!-- Mock 데이터 (JS 렌더링 시 대체됨) -->
+                <div style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px dashed var(--border-color);">
+                  <span style="width:8px; height:8px; border-radius:50%; background:var(--color-accent); flex-shrink:0;"></span>
+                  <span style="flex:1; font-size:0.85rem;">그룹웨어 화면 검토</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 최근 공지사항 -->
+            <div class="card">
+              <div class="card-header">
+                <h4 class="card-title"><i class="fa-solid fa-bullhorn" style="color: var(--color-primary);"></i> 사내 최신 공지사항</h4>
+                <button class="btn btn-secondary btn-sm" onclick="navigateTo('notice')">목록 보기</button>
+              </div>
+              <div class="table-container">
+                <table class="table">
+                  <tbody id="dashNoticeList">
+                    <!-- Mock 데이터 (JS 렌더링 시 대체됨) -->
+                    <tr class="clickable" onclick="viewNotice(12)">
+                      <td>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                          <span class="badge badge-muted">일반</span>
+                          <span class="notice-link">[필독] 개인정보보호법 개정에 따른 사내 정책 변경 안내</span>
+                        </div>
+                      </td>
+                      <td style="font-size:0.8rem; color:var(--text-muted); text-align:right;">2026-06-05</td>
+                    </tr>
+                    <tr class="clickable" onclick="viewNotice(11)">
+                      <td>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                          <span class="badge badge-muted">일반</span>
+                          <span class="notice-link">[안내] 사내 카페테리아 여름 메뉴 리뉴얼 공지</span>
+                        </div>
+                      </td>
+                      <td style="font-size:0.8rem; color:var(--text-muted); text-align:right;">2026-06-08</td>
+                    </tr>
+                    <tr class="clickable" onclick="viewNotice(10)">
+                      <td>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                          <span class="badge badge-muted">일반</span>
+                          <span class="notice-link">[채용] 개발팀 경력직 채용 공고 안내 (내부 추천 가능)</span>
+                        </div>
+                      </td>
+                      <td style="font-size:0.8rem; color:var(--text-muted); text-align:right;">2026-06-10</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 결재 대기 현황 요약 -->
+            <div class="card">
+              <div class="card-header">
+                <h4 class="card-title"><i class="fa-solid fa-signature" style="color: var(--color-accent);"></i> 전자결재 진행 현황</h4>
+                <button class="btn btn-secondary btn-sm" onclick="navigateTo('approval')">결재 상신</button>
+              </div>
+
+              <div class="approval-stats-row">
+                <div class="approval-stat-box" onclick="navigateTo('approval')">
+                  <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">결재 대기 문서</div>
+                  <div class="approval-stat-count" id="dashWaitCount">0</div>
+                </div>
+                <div class="approval-stat-box" onclick="navigateTo('approval')">
+                  <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">기안 진행 문서</div>
+                  <div class="approval-stat-count" style="color: var(--color-success);" id="dashProgressCount">1</div>
+                </div>
+              </div>
+
+              <div class="table-container">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>기안 제목</th>
+                      <th>기안자</th>
+                      <th>기안일</th>
+                      <th>결재 상태</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dashApprovalList">
+                    <!-- Mock 데이터 (JS 렌더링 시 대체됨) -->
+                    <tr class="clickable" onclick="navigateTo('approval')">
+                      <td><strong>도서구입 지출결의서 (인쇄출판비)</strong></td>
+                      <td>홍길동 사원</td>
+                      <td style="font-family:'Fira Code'; font-size:0.8rem;">2026-06-29</td>
+                      <td><span class="badge badge-warning">진행중</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- 우측 위젯 -->
+          <div class="col-3" style="display: flex; flex-direction: column; gap: 0.25rem;">
+            <!-- 날씨 위젯 -->
+            <div class="card" style="display: flex; align-items: center; gap: 1rem; padding: 1.15rem 1.5rem;">
+              <i class="fa-solid fa-cloud-sun-rain" style="font-size: 2.25rem; color: var(--color-warning);"></i>
+              <div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">서울 기상 예보</div>
+                <div style="font-size: 1.3rem; font-weight: 800; font-family: 'Fira Code', monospace;">24.8°C</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">구름조금 · 실시간 대기 좋음</div>
+              </div>
+            </div>
+
+            <!-- 미니 캘린더 -->
+            <div class="card" style="padding: 1.25rem;">
+              <div class="card-header" style="margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
+                <h4 class="card-title" style="font-size: 0.9rem;">2026년 6월</h4>
+                <button class="btn btn-secondary btn-sm" onclick="navigateTo('calendar')" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">캘린더</button>
+              </div>
+              <div id="dashMiniCalendar">
+                <!-- Mock 데이터 (JS 렌더링 시 대체됨) -->
+                <div class="mini-cal-grid">
+                  <div class="mini-cal-day-header">일</div>
+                  <div class="mini-cal-day-header">월</div>
+                  <div class="mini-cal-day-header">화</div>
+                  <div class="mini-cal-day-header">수</div>
+                  <div class="mini-cal-day-header">목</div>
+                  <div class="mini-cal-day-header">금</div>
+                  <div class="mini-cal-day-header">토</div>
+
+                  <div class="mini-cal-day other-month">31</div>
+                  <div class="mini-cal-day">1</div>
+                  <div class="mini-cal-day">2</div>
+                  <div class="mini-cal-day has-event" onclick="showToast('3일 일정: 개발팀 주간 정기회의', 'primary')">3</div>
+                  <div class="mini-cal-day">4</div>
+                  <div class="mini-cal-day">5</div>
+                  <div class="mini-cal-day">6</div>
+
+                  <div class="mini-cal-day">7</div>
+                  <div class="mini-cal-day">8</div>
+                  <div class="mini-cal-day">9</div>
+                  <div class="mini-cal-day has-event" onclick="showToast('10일 일정: 김철수 대리 연차휴가', 'primary')">10</div>
+                  <div class="mini-cal-day has-event" onclick="showToast('11일 일정: 김철수 대리 연차휴가', 'primary')">11</div>
+                  <div class="mini-cal-day has-event" onclick="showToast('12일 일정: 김철수 대리 연차휴가', 'primary')">12</div>
+                  <div class="mini-cal-day">13</div>
+
+                  <div class="mini-cal-day">14</div>
+                  <div class="mini-cal-day">15</div>
+                  <div class="mini-cal-day">16</div>
+                  <div class="mini-cal-day">17</div>
+                  <div class="mini-cal-day has-event" onclick="showToast('18일 일정: 프로젝트 마감 워크숍', 'primary')">18</div>
+                  <div class="mini-cal-day has-event" onclick="showToast('19일 일정: 프로젝트 마감 워크숍', 'primary')">19</div>
+                  <div class="mini-cal-day">20</div>
+
+                  <div class="mini-cal-day">21</div>
+                  <div class="mini-cal-day">22</div>
+                  <div class="mini-cal-day">23</div>
+                  <div class="mini-cal-day">24</div>
+                  <div class="mini-cal-day has-event" onclick="showToast('25일 일정: 사내 급여일', 'primary')">25</div>
+                  <div class="mini-cal-day">26</div>
+                  <div class="mini-cal-day">27</div>
+
+                  <div class="mini-cal-day">28</div>
+                  <div class="mini-cal-day">29</div>
+                  <div class="mini-cal-day today has-event" onclick="showToast('30일 일정: 그룹웨어 화면 검토', 'primary')">30</div>
+                  <div class="mini-cal-day other-month">1</div>
+                  <div class="mini-cal-day other-month">2</div>
+                  <div class="mini-cal-day other-month">3</div>
+                  <div class="mini-cal-day other-month">4</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       동적 모달 (이 페이지에서 사용)
+       - 모달은 항상 style="display:none"으로 미리 숨겨져 있다가,
+         js/common.js의 openModal('모달id')가 호출되면 그 모달만 보인다.
+       ========================================== -->
+  <div class="modal-overlay" id="modalOverlay">
+
+    <!-- 공지사항 상세 모달 - 대시보드에서 공지 한 줄을 클릭(viewNotice)하면 열린다 -->
+    <div class="modal-content" id="modal-notice-detail" style="display:none;">
+      <div class="modal-header">
+        <h3 id="mNoticeTitle">공지 제목</h3>
+        <button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size: 0.8rem; color: var(--text-muted); display:flex; justify-content:space-between; margin-bottom: 1rem;">
+          <span>등록자: <strong id="mNoticeWriter" style="color:var(--text-secondary);">관리자</strong></span>
+          <span>등록일: <strong id="mNoticeDate" style="color:var(--text-secondary);">2026-06-30</strong></span>
+        </div>
+        <div id="mNoticeContent" style="font-size: 0.95rem; white-space: pre-wrap; color: var(--text-secondary); line-height: 1.6;">
+          공지 내용...
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal()">닫기</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 토스트 알림 컨테이너 - showToast()가 이 안에 알림 카드를 추가/제거한다 -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- common.js: 상태(state)/인증/헤더·사이드바 등 모든 화면 공통 로직
+       dashboard.js: 이 페이지(대시보드)에서만 쓰는 로직 -->
+  <script src="js/common.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>
