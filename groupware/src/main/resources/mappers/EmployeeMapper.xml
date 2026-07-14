@@ -99,4 +99,23 @@
 	</select>
 
 	
+	<!--
+		마이페이지 비밀번호 변경
+		newPassword는 Service에서 이미 BCrypt로 해싱된 값 - 여기선 그대로 저장만 함
+	-->
+	<update id="updatePassword">
+	    UPDATE EMPLOYEE
+	    SET EMPLOYEE_PWD = #{newPassword}
+	    WHERE EMPLOYEE_ID = #{employeeId}
+	</update>
+
+	<!-- 마이페이지 전화번호/이메일 수정 (프로필 사진은 경로 협의 후 별도 추가 예정) -->
+	<update id="updateContact">
+	    UPDATE EMPLOYEE
+	    SET EMPLOYEE_PHONE = #{employeePhone},
+	        EMPLOYEE_EMAIL = #{employeeEmail}
+	    WHERE EMPLOYEE_ID = #{employeeId}
+	</update>
 </mapper>
+
+
