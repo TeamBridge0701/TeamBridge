@@ -6,12 +6,23 @@
 <mapper namespace="com.groupware.mapper.EmployeeMapper">
 	
 	<!-- 로그인(인증) 과정
-		
+		로그인 인증용 - CustomUserDetailsService.loadUserByUsername()에서
+		입력한 사번(EMPLOYEE_NO)으로 EMPLOYEE 조회
 	  -->
 	<select id="findByEmployeeNo" resultType="com.groupware.dto.EmployeeDTO">
         SELECT *
         FROM EMPLOYEE
         WHERE EMPLOYEE_NO = #{employeeNo}
     </select>
-
+	
+	<!--
+		마이페이지 사용자 조회 - 부서, 직급, 서열 포함
+	-->
+	<select id="findMyPageInfo" resultType="com.groupware.dto.EmployeeDTO">
+	    SELECT e.*, d.DEPT_NAME, p.POSITION_NAME, p.POSITION_RANK
+	    FROM EMPLOYEE e
+	    	LEFT JOIN DEPARTMENT d ON e.DEPT_ID = d.DEPT_ID
+	    	LEFT JOIN POSITION p ON e.POSITION_ID = p.POSITION_ID
+	    WHERE e.EMPLOYEE_ID = #{employeeId}
+	</select>
 </mapper>

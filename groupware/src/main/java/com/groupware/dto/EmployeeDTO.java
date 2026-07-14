@@ -17,4 +17,9 @@ public class EmployeeDTO {
 	private String employeeStatus;	// ACTIVE / SUSPENDED
 	private String hireDate;
 	private String createdAt;
+	
+	// 마이페이지에 사용할 필드
+	private String deptName;		// 부서명
+	private String positionName;	// 직급명
+	private int positionRank;		// 서열 (팀장/부서장 여부 판단용)
 }
