@@ -13,7 +13,7 @@ import com.groupware.dto.EmployeeDTO;
 public interface EmployeeMapper {
 	
 	// 로그인 인증용 - CustomUserDetailsService.loadUserByUsername()에서
-	// 입력한 사번(EMPLOYsEE_NO)으로 EMPLOYEE 조회
+	// 입력한 사번(EMPLOYEE_NO)으로 EMPLOYEE 조회
 	EmployeeDTO findByEmployeeNo(String employeeNo);
 	
 	// 마이페이지 조회

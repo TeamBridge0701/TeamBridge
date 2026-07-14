@@ -1,0 +1,132 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.springframework.boot",
+    "module": "spring-boot-starter-jackson",
+    "version": "4.0.8-SNAPSHOT",
+    "attributes": {
+      "org.gradle.status": "integration"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.5.0"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-starter",
+          "version": {
+            "requires": "4.0.8-SNAPSHOT"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-jackson",
+          "version": {
+            "requires": "4.0.8-SNAPSHOT"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-starter-jackson-4.0.8-SNAPSHOT.jar",
+          "url": "spring-boot-starter-jackson-4.0.8-SNAPSHOT.jar",
+          "size": 4760,
+          "sha512": "5640204139150223c9d711b5061aaa01ab8ee5f974828b0ace2692063ace581f09ba77f095951ad9d007d4ea1b2dd0413e9a8054dbbf6201e999514f24264ff5",
+          "sha256": "f5ef30ae383f4d95613b6dc54f278c5eb120b6d6c4e9039f65c4957a5a819f7d",
+          "sha1": "e9b41e148d6d44cb5a63da0478be2cf6083eaa6f",
+          "md5": "0ea5eef7cfe8d80735f110b11fc3fc4e"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-starter",
+          "version": {
+            "requires": "4.0.8-SNAPSHOT"
+          }
+        },
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-jackson",
+          "version": {
+            "requires": "4.0.8-SNAPSHOT"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-starter-jackson-4.0.8-SNAPSHOT.jar",
+          "url": "spring-boot-starter-jackson-4.0.8-SNAPSHOT.jar",
+          "size": 4760,
+          "sha512": "5640204139150223c9d711b5061aaa01ab8ee5f974828b0ace2692063ace581f09ba77f095951ad9d007d4ea1b2dd0413e9a8054dbbf6201e999514f24264ff5",
+          "sha256": "f5ef30ae383f4d95613b6dc54f278c5eb120b6d6c4e9039f65c4957a5a819f7d",
+          "sha1": "e9b41e148d6d44cb5a63da0478be2cf6083eaa6f",
+          "md5": "0ea5eef7cfe8d80735f110b11fc3fc4e"
+        }
+      ]
+    },
+    {
+      "name": "javadocElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-starter-jackson-4.0.8-SNAPSHOT-javadoc.jar",
+          "url": "spring-boot-starter-jackson-4.0.8-SNAPSHOT-javadoc.jar",
+          "size": 4760,
+          "sha512": "5640204139150223c9d711b5061aaa01ab8ee5f974828b0ace2692063ace581f09ba77f095951ad9d007d4ea1b2dd0413e9a8054dbbf6201e999514f24264ff5",
+          "sha256": "f5ef30ae383f4d95613b6dc54f278c5eb120b6d6c4e9039f65c4957a5a819f7d",
+          "sha1": "e9b41e148d6d44cb5a63da0478be2cf6083eaa6f",
+          "md5": "0ea5eef7cfe8d80735f110b11fc3fc4e"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-starter-jackson-4.0.8-SNAPSHOT-sources.jar",
+          "url": "spring-boot-starter-jackson-4.0.8-SNAPSHOT-sources.jar",
+          "size": 4760,
+          "sha512": "5640204139150223c9d711b5061aaa01ab8ee5f974828b0ace2692063ace581f09ba77f095951ad9d007d4ea1b2dd0413e9a8054dbbf6201e999514f24264ff5",
+          "sha256": "f5ef30ae383f4d95613b6dc54f278c5eb120b6d6c4e9039f65c4957a5a819f7d",
+          "sha1": "e9b41e148d6d44cb5a63da0478be2cf6083eaa6f",
+          "md5": "0ea5eef7cfe8d80735f110b11fc3fc4e"
+        }
+      ]
+    }
+  ]
+}

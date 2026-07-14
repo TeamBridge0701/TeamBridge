@@ -1,0 +1,132 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.springframework.boot",
+    "module": "spring-boot-servlet",
+    "version": "4.0.8-SNAPSHOT",
+    "attributes": {
+      "org.gradle.status": "integration"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.5.0"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot",
+          "version": {
+            "requires": "4.0.8-SNAPSHOT"
+          }
+        },
+        {
+          "group": "org.springframework",
+          "module": "spring-web",
+          "version": {
+            "requires": "7.0.8"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-servlet-4.0.8-SNAPSHOT.jar",
+          "url": "spring-boot-servlet-4.0.8-SNAPSHOT.jar",
+          "size": 47100,
+          "sha512": "d7e43b1c2cd5700c60ad7b73aa914c61528be9ca519e7263b61dfc2ed93f1c8e34d55473a2f41953dcaa6c6f56d1b19bfa2e70733281997357d3d3e99d4de130",
+          "sha256": "3475b0770837e81a259859be009ecbb99b156cbac573f82f5602770211c89660",
+          "sha1": "b0b5a7a361ab7acd5ee71ca4fa463755ce5167b6",
+          "md5": "13748447ac26bce0c9550305a3ebc29d"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot",
+          "version": {
+            "requires": "4.0.8-SNAPSHOT"
+          }
+        },
+        {
+          "group": "org.springframework",
+          "module": "spring-web",
+          "version": {
+            "requires": "7.0.8"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-servlet-4.0.8-SNAPSHOT.jar",
+          "url": "spring-boot-servlet-4.0.8-SNAPSHOT.jar",
+          "size": 47100,
+          "sha512": "d7e43b1c2cd5700c60ad7b73aa914c61528be9ca519e7263b61dfc2ed93f1c8e34d55473a2f41953dcaa6c6f56d1b19bfa2e70733281997357d3d3e99d4de130",
+          "sha256": "3475b0770837e81a259859be009ecbb99b156cbac573f82f5602770211c89660",
+          "sha1": "b0b5a7a361ab7acd5ee71ca4fa463755ce5167b6",
+          "md5": "13748447ac26bce0c9550305a3ebc29d"
+        }
+      ]
+    },
+    {
+      "name": "javadocElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-servlet-4.0.8-SNAPSHOT-javadoc.jar",
+          "url": "spring-boot-servlet-4.0.8-SNAPSHOT-javadoc.jar",
+          "size": 216662,
+          "sha512": "795a8d5cf8a1a7a176cbd3e4530090a062005bed09c6c86e3a7f81489ba9c645047ab3e92d2a6c0dbf42925ca3118ba1e8e48820425bb45fada4efe2018cd255",
+          "sha256": "8c998d1f636ba3ffd5314f579c1cc11c6165184461edc798e9f39294b9c22d63",
+          "sha1": "8eeef7fe14b0dc7aa438c8674a8adea54c877b9a",
+          "md5": "cd55dbaff744aee9a8dca590f128b5f1"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-servlet-4.0.8-SNAPSHOT-sources.jar",
+          "url": "spring-boot-servlet-4.0.8-SNAPSHOT-sources.jar",
+          "size": 44518,
+          "sha512": "c59823bf9e34edf6d448f9f74c4f97bdd1aa172473a8f639d1ee27edaa37c121ea7190c7d6b86e98c42544d72c7e61cf003225568babb58be6a07bf0444dccd9",
+          "sha256": "54b045cbb4b053c186b4e3b347f6917b7b6adc288f1008d4ab96360f9655363e",
+          "sha1": "26a58b070f766d788651b481caf50f2201078bfd",
+          "md5": "7ada0597ba83cc8efcc6ce55815edd76"
+        }
+      ]
+    }
+  ]
+}

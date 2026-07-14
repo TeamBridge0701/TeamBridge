@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata modelVersion="1.1.0">
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>org.springframework.boot.gradle.plugin</artifactId>
+  <versioning>
+    <lastUpdated>20260714070618</lastUpdated>
+    <snapshot>
+      <timestamp>20260714.070249</timestamp>
+      <buildNumber>32</buildNumber>
+    </snapshot>
+    <snapshotVersions>
+      <snapshotVersion>
+        <extension>pom.asc</extension>
+        <value>4.0.8-20260714.070249-32</value>
+        <updated>20260714070249</updated>
+      </snapshotVersion>
+      <snapshotVersion>
+        <extension>pom</extension>
+        <value>4.0.8-20260714.070249-32</value>
+        <updated>20260714070249</updated>
+      </snapshotVersion>
+    </snapshotVersions>
+  </versioning>
+  <version>4.0.8-SNAPSHOT</version>
+</metadata>

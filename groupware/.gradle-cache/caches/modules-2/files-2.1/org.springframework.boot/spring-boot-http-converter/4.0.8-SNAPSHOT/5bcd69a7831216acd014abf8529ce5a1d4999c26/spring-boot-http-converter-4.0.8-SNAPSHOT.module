@@ -1,0 +1,132 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.springframework.boot",
+    "module": "spring-boot-http-converter",
+    "version": "4.0.8-SNAPSHOT",
+    "attributes": {
+      "org.gradle.status": "integration"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.5.0"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot",
+          "version": {
+            "requires": "4.0.8-SNAPSHOT"
+          }
+        },
+        {
+          "group": "org.springframework",
+          "module": "spring-web",
+          "version": {
+            "requires": "7.0.8"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-http-converter-4.0.8-SNAPSHOT.jar",
+          "url": "spring-boot-http-converter-4.0.8-SNAPSHOT.jar",
+          "size": 54330,
+          "sha512": "3116c37feca583c9c977736e90c1cebb9d59b1654b9c1bd1ffba919be87db0782a9a2cad9f479dae333e8ac176584b48f11b1d0e8200d6b4ae4bfea771676d48",
+          "sha256": "531b356e90c9b322202bed2be0a4c98fa03e8d92d96829bac162f31c4cfad1bc",
+          "sha1": "96b77a1fcb8bdecdd5d443ee91de6a2ca3e73f4f",
+          "md5": "4f86497ff1d76e9d2bccd5d43373aeb8"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot",
+          "version": {
+            "requires": "4.0.8-SNAPSHOT"
+          }
+        },
+        {
+          "group": "org.springframework",
+          "module": "spring-web",
+          "version": {
+            "requires": "7.0.8"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "spring-boot-http-converter-4.0.8-SNAPSHOT.jar",
+          "url": "spring-boot-http-converter-4.0.8-SNAPSHOT.jar",
+          "size": 54330,
+          "sha512": "3116c37feca583c9c977736e90c1cebb9d59b1654b9c1bd1ffba919be87db0782a9a2cad9f479dae333e8ac176584b48f11b1d0e8200d6b4ae4bfea771676d48",
+          "sha256": "531b356e90c9b322202bed2be0a4c98fa03e8d92d96829bac162f31c4cfad1bc",
+          "sha1": "96b77a1fcb8bdecdd5d443ee91de6a2ca3e73f4f",
+          "md5": "4f86497ff1d76e9d2bccd5d43373aeb8"
+        }
+      ]
+    },
+    {
+      "name": "javadocElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "javadoc",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-http-converter-4.0.8-SNAPSHOT-javadoc.jar",
+          "url": "spring-boot-http-converter-4.0.8-SNAPSHOT-javadoc.jar",
+          "size": 125782,
+          "sha512": "760e3f97b799f33f90ee1748b973c2615b04db5b9a98a30ae0544af579bc8e05b44188e1f6d60c1f63144193b9755b55c0537f4fbdbe6731664e00d48336821a",
+          "sha256": "0712f3bfeec99a3149d5c9779d6c4d21ac9797565f6f7057311a223fd6478fb5",
+          "sha1": "2e7cc5a17130e2892ca8b3bbe1d2bfdaf825494e",
+          "md5": "acd1d2bbd74ec4e24c7d0518b8adfd25"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "spring-boot-http-converter-4.0.8-SNAPSHOT-sources.jar",
+          "url": "spring-boot-http-converter-4.0.8-SNAPSHOT-sources.jar",
+          "size": 25059,
+          "sha512": "8ee068c75be715cf15cbc7db94ae3c2c19de2434b7cab819cc90698c0c7e0e7ea93460824aa98a9503d40a0d8b9fd92b25b64d03a6a5ab929036f6f28585669e",
+          "sha256": "e61fa08456b8d0a9eee3cc5a1ca3978253304f6cdad0a5820af95a7172349df2",
+          "sha1": "98d0a31f82c34047860d66e2d4524ce9d20c48b3",
+          "md5": "c9f970ac24127847904920a617f03279"
+        }
+      ]
+    }
+  ]
+}

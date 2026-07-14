@@ -95,7 +95,7 @@
         LEFT JOIN DEPARTMENT d ON d.DEPT_ID = e.DEPT_ID
         LEFT JOIN `POSITION` p ON p.POSITION_ID = e.POSITION_ID
         WHERE e.EMPLOYEE_ID = #{employeeId}
-        	AND e.EMPLOYEE_STATUS = `ACTIVE`
+        	AND e.EMPLOYEE_STATUS = 'ACTIVE'
 	</select>
 
 	
