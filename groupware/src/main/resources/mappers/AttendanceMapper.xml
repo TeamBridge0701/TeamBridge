@@ -13,7 +13,8 @@
 		CHECK_OUT_TIME AS checkOutTime,
 		ATTENDANCE_STATUS AS attendanceStatus
 		FROM ATTENDANCE
-		WHERE EMPLOYEE_ID = #{employeeId} AND WORK_DATE = #{today}
+		WHERE EMPLOYEE_ID = #{employeeId}
+		AND DATE_FORMAT(WORK_DATE, '%Y-%m-%d') = #{today}
 	</select>
 
 	<!-- 2. 삽입-->

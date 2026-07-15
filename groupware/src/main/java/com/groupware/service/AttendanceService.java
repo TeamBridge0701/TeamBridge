@@ -19,16 +19,20 @@ public class AttendanceService {
         this.attendanceMapper = attendanceMapper;
     }
 
+    public AttendanceDTO getTodayAttendance(int employeeId, String today) {
+        return attendanceMapper.selectTodayAttendance(employeeId, today);
+    }
+
     @Transactional
     public void checkIn(int employeeId) {
         LocalDate today = LocalDate.now();
+        String todayStr = today.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
-        if (attendanceMapper.selectTodayAttendance(employeeId, today) != null) {
+        if (attendanceMapper.selectTodayAttendance(employeeId, todayStr) != null) {
             throw new IllegalStateException("이미 오늘 출근 처리가 완료되었습니다.");
         }
 
         LocalTime nowTime = LocalTime.now();
-        // 서버 시간을 기준으로 지각 판정
         String status = nowTime.isAfter(LocalTime.of(9, 0, 0)) ? "LATE" : "NORMAL";
         String formattedTime = nowTime.format(DateTimeFormatter.ofPattern("HH:mm:ss"));
 
@@ -38,7 +42,9 @@ public class AttendanceService {
     @Transactional
     public void checkOut(int employeeId) {
         LocalDate today = LocalDate.now();
-        AttendanceDTO attendance = attendanceMapper.selectTodayAttendance(employeeId, today);
+        String todayStr = today.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        
+        AttendanceDTO attendance = attendanceMapper.selectTodayAttendance(employeeId, todayStr);
 
         if (attendance == null) {
             throw new IllegalStateException("출근 기록이 없어 퇴근 처리가 불가능합니다.");
