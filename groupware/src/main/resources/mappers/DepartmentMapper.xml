@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupware.mapper.DepartmentMapper">
+
+	<!-- 관리자: 부서 드롭다운용 전체 목록 -->
+	<select id="findAll" resultType="com.groupware.dto.DepartmentDTO">
+	    SELECT DEPT_ID, DEPT_NAME
+	    FROM DEPARTMENT
+	    ORDER BY DEPT_NAME
+	</select>
+</mapper>

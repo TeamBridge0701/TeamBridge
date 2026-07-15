@@ -28,7 +28,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     // 실제로 로그인 폼에서 입력한 사번(EMPLOYEE_NO)이 여기로 들어오므로 employeeNo로 명명.
     @Override
     public UserDetails loadUserByUsername(String employeeNo) throws UsernameNotFoundException {
-        EmployeeDTO employeeDTO = employeeMapper.findByEmployeeNo(employeeNo);
+        EmployeeDTO employeeDTO = employeeMapper.findByEmployeeNo(employeeNo);	// DB에서 사번으로 조회
 
         // 조회 결과가 없으면 이 예외를 던져야 함 -> Security가 이걸 받아서
         // "아이디(사번)가 존재하지 않음" 에러로 자동 처리해줌

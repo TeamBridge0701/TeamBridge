@@ -18,8 +18,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class MyPageController {
 
-	private final EmployeeService employeeService;
-
 	
 	private final EmployeeService employeeService;
 	
