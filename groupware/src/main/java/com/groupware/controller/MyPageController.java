@@ -18,8 +18,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class MyPageController {
 
-	private final EmployeeService employeeService;
-
+	
 	
 	
 	// @AuthenticationPrincipal: 로그인 시 세션에 저장해둔 CustomUserDetails를

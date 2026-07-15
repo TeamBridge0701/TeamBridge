@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="light">
+<html lang="ko" data-theme="light" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,91 +12,47 @@
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body>
 
   <!-- ==========================================
-       핵심 애플리케이션 래퍼 (모든 화면 html이 공통으로 갖는 뼈대.
-       구조에 대한 자세한 설명은 main.html의 주석 참고)
-       헤더/사이드바는 정적 마크업이며, js/common.js의
-       initApplicationHeader()가 동적인 값만 채워 넣는다.
+       핵심 애플리케이션 래퍼 (모든 화면 html이 공통으로 갖는 뼈대)
+       헤더/사이드바는 fragments/layout.html 조각을 th:replace로 가져다 씀
        ========================================== -->
   <div class="app-wrapper" id="appWrapper">
 
-    <!-- 상단 헤더 -->
-    <header class="header">
-      <div class="header-left">
-        <a href="main.html" class="logo" style="text-decoration:none;">
-          <div class="logo-box"><i class="fa-solid fa-cubes"></i></div>
-          <span style="margin-left: 0.5rem;">GROUPWARE</span>
-        </a>
-      </div>
-
-      <div class="header-right">
-        <button class="icon-btn" onclick="navigateTo('chat')" title="실시간 채팅">
-          <i class="fa-solid fa-comment-dots"></i>
-          <span class="badge" id="headerChatBadge">0</span>
-        </button>
-        <div class="user-dropdown" onclick="navigateTo('mypage')">
-          <div class="user-avatar" id="headerAvatar">홍</div>
-          <div class="user-details">
-            <span class="user-name-text" id="headerName">홍길동</span>
-            <span class="user-role-text" id="headerDept">개발팀 사원</span>
-          </div>
-        </div>
-        <button class="icon-btn" onclick="doLogout()" title="로그아웃" style="color: var(--color-danger); border-color: rgba(248,113,113,0.2);">
-          <i class="fa-solid fa-right-from-bracket"></i>
-        </button>
-      </div>
-    </header>
+    <!-- 상단 헤더 - 공통 조각(fragments/layout.html) 재사용 -->
+    <header th:replace="~{fragments/layout :: header}"></header>
 
     <!-- 메인 내비게이션 영역 -->
     <div class="main-body" id="mainBody">
 
-      <!-- 좌측 사이드바 -->
-      <aside class="sidebar">
-        <ul class="sidebar-menu">
-          <li class="sidebar-item" id="menu-dashboard"><a href="main.html"><i class="fa-solid fa-chart-line"></i> 대시보드</a></li>
-
-          <li class="sidebar-group-label">업무</li>
-          <li class="sidebar-item sub" id="menu-calendar"><a href="calendar.html"><i class="fa-solid fa-calendar-days"></i> 일정 캘린더</a></li>
-          <li class="sidebar-item sub" id="menu-approval"><a href="approval.html"><i class="fa-solid fa-signature"></i> 전자결재</a></li>
-          <li class="sidebar-item sub" id="menu-notice"><a href="notice.html"><i class="fa-solid fa-bullhorn"></i> 공지사항</a></li>
-          <li class="sidebar-item sub" id="menu-archive"><a href="archive.html"><i class="fa-solid fa-file-shield"></i> 자료실</a></li>
-
-          <li class="sidebar-group-label">조직 · 소통</li>
-          <li class="sidebar-item sub" id="menu-org"><a href="org.html"><i class="fa-solid fa-sitemap"></i> 조직도</a></li>
-          <li class="sidebar-item sub" id="menu-chat"><a href="chat.html"><i class="fa-solid fa-comment-dots"></i> 실시간 채팅</a></li>
-
-          <li class="sidebar-group-label">근태관리</li>
-          <li class="sidebar-item sub" id="menu-attendance"><a href="attendance.html"><i class="fa-solid fa-clock"></i> 출결 현황</a></li>
-
-          <li class="sidebar-item" id="menu-mypage"><a href="mypage.html"><i class="fa-solid fa-user-gear"></i> 마이페이지</a></li>
-
-          <!-- 관리자 전용 메뉴 - 기본 숨김, 로그인 사용자가 admin이면 JS가 보여준다 -->
-          <li class="sidebar-group-label" id="adminGroupLabel" style="display: none;">관리자</li>
-          <li class="sidebar-item sub" id="menu-admin" style="display: none;"><a href="admin.html"><i class="fa-solid fa-gears"></i> 계정·인사정보 관리</a></li>
-          <li class="sidebar-item sub" id="menu-adminAttendance" style="display: none;"><a href="admin-attendance.html"><i class="fa-solid fa-user-clock"></i> 직원 출결 관리</a></li>
-        </ul>
-      </aside>
+      <!-- 좌측 사이드바 - 공통 조각(fragments/layout.html) 재사용 -->
+      <aside th:replace="~{fragments/layout :: sidebar}"></aside>
 
       <!-- 중앙 동적 화면 콘텐츠 영역 -->
       <main class="view-content">
 
         <!-- ==========================================
-             화면: 공지사항 (목록은 js/notice.js의 renderNotices()가 그린다)
+             화면: 공지사항 (목록은 NoticeController가 조회한 값을
+             th:each로 서버가 직접 렌더링(SSR) - 참고: NoticeController, NoticeService)
+             검색/페이지 이동은 실시간 필터링이 아니라 GET 폼 제출로 페이지를 다시 요청한다.
              ========================================== -->
         <div class="card">
           <div class="card-header">
             <h2>공지사항 목록</h2>
             <div style="display: flex; gap: 0.5rem;">
-              <!-- 실시간 검색창: 제출 없이 onkeyup으로 즉시 필터링만 한다 -->
-              <form onsubmit="event.preventDefault();" style="display:flex;">
-                <input type="text" class="form-control" id="noticeSearch" placeholder="제목 검색..." onkeyup="searchNotices(this.value)" style="width: 220px; font-size: 0.85rem;">
+              <!-- 검색창: 입력마다 필터링하지 않고, 제출(엔터) 시 GET /notice/list?keyword=...&page=1 로 재요청 -->
+              <form th:action="@{/notice/list}" method="get" style="display:flex;">
+                <input type="text" name="keyword" class="form-control" placeholder="제목/본문 검색..."
+                       th:value="${keyword}" style="width: 220px; font-size: 0.85rem;">
               </form>
-              <!-- 관리자로 로그인했을 때만 notice.js가 이 버튼을 보이게 한다 -->
-              <button class="btn btn-primary" id="btnCreateNotice" onclick="openCreateNoticeModal()" style="display:none;"><i class="fa-solid fa-pen"></i> 공지 작성</button>
+              <!-- 작성 권한: 관리자 + 팀장/부서장(POSITION_RANK 1~2). NoticeService.canManageNotice()가 단일 기준 -->
+              <button type="button" class="btn btn-primary" onclick="openCreateNoticeModal()"
+                      th:if="${@noticeService.canManageNotice(employee)}">
+                <i class="fa-solid fa-pen"></i> 공지 작성
+              </button>
             </div>
           </div>
 
@@ -106,104 +62,43 @@
                 <tr>
                   <th style="width: 80px;">번호</th>
                   <th>제목</th>
-                  <th style="width: 150px;">작성자</th>
+                  <th style="width: 180px;">작성자</th>
                   <th style="width: 120px;">등록일</th>
                   <th style="width: 100px;">조회수</th>
                 </tr>
               </thead>
-              <tbody id="noticeTableBody">
-                <!-- Mock 데이터 (JS 렌더링 시 대체됨) -->
-                <tr class="clickable" onclick="viewNotice(1)">
-                  <td><i class="fa-solid fa-thumbtack" style="color:var(--color-danger)"></i> PIN</td>
+              <tbody>
+                <tr class="clickable" th:each="n : ${notices}" th:onclick="'viewNotice(' + ${n.noticeId} + ')'">
+                  <td>
+                    <i class="fa-solid fa-thumbtack" style="color:var(--color-danger)" th:if="${n.pinned}"></i>
+                    <span th:if="${n.pinned}">PIN</span>
+                    <span th:unless="${n.pinned}" th:text="${n.noticeId}">1</span>
+                  </td>
                   <td>
                     <div style="display:flex; align-items:center; gap:0.5rem;">
-                      <span class="badge badge-danger">중요</span>
-                      <strong>[전사] 2026년 하반기 전사 조직 개편 및 인사 발령 안내</strong>
+                      <span class="badge badge-danger" th:if="${n.pinned}">중요</span>
+                      <strong th:text="${n.noticeTitle}">제목</strong>
                     </div>
                   </td>
-                  <td>인사본부</td>
-                  <td style="font-family:'Fira Code'; font-size:0.85rem;">2026-06-30</td>
-                  <td style="font-family:'Fira Code'; text-align:center;">42</td>
+                  <td th:text="${n.writerDeptName != null ? n.writerName + ' (' + n.writerDeptName + ')' : n.writerName}">작성자</td>
+                  <td style="font-family:'Fira Code'; font-size:0.85rem;"
+                      th:text="${n.createdAt != null ? #strings.substring(n.createdAt, 0, 10) : ''}">2026-06-30</td>
+                  <td style="font-family:'Fira Code'; text-align:center;" th:text="${n.viewCount}">0</td>
                 </tr>
-                <tr class="clickable" onclick="viewNotice(12)">
-                  <td>12</td>
-                  <td><strong>[필독] 개인정보보호법 개정에 따른 사내 정책 변경 안내</strong></td>
-                  <td>경영지원본부</td>
-                  <td style="font-family:'Fira Code'; font-size:0.85rem;">2026-06-05</td>
-                  <td style="font-family:'Fira Code'; text-align:center;">47</td>
-                </tr>
-                <tr class="clickable" onclick="viewNotice(11)">
-                  <td>11</td>
-                  <td><strong>[안내] 사내 카페테리아 여름 메뉴 리뉴얼 공지</strong></td>
-                  <td>총무팀</td>
-                  <td style="font-family:'Fira Code'; font-size:0.85rem;">2026-06-08</td>
-                  <td style="font-family:'Fira Code'; text-align:center;">24</td>
-                </tr>
-                <tr class="clickable" onclick="viewNotice(10)">
-                  <td>10</td>
-                  <td><strong>[채용] 개발팀 경력직 채용 공고 안내 (내부 추천 가능)</strong></td>
-                  <td>인사본부</td>
-                  <td style="font-family:'Fira Code'; font-size:0.85rem;">2026-06-10</td>
-                  <td style="font-family:'Fira Code'; text-align:center;">39</td>
-                </tr>
-                <tr class="clickable" onclick="viewNotice(9)">
-                  <td>9</td>
-                  <td><strong>[안내] 2분기 실적 공유회 개최 안내</strong></td>
-                  <td>기획팀</td>
-                  <td style="font-family:'Fira Code'; font-size:0.85rem;">2026-06-12</td>
-                  <td style="font-family:'Fira Code'; text-align:center;">51</td>
-                </tr>
-                <tr class="clickable" onclick="viewNotice(8)">
-                  <td>8</td>
-                  <td><strong>[필독] 사옥 주차장 이용 규정 개정 안내</strong></td>
-                  <td>총무팀</td>
-                  <td style="font-family:'Fira Code'; font-size:0.85rem;">2026-06-15</td>
-                  <td style="font-family:'Fira Code'; text-align:center;">29</td>
-                </tr>
-                <tr class="clickable" onclick="viewNotice(7)">
-                  <td>7</td>
-                  <td><strong>[모집] 사내 동호회 신규 회원 모집 안내</strong></td>
-                  <td>총무팀</td>
-                  <td style="font-family:'Fira Code'; font-size:0.85rem;">2026-06-17</td>
-                  <td style="font-family:'Fira Code'; text-align:center;">45</td>
-                </tr>
-                <tr class="clickable" onclick="viewNotice(6)">
-                  <td>6</td>
-                  <td><strong>[안내] 사내 네트워크 점검으로 인한 일시 접속 제한 공지</strong></td>
-                  <td>개발팀</td>
-                  <td style="font-family:'Fira Code'; font-size:0.85rem;">2026-06-19</td>
-                  <td style="font-family:'Fira Code'; text-align:center;">33</td>
-                </tr>
-                <tr class="clickable" onclick="viewNotice(5)">
-                  <td>5</td>
-                  <td><strong>[복지] 하계 휴가비 지급 및 신청 방법 안내</strong></td>
-                  <td>인사본부</td>
-                  <td style="font-family:'Fira Code'; font-size:0.85rem;">2026-06-20</td>
-                  <td style="font-family:'Fira Code'; text-align:center;">61</td>
-                </tr>
-                <tr class="clickable" onclick="viewNotice(4)">
-                  <td>4</td>
-                  <td><strong>[교육] 사내 정보보안 교육 이수 안내 (전 직원 필수)</strong></td>
-                  <td>총무팀</td>
-                  <td style="font-family:'Fira Code'; font-size:0.85rem;">2026-06-24</td>
-                  <td style="font-family:'Fira Code'; text-align:center;">37</td>
-                </tr>
-                <tr class="clickable" onclick="viewNotice(3)">
-                  <td>3</td>
-                  <td><strong>[필독] 하절기 에너지 절약 및 사내 냉방 온도 규칙 준수 안내</strong></td>
-                  <td>총무팀</td>
-                  <td style="font-family:'Fira Code'; font-size:0.85rem;">2026-06-29</td>
-                  <td style="font-family:'Fira Code'; text-align:center;">56</td>
-                </tr>
-                <tr class="clickable" onclick="viewNotice(2)">
-                  <td>2</td>
-                  <td><strong>[안내] 신규 통합 그룹웨어 정식 오픈 및 피드백 요청</strong></td>
-                  <td>인사본부</td>
-                  <td style="font-family:'Fira Code'; font-size:0.85rem;">2026-06-30</td>
-                  <td style="font-family:'Fira Code'; text-align:center;">28</td>
+                <tr th:if="${#lists.isEmpty(notices)}">
+                  <td colspan="5" style="text-align:center; color:var(--text-muted); padding: 2rem 0;">등록된 공지가 없습니다.</td>
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- 페이지네이션: 현재 페이지 강조, 검색어(keyword)는 유지한 채 페이지만 이동 -->
+          <div style="display:flex; justify-content:center; gap:0.4rem; margin-top:1rem;" th:if="${totalPages > 1}">
+            <a th:each="p : ${#numbers.sequence(1, totalPages)}"
+               th:href="@{/notice/list(keyword=${keyword}, page=${p})}"
+               th:text="${p}"
+               th:classappend="${p == currentPage} ? 'btn-primary' : 'btn-secondary'"
+               class="btn btn-sm" style="min-width:2.2rem; text-align:center;">1</a>
           </div>
         </div>
 
@@ -213,11 +108,12 @@
 
   <!-- ==========================================
        동적 모달 (이 페이지에서 사용) - 평소엔 숨겨져 있다가
-       openModal('모달id')가 호출될 때만 보인다.
+       openModal('모달id')가 호출될 때만 보인다 (openModal/closeModal: js/common.js).
+       내용은 notice.js의 viewNotice()가 GET /notice/detail/{id} 결과로 채운다.
+       ⚠️ 수정/삭제 버튼은 노출 조건만 걸어뒀고, 실제 동작은 다음 단계에서 구현
        ========================================== -->
   <div class="modal-overlay" id="modalOverlay">
 
-    <!-- 공지사항 상세 모달 - 목록에서 글 제목을 클릭(viewNotice)하면 열린다 -->
     <div class="modal-content" id="modal-notice-detail" style="display:none;">
       <div class="modal-header">
         <h3 id="mNoticeTitle">공지 제목</h3>
@@ -233,14 +129,13 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-danger" id="mNoticeDeleteBtn" onclick="deleteNotice()" style="display:none; margin-right:auto;">삭제</button>
-        <button class="btn btn-secondary" id="mNoticeEditBtn" onclick="openEditNoticeModal()" style="display:none;">수정</button>
+        <button class="btn btn-danger" id="mNoticeDeleteBtn" style="display:none; margin-right:auto;" onclick="deleteNotice()">삭제</button>
+        <button class="btn btn-secondary" id="mNoticeEditBtn" style="display:none;" onclick="openEditNoticeModal()">수정</button>
         <button class="btn btn-secondary" onclick="closeModal()">닫기</button>
       </div>
     </div>
 
-    <!-- 공지사항 작성/수정 모달 - "공지 작성" 버튼(신규) 또는 상세 모달의
-         "수정" 버튼(기존 글 수정)으로 열린다. 두 경우 모두 이 폼 하나를 같이 쓴다 -->
+    <!-- 작성/수정 공용 모달 - "공지 작성" 버튼(신규) 또는 상세 모달의 "수정" 버튼(기존 글)으로 연다 -->
     <div class="modal-content" id="modal-notice-write" style="display:none;">
       <div class="modal-header">
         <h3 id="noticeWriteModalTitle">공지사항 신규 등록</h3>
@@ -274,7 +169,15 @@
   <!-- 토스트 알림 컨테이너 -->
   <div id="toast-container" class="toast-container"></div>
 
-  <script src="js/common.js"></script>
-  <script src="js/notice.js"></script>
+  <!-- 서버가 이미 계산한 권한 결과를 그대로 내려줌(클라이언트가 role을 다시 판단하지 않음).
+       모달의 수정/삭제 버튼 노출에만 쓰고, 실제 처리는 어차피 서버가 다시 검증한다.
+       삭제는 "본인 글 + 관리자는 예외" 기준이라 currentEmployeeId/isAdmin이 추가로 필요 -->
+  <script th:inline="javascript">
+    const canManageNotice = /*[[${@noticeService.canManageNotice(employee)}]]*/ false;
+    const currentEmployeeId = /*[[${employee.employeeId}]]*/ 0;
+    const isAdmin = /*[[${employee.employeeRole == 'ADMIN'}]]*/ false;
+  </script>
+  <script th:src="@{/js/common.js}"></script>
+  <script th:src="@{/js/notice.js}"></script>
 </body>
 </html>
