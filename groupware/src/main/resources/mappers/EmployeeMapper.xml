@@ -26,6 +26,89 @@
 	    WHERE e.EMPLOYEE_ID = #{employeeId}
 	</select>
 	
+	
+	
+	
+	
+	
+	<!-- [조직도 부서 트리] 부서 선택 링크를 만들기 위한 목록이다. -->
+    <select id="findDepartments" resultType="com.groupware.dto.DepartmentDTO">
+        SELECT DEPT_ID, DEPT_NAME
+        FROM DEPARTMENT
+        ORDER BY DEPT_NAME
+    </select>
+
+    <!--
+      [조직도 직원 표]
+      정지/퇴사 계정은 조직도와 채팅 대상에 표시하지 않기 위해 ACTIVE만 조회한다.
+      deptId가 전달될 때만 동적 WHERE 조건을 추가한다.
+    -->
+    <select id="findActiveEmployeesByDepartment" resultType="com.groupware.dto.EmployeeDTO">
+        SELECT e.EMPLOYEE_ID,
+               e.EMPLOYEE_NO,
+               e.EMPLOYEE_NAME,
+               e.EMPLOYEE_ROLE,
+               e.EMPLOYEE_PHONE,
+               e.EMPLOYEE_EMAIL,
+               e.PROFILE_IMG,
+               e.EMPLOYEE_STATUS,
+               d.DEPT_NAME,
+               p.POSITION_NAME
+        FROM EMPLOYEE e
+        <!-- 
+			LEFT JOIN을 쓰는 이유
+			-> 관리자는 null이여서 JOIN을 하면 안나온다.
+		       따라서 LEFT JOIN을 사용해야지 관리자도 나온다
+		-->
+        LEFT JOIN DEPARTMENT d ON d.DEPT_ID = e.DEPT_ID
+        LEFT JOIN `POSITION` p ON p.POSITION_ID = e.POSITION_ID
+	
+	WHERE e.EMPLOYEE_STATUS = 'ACTIVE'
+	
+	<!-- 특정 부서를 눌렀을 때 특정 직원으로 제한하는 코드 -->
+	<!-- if는 부서별 직원도 보여줘야 하기 때문에 사용함. -->
+	<!-- 
+	  개발팀 클릭
+	→ deptId = 1
+	→ AND e.DEPT_ID = 1 추가
+	→ 개발팀 재직자만 조회
+	-->
+        <if test="deptId != null">
+            AND e.DEPT_ID = #{deptId}
+        </if>
+	
+	ORDER BY p.POSITION_RANK, e.EMPLOYEE_NAME
+	
+	</select>
+	
+	<!-- 직원 상세 모달 - 클릭한 직원의 정보를 조회 -->
+	<select id="findActiveEmployeeById" resultType="com.groupware.dto.EmployeeDTO">
+		SELECT e.EMPLOYEE_ID,
+               e.EMPLOYEE_NO,
+               e.EMPLOYEE_NAME,
+               e.EMPLOYEE_ROLE,
+               e.EMPLOYEE_PHONE,
+               e.EMPLOYEE_EMAIL,
+               e.PROFILE_IMG,
+               e.EMPLOYEE_STATUS,
+               d.DEPT_NAME,
+               p.POSITION_NAME
+        FROM EMPLOYEE e
+        
+        <!-- 마찬가지로 관리자 정보도 조회해야 하기에 LEFT JOIN 사용 -->
+        LEFT JOIN DEPARTMENT d ON d.DEPT_ID = e.DEPT_ID
+        LEFT JOIN `POSITION` p ON p.POSITION_ID = e.POSITION_ID
+        WHERE e.EMPLOYEE_ID = #{employeeId}
+        <!-- ACTIVE는 EMPLOYEE_STATUS 컬럼과 비교할 문자열 값이므로 작은따옴표로 감싼다. -->
+        <!-- 백틱은 MySQL에서 컬럼명이나 테이블명에 쓰므로 ACTIVE에 사용하면 오류가 난다. -->
+        	AND e.EMPLOYEE_STATUS = 'ACTIVE'
+	</select>
+
+	
+	
+	
+	
+	
 	<!--
 		마이페이지 비밀번호 변경
 		newPassword는 Service에서 이미 BCrypt로 해싱된 값 - 여기선 그대로 저장만 함
@@ -104,17 +187,4 @@
 	    WHERE EMPLOYEE_NO LIKE CONCAT(#{year}, '___')
 	</select>
 </mapper>
-
-
-
-
-
-
-
-
-
-
-
-
-
 
