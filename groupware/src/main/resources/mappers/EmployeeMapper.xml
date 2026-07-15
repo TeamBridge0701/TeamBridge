@@ -27,6 +27,10 @@
 	</select>
 	
 	
+	
+	
+	
+	
 	<!-- [조직도 부서 트리] 부서 선택 링크를 만들기 위한 목록이다. -->
     <select id="findDepartments" resultType="com.groupware.dto.DepartmentDTO">
         SELECT DEPT_ID, DEPT_NAME
@@ -95,9 +99,15 @@
         LEFT JOIN DEPARTMENT d ON d.DEPT_ID = e.DEPT_ID
         LEFT JOIN `POSITION` p ON p.POSITION_ID = e.POSITION_ID
         WHERE e.EMPLOYEE_ID = #{employeeId}
+        <!-- ACTIVE는 EMPLOYEE_STATUS 컬럼과 비교할 문자열 값이므로 작은따옴표로 감싼다. -->
+        <!-- 백틱은 MySQL에서 컬럼명이나 테이블명에 쓰므로 ACTIVE에 사용하면 오류가 난다. -->
         	AND e.EMPLOYEE_STATUS = 'ACTIVE'
 	</select>
 
+	
+	
+	
+	
 	
 	<!--
 		마이페이지 비밀번호 변경
@@ -117,5 +127,4 @@
 	    WHERE EMPLOYEE_ID = #{employeeId}
 	</update>
 </mapper>
-
 

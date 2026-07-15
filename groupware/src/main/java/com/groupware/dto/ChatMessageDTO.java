@@ -12,4 +12,11 @@ public class ChatMessageDTO {
 	private String messageType;
 	private String content;
 	private String sentAt;
+	
+    // EMPLOYEE와 LEFT JOIN해 메시지 말풍선에 표시한다.
+    private String senderName;
+    // 발신자 이름 
+    private String senderProfileImg;
+    // 발신자 프로필 이미지 
+    
 }

@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- xmlns:th를 선언해야 이 파일 안에서 th:each, th:text 같은 Thymeleaf 속성을 사용할 수 있다. -->
 <html lang="ko" data-theme="light" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
@@ -7,70 +6,24 @@
   <title>조직도 - 통합 사내 그룹웨어</title>
   <meta name="description" content="사내 그룹웨어 시스템 - 조직도">
 
-  <!-- 기반 groupware org.html과 같은 폰트, 아이콘, 스타일을 사용한다. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- th:href는 Spring Boot 실행 시 CSS를 서버의 /css/style.css 경로로 연결한다. href는 HTML 단독 열기용 기본 경로다. -->
   <link rel="stylesheet" th:href="@{/css/style.css}" href="css/style.css">
 </head>
 <body>
 
+	
+	
+	
   <div class="app-wrapper" id="appWrapper">
-    <header class="header">
-      <div class="header-left">
-        <!-- Spring Boot의 /main 경로로 이동하도록 th:href를 사용한다. -->
-        <a th:href="@{/main}" class="logo" style="text-decoration:none;">
-          <div class="logo-box"><i class="fa-solid fa-cubes"></i></div>
-          <span style="margin-left: 0.5rem;">GROUPWARE</span>
-        </a>
-      </div>
-
-      <div class="header-right">
-        <button class="icon-btn" onclick="navigateTo('chat')" title="실시간 채팅">
-          <i class="fa-solid fa-comment-dots"></i>
-          <span class="badge" id="headerChatBadge">0</span>
-        </button>
-        <!-- currentEmployee는 OrgController가 로그인 사용자 기준으로 Model에 넣은 직원 정보다. -->
-        <div class="user-dropdown" onclick="navigateTo('mypage')">
-          <div class="user-avatar" id="headerAvatar" th:text="${#strings.substring(currentEmployee.employeeName, 0, 1)}">홍</div>
-          <div class="user-details">
-            <span class="user-name-text" id="headerName" th:text="${currentEmployee.employeeName}">홍길동</span>
-            <span class="user-role-text" id="headerDept" th:text="${currentEmployeeRoleText}">개발팀 사원</span>
-          </div>
-        </div>
-        <button class="icon-btn" onclick="doLogout()" title="로그아웃" style="color: var(--color-danger); border-color: rgba(248,113,113,0.2);">
-          <i class="fa-solid fa-right-from-bracket"></i>
-        </button>
-      </div>
-    </header>
+    <!-- 상단 헤더는 공통 조각이 담당한다. employee 값은 GlobalModelAdvice가 자동으로 제공한다. -->
+    <header th:replace="~{fragments/layout :: header}"></header>
 
     <div class="main-body" id="mainBody">
-      <aside class="sidebar">
-        <ul class="sidebar-menu">
-          <li class="sidebar-item" id="menu-dashboard"><a th:href="@{/main}" href="main.html"><i class="fa-solid fa-chart-line"></i> 대시보드</a></li>
-
-          <li class="sidebar-group-label">업무</li>
-          <li class="sidebar-item sub" id="menu-calendar"><a th:href="@{/calendar}" href="calendar.html"><i class="fa-solid fa-calendar-days"></i> 일정 캘린더</a></li>
-          <li class="sidebar-item sub" id="menu-approval"><a th:href="@{/approval}" href="approval.html"><i class="fa-solid fa-signature"></i> 전자결재</a></li>
-          <li class="sidebar-item sub" id="menu-notice"><a th:href="@{/notice}" href="notice.html"><i class="fa-solid fa-bullhorn"></i> 공지사항</a></li>
-          <li class="sidebar-item sub" id="menu-archive"><a th:href="@{/archive}" href="archive.html"><i class="fa-solid fa-file-shield"></i> 자료실</a></li>
-
-          <li class="sidebar-group-label">조직 · 소통</li>
-          <li class="sidebar-item sub" id="menu-org"><a th:href="@{/org}" href="org.html"><i class="fa-solid fa-sitemap"></i> 조직도</a></li>
-          <li class="sidebar-item sub" id="menu-chat"><a th:href="@{/chat}" href="chat.html"><i class="fa-solid fa-comment-dots"></i> 실시간 채팅</a></li>
-
-          <li class="sidebar-group-label">근태관리</li>
-          <li class="sidebar-item sub" id="menu-attendance"><a th:href="@{/attendance}" href="attendance.html"><i class="fa-solid fa-clock"></i> 출결 현황</a></li>
-          <li class="sidebar-item" id="menu-mypage"><a th:href="@{/mypage}" href="mypage.html"><i class="fa-solid fa-user-gear"></i> 마이페이지</a></li>
-
-          <!-- 원본처럼 기본 숨김을 유지하고, 관리자일 때만 th:style로 숨김을 해제한다. -->
-          <li class="sidebar-group-label" id="adminGroupLabel" style="display: none;" th:style="${isAdmin ? '' : 'display: none;'}">관리자</li>
-          <li class="sidebar-item sub" id="menu-admin" style="display: none;" th:style="${isAdmin ? '' : 'display: none;'}"><a th:href="@{/admin}" href="admin.html"><i class="fa-solid fa-gears"></i> 계정·인사정보 관리</a></li>
-          <li class="sidebar-item sub" id="menu-adminAttendance" style="display: none;" th:style="${isAdmin ? '' : 'display: none;'}"><a th:href="@{/admin-attendance}" href="admin-attendance.html"><i class="fa-solid fa-user-clock"></i> 직원 출결 관리</a></li>
-        </ul>
-      </aside>
+      <!-- 좌측 사이드바도 공통 조각이 담당한다. 관리자 메뉴는 조각 내부에서 employeeRole로 판단한다. -->
+      <aside th:replace="~{fragments/layout :: sidebar}"></aside>
 
       <main class="view-content">
         <div class="org-container">
