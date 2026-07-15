@@ -1,110 +1,75 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="light">
+<html lang="ko" data-theme="light" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>조직도 - 통합 사내 그룹웨어</title>
   <meta name="description" content="사내 그룹웨어 시스템 - 조직도">
 
-  <!-- 구글 폰트 및 폰트어썸 아이콘 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" th:href="@{/css/style.css}" href="css/style.css">
 </head>
 <body>
 
-  <!-- ==========================================
-       핵심 애플리케이션 래퍼 (모든 화면 html이 공통으로 갖는 뼈대.
-       구조에 대한 자세한 설명은 main.html의 주석 참고)
-       헤더/사이드바는 정적 마크업이며, js/common.js의
-       initApplicationHeader()가 동적인 값만 채워 넣는다.
-       ========================================== -->
+	
+	
+	
   <div class="app-wrapper" id="appWrapper">
+    <!-- 상단 헤더는 공통 조각이 담당한다. employee 값은 GlobalModelAdvice가 자동으로 제공한다. -->
+    <header th:replace="~{fragments/layout :: header}"></header>
 
-    <!-- 상단 헤더 -->
-    <header class="header">
-      <div class="header-left">
-        <a href="main.html" class="logo" style="text-decoration:none;">
-          <div class="logo-box"><i class="fa-solid fa-cubes"></i></div>
-          <span style="margin-left: 0.5rem;">GROUPWARE</span>
-        </a>
-      </div>
-
-      <div class="header-right">
-        <button class="icon-btn" onclick="navigateTo('chat')" title="실시간 채팅">
-          <i class="fa-solid fa-comment-dots"></i>
-          <span class="badge" id="headerChatBadge">0</span>
-        </button>
-        <div class="user-dropdown" onclick="navigateTo('mypage')">
-          <div class="user-avatar" id="headerAvatar">홍</div>
-          <div class="user-details">
-            <span class="user-name-text" id="headerName">홍길동</span>
-            <span class="user-role-text" id="headerDept">개발팀 사원</span>
-          </div>
-        </div>
-        <button class="icon-btn" onclick="doLogout()" title="로그아웃" style="color: var(--color-danger); border-color: rgba(248,113,113,0.2);">
-          <i class="fa-solid fa-right-from-bracket"></i>
-        </button>
-      </div>
-    </header>
-
-    <!-- 메인 내비게이션 영역 -->
     <div class="main-body" id="mainBody">
+      <!-- 좌측 사이드바도 공통 조각이 담당한다. 관리자 메뉴는 조각 내부에서 employeeRole로 판단한다. -->
+      <aside th:replace="~{fragments/layout :: sidebar}"></aside>
 
-      <!-- 좌측 사이드바 -->
-      <aside class="sidebar">
-        <ul class="sidebar-menu">
-          <li class="sidebar-item" id="menu-dashboard"><a href="main.html"><i class="fa-solid fa-chart-line"></i> 대시보드</a></li>
-
-          <li class="sidebar-group-label">업무</li>
-          <li class="sidebar-item sub" id="menu-calendar"><a href="calendar.html"><i class="fa-solid fa-calendar-days"></i> 일정 캘린더</a></li>
-          <li class="sidebar-item sub" id="menu-approval"><a href="approval.html"><i class="fa-solid fa-signature"></i> 전자결재</a></li>
-          <li class="sidebar-item sub" id="menu-notice"><a href="notice.html"><i class="fa-solid fa-bullhorn"></i> 공지사항</a></li>
-          <li class="sidebar-item sub" id="menu-archive"><a href="archive.html"><i class="fa-solid fa-file-shield"></i> 자료실</a></li>
-
-          <li class="sidebar-group-label">조직 · 소통</li>
-          <li class="sidebar-item sub" id="menu-org"><a href="org.html"><i class="fa-solid fa-sitemap"></i> 조직도</a></li>
-          <li class="sidebar-item sub" id="menu-chat"><a href="chat.html"><i class="fa-solid fa-comment-dots"></i> 실시간 채팅</a></li>
-
-          <li class="sidebar-group-label">근태관리</li>
-          <li class="sidebar-item sub" id="menu-attendance"><a href="attendance.html"><i class="fa-solid fa-clock"></i> 출결 현황</a></li>
-
-          <li class="sidebar-item" id="menu-mypage"><a href="mypage.html"><i class="fa-solid fa-user-gear"></i> 마이페이지</a></li>
-
-          <!-- 관리자 전용 메뉴 - 기본 숨김, 로그인 사용자가 admin이면 JS가 보여준다 -->
-          <li class="sidebar-group-label" id="adminGroupLabel" style="display: none;">관리자</li>
-          <li class="sidebar-item sub" id="menu-admin" style="display: none;"><a href="admin.html"><i class="fa-solid fa-gears"></i> 계정·인사정보 관리</a></li>
-          <li class="sidebar-item sub" id="menu-adminAttendance" style="display: none;"><a href="admin-attendance.html"><i class="fa-solid fa-user-clock"></i> 직원 출결 관리</a></li>
-        </ul>
-      </aside>
-
-      <!-- 중앙 동적 화면 콘텐츠 영역 -->
       <main class="view-content">
-
-        <!-- ==========================================
-             화면: 조직도
-             ========================================== -->
         <div class="org-container">
-          <!-- 좌측 조직 트리 - 여기 5개 부서는 CHAT_DEPTS/REF_DEPTS와 달리
-               고정 HTML로 미리 다 적혀 있다 (필터링만 JS가 담당) -->
           <div class="org-tree">
             <h3 style="font-size: 1rem; margin-bottom: 1rem;">사내 조직 현황</h3>
             <ul style="list-style:none;">
-              <li><a class="org-node active" id="org-all" onclick="filterOrg('all')"><i class="fa-solid fa-building"></i> 주식회사 코퍼레이션</a></li>
-              <li style="margin-left: 0.75rem;"><a class="org-node" id="org-인사팀" onclick="filterOrg('인사팀')"><i class="fa-solid fa-users"></i> 인사팀</a></li>
-              <li style="margin-left: 0.75rem;"><a class="org-node" id="org-기획팀" onclick="filterOrg('기획팀')"><i class="fa-solid fa-compass"></i> 기획팀</a></li>
-              <li style="margin-left: 0.75rem;"><a class="org-node" id="org-개발팀" onclick="filterOrg('개발팀')"><i class="fa-solid fa-code"></i> 개발팀</a></li>
-              <li style="margin-left: 0.75rem;"><a class="org-node" id="org-디자인팀" onclick="filterOrg('디자인팀')"><i class="fa-solid fa-palette"></i> 디자인팀</a></li>
-              <li style="margin-left: 0.75rem;"><a class="org-node" id="org-총무팀" onclick="filterOrg('총무팀')"><i class="fa-solid fa-briefcase"></i> 총무팀</a></li>
+              <!-- 전체보기를 누르면 deptId 없이 /org로 이동한다. selectedDeptId가 null일 때만 원본 active 스타일을 붙인다. -->
+              <li>
+                <a class="org-node" id="org-all" th:classappend="${selectedDeptId == null ? ' active' : ''}" th:href="@{/org}">
+                  <i class="fa-solid fa-building"></i> 주식회사 코퍼레이션
+                </a>
+              </li>
+              <!--
+                th:each는 OrgController가 model에 담은 departments 목록을 한 부서씩 반복한다.
+                따라서 DB의 DEPARTMENT 테이블에 있는 부서 수만큼 원본 li/a 모양이 만들어진다.
+              -->
+              <li th:each="department : ${departments}" style="margin-left: 0.75rem;">
+                <!--
+                  th:id: 부서마다 다른 HTML ID를 만든다.
+                  th:classappend: 현재 URL의 deptId와 이 부서 ID가 같을 때만 active 클래스를 추가한다.
+                  th:href: 부서를 누르면 /org?deptId=부서번호로 다시 요청해 해당 부서 직원만 조회한다.
+                -->
+                <a class="org-node" th:id="|org-${department.deptId}|"
+                   th:classappend="${selectedDeptId == department.deptId ? ' active' : ''}"
+                   th:href="@{/org(deptId=${department.deptId})}">
+                  <!-- th:switch/th:case는 DB 부서명에 맞는 Font Awesome 아이콘 하나만 출력하기 위한 분기다. -->
+                  <th:block th:switch="${department.deptName}">
+                    <i th:case="'인사팀'" class="fa-solid fa-users"></i>
+                    <i th:case="'기획팀'" class="fa-solid fa-compass"></i>
+                    <i th:case="'개발팀'" class="fa-solid fa-code"></i>
+                    <i th:case="'디자인팀'" class="fa-solid fa-palette"></i>
+                    <i th:case="'총무팀'" class="fa-solid fa-briefcase"></i>
+                    <i th:case="'영업팀'" class="fa-solid fa-chart-line"></i>
+                    <i th:case="*" class="fa-solid fa-users"></i>
+                  </th:block>
+                  <!-- th:text가 department의 실제 DEPT_NAME으로 기본 글자 '부서'를 교체한다. -->
+                  <span th:text="${department.deptName}">부서</span>
+                </a>
+              </li>
             </ul>
           </div>
 
-          <!-- 우측 구성원 그리드 - js/org.js의 renderOrgChart()가 그린다 -->
           <div class="org-members">
-            <h3 style="margin-bottom: 1rem;" id="orgTitle">임직원 목록 (전체)</h3>
+            <!-- th:text는 전체/선택 부서 여부에 따라 표 제목을 서버에서 완성한다. -->
+            <h3 style="margin-bottom: 1rem;" id="orgTitle"
+                th:text="${selectedDeptName == null ? '임직원 목록 (전체)' : '임직원 목록 (' + selectedDeptName + ')'}">임직원 목록 (전체)</h3>
             <div class="table-container">
               <table class="table">
                 <thead>
@@ -116,59 +81,36 @@
                     <th>상태</th>
                   </tr>
                 </thead>
-                <tbody id="orgMemberTableBody">
-                  <!-- Mock 데이터 (JS 렌더링 시 대체됨) - 기본 "전체보기" 기준, 직급순 정렬 -->
-                  <tr class="clickable" onclick="viewOrgMemberDetail('20260010')">
-                    <td><div class="user-avatar" style="width:24px; height:24px; font-size:0.7rem;">김</div></td>
-                    <td><strong>김영훈</strong></td>
-                    <td>기획팀</td>
-                    <td><span class="badge badge-primary">부서장</span></td>
-                    <td><span class="badge badge-muted">퇴근</span></td>
+                <!--
+                  th:attr은 JS가 현재 로그인한 사람을 알아야 자기 자신에게 채팅 버튼을 숨길 수 있어 넣었다.
+                  currentEmployeeId는 OrgController가 Security 로그인 정보에서 model로 전달한다.
+                -->
+                <tbody id="orgMemberTableBody" th:attr="data-current-employee-id=${currentEmployeeId}">
+                  <!-- th:each는 조회된 ACTIVE 직원 목록을 원본 표의 한 행 모양으로 반복 출력한다. -->
+                  <tr class="clickable" th:each="employee : ${employees}"
+                      th:onclick="|viewOrgMemberDetail(${employee.employeeId})|">
+                    <!-- th:text로 이름의 첫 글자를 아바타에 표시한다. -->
+                    <td><div class="user-avatar" style="width:24px; height:24px; font-size:0.7rem;" th:text="${#strings.substring(employee.employeeName, 0, 1)}">홍</div></td>
+                    <!-- 아래 th:text들은 EmployeeMapper 조회 결과로 원본의 가짜 텍스트를 교체한다. -->
+                    <td><strong th:text="${employee.employeeName}">홍길동</strong></td>
+                    <td th:text="${employee.deptName ?: '관리자'}">개발팀</td>
+                    <td><span class="badge badge-primary" th:text="${employee.positionName ?: employee.employeeRole}">사원</span></td>
+                    <td><span class="badge badge-success">재직 중</span></td>
                   </tr>
-                  <tr class="clickable" onclick="viewOrgMemberDetail('20260102')">
-                    <td><div class="user-avatar" style="width:24px; height:24px; font-size:0.7rem;">김</div></td>
-                    <td><strong>김우주</strong></td>
-                    <td>개발팀</td>
-                    <td><span class="badge badge-primary">팀장</span></td>
-                    <td><span class="badge badge-success">출근 (근무중)</span></td>
-                  </tr>
-                  <tr class="clickable" onclick="viewOrgMemberDetail('20260901')">
-                    <td><div class="user-avatar" style="width:24px; height:24px; font-size:0.7rem;">이</div></td>
-                    <td><strong>이다니엘</strong></td>
-                    <td>인사팀</td>
-                    <td><span class="badge badge-primary">팀장</span></td>
-                    <td><span class="badge badge-primary">휴가</span></td>
-                  </tr>
-                  <tr class="clickable" onclick="viewOrgMemberDetail('20260601')">
-                    <td><div class="user-avatar" style="width:24px; height:24px; font-size:0.7rem;">홍</div></td>
-                    <td><strong>홍길동</strong></td>
-                    <td>개발팀</td>
-                    <td><span class="badge badge-primary">사원</span></td>
-                    <td><span class="badge badge-warning">미출근</span></td>
-                  </tr>
-                  <tr class="clickable" onclick="viewOrgMemberDetail('20260803')">
-                    <td><div class="user-avatar" style="width:24px; height:24px; font-size:0.7rem;">정</div></td>
-                    <td><strong>정진국</strong></td>
-                    <td>디자인팀</td>
-                    <td><span class="badge badge-primary">사원</span></td>
-                    <td><span class="badge badge-warning">미출근</span></td>
+                  <!-- th:if는 해당 부서에 재직 직원이 없을 때만 안내 행을 보여준다. -->
+                  <tr th:if="${#lists.isEmpty(employees)}">
+                    <td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">표시할 재직 직원이 없습니다.</td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
         </div>
-
       </main>
     </div>
   </div>
 
-  <!-- ==========================================
-       동적 모달 (이 페이지에서 사용)
-       ========================================== -->
   <div class="modal-overlay" id="modalOverlay">
-
-    <!-- 조직도 구성원 정보 모달 - 표에서 직원 한 줄을 클릭(viewOrgMemberDetail)하면 열린다 -->
     <div class="modal-content" id="modal-org-member" style="display:none;">
       <div class="modal-header">
         <h3 id="mOrgName">임직원 정보</h3>
@@ -190,13 +132,10 @@
         <button class="btn btn-secondary" onclick="closeModal()">닫기</button>
       </div>
     </div>
-
   </div>
 
-  <!-- 토스트 알림 컨테이너 -->
   <div id="toast-container" class="toast-container"></div>
-
-  <script src="js/common.js"></script>
-  <script src="js/org.js"></script>
+  <!-- th:src는 Spring Boot 정적 리소스 경로에서 org.js를 불러와 직원 상세 모달과 헤더를 동작시킨다. -->
+  <script th:src="@{/js/org.js}" src="js/org.js"></script>
 </body>
 </html>

@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupware.mapper.ChatMapper">
+
+	<!--
+      - 로그인한 직원이 들어가 있는 채팅방 목록 
+      DM은 참여자 중 본인이 아닌 상대 이름을, GROUP은 ROOM_NAME을 표시한다.
+    -->
+    <select id="findMyChatRooms" resultType="com.groupware.dto.ChatRoomDTO">
+        SELECT r.ROOM_ID,
+               r.ROOM_TYPE,
+               r.ROOM_NAME,
+               r.CREATED_AT,
+
+
+
+			<!-- 화면에 보여줄 채팅방 이름을 만드는 부분이다 (개인 / 그룹) -->
+			
+			<!--
+				CASE문 문법 (SQL에서는 CASE를 사용. SELECT 결과값을 조건에 따라 바꿀 때도 적합)
+				
+				CASE
+    				WHEN 조건 THEN 조건이 참일 때 값
+   					ELSE 조건이 거짓일 때 값
+				END AS 컬럼별명
+			 -->
+			
+			
+               CASE
+               	    <!-- 그룹방 -->
+                   WHEN r.ROOM_TYPE = 'GROUP' THEN r.ROOM_NAME
+                   ELSE (
+					
+					<!-- 개인방 -->
+                       SELECT e.EMPLOYEE_NAME
+                       FROM CHAT_ROOM_MEMBER otherMember <!-- Chat_Room_Member 의 애칭 -->
+                       JOIN EMPLOYEE e
+                         ON e.EMPLOYEE_ID = otherMember.EMPLOYEE_ID
+                       WHERE otherMember.ROOM_ID = r.ROOM_ID
+                       <!-- 현재 조회 중인 채팅방과 같은 방에 들어가 있는 사람만 찾겠다는 뜻. -->
+                       
+                         AND otherMember.EMPLOYEE_ID != #{employeeId}
+                       LIMIT 1 
+                       <!-- 조건에 맞는 상대가 여럿 나와도 한 명만 조회된다. (개인방이여서 추가함) -->
+                   )
+               END AS DISPLAY_NAME,
+               <!-- CASE 문이 끝났고, 이 결과 컬럼 이름을 DISPLAY_NAME으로 붙이겠다는 뜻. -->
+       
+               
+               
+               
+               
+			<!-- 마지막 메시지 내용을 가져온다 -->
+               (
+                   SELECT cm.CONTENT  
+                   FROM CHAT_MESSAGE cm
+                   WHERE cm.ROOM_ID = r.ROOM_ID
+                <!-- 
+					현재 바깥쪽에서 조회 중인 채팅방의 메시지만 가져온다.
+					cm.ROOM_ID: 메시지가 속한 방 번호
+					r.ROOM_ID: 바깥 쿼리에서 조회 중인 방 번호
+					ex) 바깥 쿼리가 ROOM_ID = 3인 채팅방을 조회 중이라면:
+					WHERE cm.ROOM_ID = 3
+				-->
+                  
+                   ORDER BY cm.MESSAGE_ID DESC
+                   <!-- 메세지 ID 큰 순서부터 정렬 (ID가 클수록 최신 메세지) -->
+                   LIMIT 1 
+                   <!-- 가장 최근 메세지(정렬된 결과 중 첫번째 메세지) 하나만 가져온다. -->
+               ) AS LAST_MESSAGE,
+               
+               
+               
+			<!-- 
+				마지막 메시지 타입이다
+				마지막 메시지가 일반 텍스트인지, 파일인지, 이미지인지 같은 타입을 가져오는 부분.
+			 -->
+               (
+                   SELECT cm.MESSAGE_TYPE
+                   FROM CHAT_MESSAGE cm
+                   WHERE cm.ROOM_ID = r.ROOM_ID
+                   ORDER BY cm.MESSAGE_ID DESC
+                   LIMIT 1
+               ) AS LAST_MESSAGE_TYPE,
+               
+               
+               
+               
+			<!-- 
+				마지막 메시지 보낸 시간이다.
+			 	채팅방 목록에서 “방금 전”, “오후 3:20” 이런 거 표시할 때 사용됨.
+			 -->
+               (
+                   SELECT cm.SENT_AT
+                   FROM CHAT_MESSAGE cm
+                   WHERE cm.ROOM_ID = r.ROOM_ID
+                   ORDER BY cm.MESSAGE_ID DESC
+                   LIMIT 1
+               ) AS LAST_SENT_AT,
+               
+               
+               
+               
+               
+			<!-- 안 읽은 메시지 개수이다. -->
+               (
+                   SELECT COUNT(*)
+                   FROM CHAT_MESSAGE cm
+                   WHERE cm.ROOM_ID = r.ROOM_ID
+                   
+                     AND (
+						cm.SENDER_ID IS NULL 
+                        OR cm.SENDER_ID != #{employeeId}
+                     )
+                     <!-- 
+						로그인한 사람이 보낸 메세지는 제외.
+                     	본인이 보낸 메세지는 안읽음 메세지로 세지 않는다.
+                     -->
+                     
+                     AND cm.MESSAGE_ID > 
+                     	 COALESCE(member.LAST_READ_MESSAGE_ID, 0)
+                     <!-- 
+						마지막으로 읽은 메세지보다 이후에 생성된 메세지만 센다.
+						LAST_READ_MESSAGE_ID가 NULL이면 0으로 바꾼다.
+						
+						메세지 ID가 클수록 최신 메세지이다.
+						- COALESCE(member.LAST_READ_MESSAGE_ID, 0) : 
+						COALESCE는 첫 번째 값이 NULL이면 두 번째 값을 사용한다.
+						처음 채팅방에 들어온 사용자는 아직 읽은 메시지가 없어서 LAST_READ_MESSAGE_ID가 NULL일 수 있다. 
+						이때 NULL과 숫자를 비교하면 정상적으로 계산되지 않을 수 있으므로 0으로 바꾼다.
+					 -->
+               ) AS UNREAD_COUNT
+
+
+
+
+	<!-- 로그인한 사람이 참여한 방만 골라준다. -->
+        FROM CHAT_ROOM r
+        JOIN CHAT_ROOM_MEMBER member
+          ON member.ROOM_ID = r.ROOM_ID
+        WHERE member.EMPLOYEE_ID = #{employeeId}
+     <!-- 이 조건을 걸면 현재 로그인한 사람이 참여중인 방만 나온다.  -->
+
+
+
+
+	<!-- 정렬 부분이다. -->
+        ORDER BY COALESCE(
+            (
+                SELECT MAX(cm.SENT_AT)
+                <!-- 
+					가장 최근 메세지 보낸 시간 기준으로 정렬 
+					- 가장 큰 시간값.
+					  시간값이 가장 크다는 것은 가장 최근이라는 뜻
+				-->
+                
+                FROM CHAT_MESSAGE cm
+                WHERE cm.ROOM_ID = r.ROOM_ID
+            ),
+            r.CREATED_AT
+            <!-- 메세지가 없으면 방 생성 시간 기준으로 정렬 -->
+            
+        ) DESC
+    </select>
+
+
+<!--
+      주소에 roomId를 직접 입력해도 본인이 참여한 방만 조회되게 한다.
+      메시지 조회와 WebSocket 송신 전에 공통으로 사용할 권한 확인이다.
+    -->
+    <select id="findRoomByIdAndMember" resultType="com.groupware.dto.ChatRoomDTO">
+        SELECT r.ROOM_ID,
+               r.ROOM_TYPE,
+               r.ROOM_NAME,
+               r.CREATED_AT
+        FROM CHAT_ROOM r
+        JOIN CHAT_ROOM_MEMBER member
+          ON member.ROOM_ID = r.ROOM_ID
+        WHERE r.ROOM_ID = #{roomId}
+          AND member.EMPLOYEE_ID = #{employeeId}
+    </select>
+    
+    
+    
+    <!--
+	  특정 채팅방의 기존 메시지 내역을 조회하는 기능이다.
+    -->
+    <select id="findMessagesByRoomId" resultType="com.groupware.dto.ChatMessageDTO">
+        SELECT cm.MESSAGE_ID,
+               cm.ROOM_ID,
+               cm.SENDER_ID,
+               cm.MESSAGE_TYPE,
+               cm.CONTENT,
+               cm.SENT_AT,
+               e.EMPLOYEE_NAME AS SENDER_NAME,
+               e.PROFILE_IMG AS SENDER_PROFILE_IMG
+        FROM CHAT_MESSAGE cm
+        LEFT JOIN EMPLOYEE e
+        <!-- 시스템 메시지는 SENDER_ID가 null일 수 있으므로 EMPLOYEE는 LEFT JOIN한다. -->
+          ON e.EMPLOYEE_ID = cm.SENDER_ID
+        WHERE cm.ROOM_ID = #{roomId}
+        ORDER BY cm.MESSAGE_ID ASC
+    </select>
+
+    <!--
+      개인방은 참여자가 정확히 두 명이어야 한다.
+      이미 같은 두 사람이 있는 방이면 새로 만들지 않고 재사용한다.
+    -->
+    <select id="findExistingDirectRoom" resultType="com.groupware.dto.ChatRoomDTO">
+        SELECT r.ROOM_ID,
+               r.ROOM_TYPE,
+               r.ROOM_NAME,
+               r.CREATED_AT
+        FROM CHAT_ROOM r
+        JOIN CHAT_ROOM_MEMBER member
+          ON member.ROOM_ID = r.ROOM_ID
+        WHERE r.ROOM_TYPE = 'DM'
+        GROUP BY r.ROOM_ID, r.ROOM_TYPE, r.ROOM_NAME, r.CREATED_AT
+        HAVING COUNT(*) = 2
+        <!-- 2명인지 확인. -->
+           AND SUM(member.EMPLOYEE_ID = #{myEmployeeId}) = 1
+           <!-- 
+			현재 로그인한 직원이 그 방에 정확히 1명 포함되어 있는지 확인한다. 
+			조건식이 참이면 1, 거짓이면 0으로 계산됨.
+           -->
+           AND SUM(member.EMPLOYEE_ID = #{targetEmployeeId}) = 1
+           <!-- 
+			대화 상대방 직원도 정확히 1명 포함되어 있는지 확인함.
+			결과적으로 참여자가 반드시 다음 두 명이어야 한다.
+		    -->
+        LIMIT 1
+        <!-- 조건에 맞는 방이 여러 개 조회되더라도 하나만 가져온다. -->
+        
+    </select>
+
+    <!--
+      MyBatis가 INSERT 직후 생성된 ROOM_ID를 chatRoom.roomId에 넣는다.
+    -->
+    <insert id="insertChatRoom"
+            parameterType="com.groupware.dto.ChatRoomDTO"
+            useGeneratedKeys="true"
+            keyProperty="roomId"
+            keyColumn="ROOM_ID">
+            <!-- 
+				useGeneratedKeys="true" - DB가 자동으로 생성한 키 값을 Java 객체에 다시 넣겠다는 뜻 
+				keyProperty="roomId" - DB에서 생성된 키 값을 DTO의 roomId 필드에 저장.
+				keyColumn="ROOM_ID" - 자동 생성된 키가 DB의 ROOM_ID 컬럼
+			-->
+            
+        INSERT INTO CHAT_ROOM (
+            ROOM_TYPE,
+            ROOM_NAME
+        ) VALUES (
+            #{roomType},
+            #{roomName}
+        )
+    </insert>
+
+    <!-- 채팅방 참여자 한 명을 연결한다. -->
+    <insert id="insertChatRoomMember">
+        INSERT INTO CHAT_ROOM_MEMBER (
+            ROOM_ID,
+            EMPLOYEE_ID
+        ) VALUES (
+            #{roomId},
+            #{employeeId}
+        )
+    </insert>
+    
+    
+
+</mapper>

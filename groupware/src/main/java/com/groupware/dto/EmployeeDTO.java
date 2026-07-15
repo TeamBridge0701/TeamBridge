@@ -1,11 +1,17 @@
 package com.groupware.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import lombok.Data;
 
 @Data
 public class EmployeeDTO {
 	private int employeeId;
 	private String employeeNo; 		// 사번(로그인 ID 겸용)
+
+	// 관리자 계정 목록(GET /admin/members)이 이 DTO를 그대로 JSON으로 내려주므로,
+	// BCrypt 해시값이라도 브라우저로 나가면 안 됨 - 응답 JSON에서 항상 제외
+	@JsonIgnore
 	private String employeePwd;
 	private String employeeName;
 	private int deptId;
