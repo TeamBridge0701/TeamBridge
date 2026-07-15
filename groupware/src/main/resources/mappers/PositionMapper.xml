@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupware.mapper.PositionMapper">
+
+	<!-- 관리자: 직급 드롭다운용 전체 목록 - 서열(POSITION_RANK) 순으로 정렬 -->
+	<select id="findAll" resultType="com.groupware.dto.PositionDTO">
+	    SELECT POSITION_ID, POSITION_NAME, POSITION_RANK
+	    FROM `POSITION`
+	    ORDER BY POSITION_RANK
+	</select>
+</mapper>

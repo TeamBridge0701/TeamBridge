@@ -18,9 +18,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class MyPageController {
 
-	private final EmployeeService employeeService;
-
 	
+<<<<<<< HEAD
+=======
+	
+>>>>>>> main
 	
 	// @AuthenticationPrincipal: 로그인 시 세션에 저장해둔 CustomUserDetails를
 	// 직접 안 꺼내고 파라미터로 바로 받는 문법. principal = 지금 로그인한 사용자

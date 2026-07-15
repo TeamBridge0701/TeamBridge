@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>메인페이지 미니 날씨 위젯</title>
+    <style>
+        /* ----------------------------------------------------
+           [미니 날씨 위젯 스타일] - 메인페이지 어디든 배치 가능
+           ---------------------------------------------------- */
+        .weather-widget-card {
+            width: 260px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+            color: #1e293b;
+        }
+
+        /* 상단: 지역 및 날짜 영역 */
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        .widget-location {
+            font-size: 15px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .widget-date {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        /* 중간: 메인 날씨 정보 (이모지 & 기온) */
+        .widget-main {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 15px;
+        }
+        .widget-icon {
+            font-size: 38px;
+            line-height: 1;
+        }
+        .widget-temp-box {
+            display: flex;
+            flex-direction: column;
+        }
+        .widget-current-temp {
+            font-size: 28px;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1;
+        }
+        .widget-desc {
+            font-size: 12px;
+            color: #475569;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        /* 하단: 부가 정보 영역 (습도 & 풍속) */
+        .widget-footer {
+            display: flex;
+            gap: 12px;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 12px;
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 500;
+        }
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- [HTML] 메인페이지 레이아웃 원하는 위치에 삽입하세요 -->
+    <div class="weather-widget-card">
+        <div class="widget-header">
+            <div>
+                <div class="widget-location" id="wLocation">서울</div>
+                <div class="widget-date" id="wDate">00월 00일 (요일)</div>
+            </div>
+        </div>
+        
+        <div class="widget-main">
+            <div class="widget-icon" id="wIcon">☀️</div>
+            <div class="widget-temp-box">
+                <div class="widget-current-temp"><span id="wTemp">--</span>°C</div>
+                <div class="widget-desc" id="wDesc">날씨 로딩 중...</div>
+            </div>
+        </div>
+        
+        <div class="widget-footer">
+            <div class="info-item">💧 습도 <span id="wHumi">--</span>%</div>
+            <div class="info-item">💨 바람 <span id="wWind">--</span>m/s</div>
+        </div>
+    </div>
+
+    <!-- [JavaScript] 실시간 데이터 요청 및 바인딩 스크립트 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 1. 오늘의 날짜 및 요일 구하기 자동화
+            const days = ['일', '월', '화', '수', '목', '금', '토'];
+            const today = new Date();
+            const month = today.getMonth() + 1;
+            const date = today.getDate();
+            const dayName = days[today.getDay()];
+            
+            document.getElementById('wDate').innerText = `${month}월 ${date}일 (${dayName}요일)`;
+
+            // 2. OpenWeatherMap API 연동 환경 설정
+            // ⚠️ 발급받은 실제 API 키값(32자리 문자열)을 아래 고정해 주세요.
+             const API_KEY = 'API키값넣어야할 자리'; 
+            const CITY = 'Seoul'; // 대전 'Daejeon', 부산 'Busan', 인천 'Incheon' 등으로 변경 가능
+
+            // API_KEY가 변경되었을 때만 실제 실시간 호출 작동
+            if (API_KEY !== 'YOUR_API_KEY') {
+                const url = `https://api.openweathermap.org/data/2.5/weather?q=${CITY}&appid=${API_KEY}&units=metric&lang=ko`;
+
+                fetch(url)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('네트워크 응답에 문제가 있습니다.');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        const temp = Math.round(data.main.temp);             // 기온 반올림
+                        const humidity = data.main.humidity;                 // 습도
+                        const windSpeed = data.wind.speed.toFixed(1);         // 풍속 소수점 한자리
+                        const desc = data.weather[0].description;            // 한국어 날씨 설명
+                        const condition = data.weather[0].main.toLowerCase(); // 기상 상태 분류명
+                        
+                        // 기상 상태 코드에 맞춰 이모지 변경 - 이모지 수정 가능
+                        let icon = '☀️';
+                        if (condition.includes('cloud')) icon = '☁️';
+                        else if (condition.includes('rain')) icon = '🌧️';
+                        else if (condition.includes('snow')) icon = '❄️';
+                        else if (condition.includes('thunder')) icon = '⚡';
+                        else if (condition.includes('drizzle')) icon = '🌦️';
+                        else if (condition.includes('mist') || condition.includes('fog')) icon = '🌫️';
+
+                        // 추출한 데이터를 HTML 엘리먼트에 순차 매핑
+                        document.getElementById('wTemp').innerText = temp;
+                        document.getElementById('wDesc').innerText = desc;
+                        document.getElementById('wHumi').innerText = humidity;
+                        document.getElementById('wWind').innerText = windSpeed;
+                        document.getElementById('wIcon').innerText = icon;
+                        
+                        // 도시 이름 다국어 노출 처리 (예: Seoul -> 서울) - 현재는 서울이 기본값으로 설정
+                        if (CITY.toLowerCase() === 'seoul') document.getElementById('wLocation').innerText = '서울';
+                        else document.getElementById('wLocation').innerText = data.name;
+                    })
+                    .catch(err => {
+                        console.error('날씨 데이터 연동 실패:', err);
+                        document.getElementById('wDesc').innerText = '연동 실패';
+                    });
+            } else {
+                // [키 입력 전 가이드용 임시 프리뷰 데이터]  - 임시 test 데이터
+                document.getElementById('wTemp').innerText = '25';
+                document.getElementById('wDesc').innerText = '맑고 쾌적함';
+                document.getElementById('wHumi').innerText = '50';
+                document.getElementById('wWind').innerText = '1.5';
+            }
+        });
+    </script>
+</body>
+</html>

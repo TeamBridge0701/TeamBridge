@@ -8,15 +8,22 @@ const orgModal = document.getElementById('modalOverlay');
 
 const orgTableBody = document.getElementById('orgMemberTableBody');
 // HTML에서 id="orgMemberTableBody"인 <tbody>를 가져온다.
+<<<<<<< HEAD
 // 조직도 직원 목록이 들어가는 표의 본문이다. 
 // JS에서 직원 목록을 찾거나, 현재 로그인한 직원 번호를 확인할 때 사용함.
+=======
+// 조직도 직원 목록이 들어가는 표의 본문이다. JS에서 직원 목록을 찾거나, 현재 로그인한 직원 번호를 확인할 때 사용함.
+>>>>>>> main
 
 /** 원본 org.html의 modalOverlay와 modal-org-member를 닫는다. */
 function closeModal() {
   orgModal.classList.remove('active');
   // classList는 HTML 요소의 class 속성 값을 조작할 때 사용하는 DOM API이다. 
+<<<<<<< HEAD
   // DOM API - 브라우저가 HTML 문서를 객체화하여 자바스크립트가 웹 페이지의 구조, 스타일, 내용을 읽고 
   //           수정하거나 삭제할 수 있게 해주는 프로그래밍 인터페이스
+=======
+>>>>>>> main
   // - 여기서는 JS로 HTML 요소의 CSS 클래스를 추가·삭제·확인하는 기능으로 사용되는거 같다.
   // - 문자열을 다루는 className 대신 클래스를 안전하고 간편하게 추가, 삭제, 확인 및 교체할 수 있는 유용한 내장 함수들을 제공함.
   // remove(), add() 같은 함수를 활용한다.

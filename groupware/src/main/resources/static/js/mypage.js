@@ -1,3 +1,4 @@
+// showToast()는 admin.js도 쓰게 되면서 common.js로 옮김 (이 파일보다 먼저 로드됨)
 // 최소 구현 - 나중에 공통 토스트 로직(다른 화면들도 쓸 게 생기면 common.js 등)으로 교체 가능
 function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container');
