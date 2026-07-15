@@ -17,7 +17,7 @@ public interface AttendanceMapper {
                        @Param("checkInTime") String checkInTime, 
                        @Param("status") String status);
     
-    // 퇴근 시간 업데이트
+    // 퇴근 시간 업데이트 - 수정해야됨
     void updateCheckOut(@Param("employeeId") int employeeId, 
                         @Param("today") LocalDate today, 
                         @Param("checkOutTime") String checkOutTime);

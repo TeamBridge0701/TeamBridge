@@ -16,7 +16,7 @@ public class DashboardService {
     public DashboardService(DashboardMapper dashboardMapper) {
         this.dashboardMapper = dashboardMapper;
     }
-
+    
     // 대시보드 화면에 필요한 데이터 모음
     @Transactional(readOnly = true)
     public Map<String, Object> getMainDashboardData(int employeeId) {

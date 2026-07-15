@@ -12,17 +12,18 @@ import com.groupware.mapper.AttendanceMapper;
 
 @Service
 public class AttendanceService {
-
+	
     private final AttendanceMapper attendanceMapper;
 
     public AttendanceService(AttendanceMapper attendanceMapper) {
         this.attendanceMapper = attendanceMapper;
     }
-
+    //출근 정보 조회
     public AttendanceDTO getTodayAttendance(int employeeId, String today) {
         return attendanceMapper.selectTodayAttendance(employeeId, today);
     }
-
+    
+    //출근 처리 - 9시 넘으면 지각 처리
     @Transactional
     public void checkIn(int employeeId) {
         LocalDate today = LocalDate.now();
@@ -39,6 +40,7 @@ public class AttendanceService {
         attendanceMapper.insertCheckIn(employeeId, today, formattedTime, status);
     }
 
+    //퇴근 처리 
     @Transactional
     public void checkOut(int employeeId) {
         LocalDate today = LocalDate.now();
