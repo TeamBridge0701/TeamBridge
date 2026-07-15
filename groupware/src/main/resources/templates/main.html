@@ -48,11 +48,7 @@
 
 			<!-- 중앙 동적 화면 콘텐츠 영역 -->
 			<main class="view-content">
-
-				<!-- ==========================================
-             화면: 대시보드 (로그인 후 처음 보이는 홈 화면)
-             아래 내용은 js/dashboard.js의 renderDashboard()가 다시 그린다.
-             ========================================== -->
+				
 				<div style="margin-bottom: 1.25rem;">
 					<h2 style="font-size: 1.35rem;">안녕하세요, <span id="dashGreetingName" th:if="${employee != null}"
 							th:text="|${employee?.employeeName} · ${employee.positionName}|">홍길동 사원</span>님! 👋</h2>

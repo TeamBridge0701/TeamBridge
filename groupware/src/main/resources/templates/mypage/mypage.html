@@ -41,7 +41,7 @@
 				<!-- ==========================================
   <div class="app-wrapper" id="appWrapper">
 
-    <!-- 상단 헤더 -->
+     상단 헤더 -->
     <header class="header">
       <div class="header-left">
         <a href="main.html" class="logo" style="text-decoration:none;">
@@ -188,74 +188,8 @@
 	<!-- 토스트 알림 컨테이너 -->
 	<div id="toast-container" class="toast-container"></div>
 
+	<script th:src="@{/js/common.js}"></script>
 	<script th:src="@{/js/mypage.js}"></script>
-        <div class="grid-12">
-
-          <div class="col-4">
-            <div class="card" style="text-align: center;">
-              <div class="profile-avatar-large" style="width: 100px; height: 100px; font-size: 2.5rem;" id="myAvatar">홍</div>
-              <!-- 클릭하면 숨겨진 파일 선택창(myPhotoInput)이 열린다 -->
-              <button type="button" class="btn btn-secondary btn-sm" style="margin-top: 0.75rem;" onclick="document.getElementById('myPhotoInput').click()">
-                <i class="fa-solid fa-camera"></i> 프로필 사진 변경
-              </button>
-              <input type="file" id="myPhotoInput" accept="image/*" style="display:none;" onchange="handleProfilePhotoSelect(this)">
-              <h2 id="myName" style="margin-top: 0.75rem;" 
-			  th:text="${employee.employeeName}">홍길동</h2>
-              <p style="color: var(--text-secondary); font-size: 0.85rem;" id="myDeptPosition"
-			  ht:text="${employee.deptName} + '' + ${employee.postionName}">개발팀 사원</p>
-              <div style="margin-top: 1.5rem; text-align: left; font-size: 0.85rem;" class="commute-info-box">
-                <div class="commute-row"><span>사번:</span><strong id="myId" th:text="${employee.employeeNo}">20260601</strong></div>
-                <div class="commute-row"><span>입사일:</span><strong id="myJoin" th:text="${employee.hireDate}">2026-06-01</strong></div>
-                <div class="commute-row"><span>권한 수준:</span><strong id="myRole" th:text="${employee.roleText}">일반 임직원</strong></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-8">
-            <div class="card">
-              <h3 style="margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom:1px solid var(--border-color);">개인 정보 수정</h3>
-
-              <form onsubmit="saveMyInfo(event)">
-                <div class="form-group">
-                  <label class="form-label" for="myPhone">연락처 (전화번호)</label>
-                  <input type="text" id="myPhone" class="form-control" required th:value="${employee.employeePhone}">
-                </div>
-
-                <div class="form-group">
-                  <label class="form-label" for="myEmail">이메일</label>
-                  <input type="email" id="myEmail" class="form-control" required th:value="${employee.employeeEmail}">
-                </div>
-
-                <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">정보 저장</button>
-              </form>
-
-              <!-- 실제 비밀번호 검증/저장 로직은 없다(백엔드가 없는 프로토타입) -
-                   submit하면 입력칸만 비우고 성공 토스트를 보여준다 -->
-              <h3 style="margin-top: 2rem; margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom:1px solid var(--border-color);">비밀번호 변경</h3>
-              <form onsubmit="changeMyPassword(event)">
-                <div class="grid-2">
-                  <div class="form-group">
-                    <label class="form-label" for="currentPw">현재 비밀번호</label>
-                    <input type="password" id="currentPw" class="form-control" required placeholder="현재 비밀번호">
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label" for="newPw">새 비밀번호</label>
-                    <input type="password" id="newPw" class="form-control" required placeholder="새 비밀번호">
-                  </div>
-                </div>
-                <button type="submit" class="btn btn-secondary">비밀번호 변경</button>
-              </form>
-            </div>
-          </div>
-
-        </div>
-
-      </main>
-    </div>
-  </div>
-
-  <!-- 토스트 알림 컨테이너 -->
-  <div id="toast-container" class="toast-container"></div>
 </body>
 
 </html>

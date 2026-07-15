@@ -35,6 +35,12 @@ public class SecurityConfig {
                 // 로그인 페이지 자체와 정적 리소스(css/js)는 로그인 안 해도 접근 가능해야
                 // 로그인 화면 자체를 못 보는 상황을 막을 수 있음
                 .requestMatchers("/login", "/css/**", "/js/**", "/images/**").permitAll()
+                // /admin/** 은 로그인만으로는 부족하고 ADMIN 권한까지 있어야 함.
+                // hasRole("ADMIN")은 내부적으로 "ROLE_ADMIN" 권한을 찾는데,
+                // CustomUserDetails.getAuthorities()가 "ROLE_" + EMPLOYEE_ROLE 을
+                // 반환하므로 EMPLOYEE_ROLE='ADMIN'인 계정만 통과한다.
+                // 일반 직원이 URL을 직접 쳐서 들어오면 403(접근 거부)으로 막힘.
+                .requestMatchers("/admin/**").hasRole("ADMIN")
                 // 나머지 모든 요청은 로그인 필수 -> 여기 걸리면 자동으로 /login 으로 리다이렉트
                 .anyRequest().authenticated()
             )
