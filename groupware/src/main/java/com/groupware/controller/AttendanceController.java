@@ -59,7 +59,6 @@ public class AttendanceController {
         response.put("checkInTime", (dto != null && dto.getCheckInTime() != null) ? dto.getCheckInTime().substring(0, 5) : "-"); //HH:mm으로
         response.put("checkOutTime", (dto != null && dto.getCheckOutTime() != null) ? dto.getCheckOutTime().substring(0, 5) : "-"); //HH:mm으로
         
-        
         return response;
     }
 }
