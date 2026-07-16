@@ -62,11 +62,6 @@ public class EmployeeService {
 	}
 	
 	
-<<<<<<< HEAD
-
-=======
->>>>>>> dd07c63372e9a86917636f231ab03b0a878ea810
-
 	// 관리자: 계정 목록 조회 (keyword 없으면 전체)
 	public List<EmployeeDTO> getAllEmployees(String keyword) {
 		return employeeMapper.findAll(keyword);
@@ -129,8 +124,5 @@ public class EmployeeService {
 		EmployeeDTO employee = employeeMapper.findMyPageInfo(employeeId);
 		employeeMapper.updatePassword(employeeId, passwordEncoder.encode(employee.getEmployeeNo()));
 	}
-<<<<<<< HEAD
 
-=======
->>>>>>> dd07c63372e9a86917636f231ab03b0a878ea810
 }

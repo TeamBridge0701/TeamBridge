@@ -1,352 +1,124 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="light">
+<html lang="ko" data-theme="light" xmlns:th="http://www.thymeleaf.org">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>출결 현황 - 통합 사내 그룹웨어</title>
-  <meta name="description" content="사내 그룹웨어 시스템 - 출결 현황">
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>출결 현황 - 통합 사내 그룹웨어</title>
+	<meta name="description" content="사내 그룹웨어 시스템 - 출결 현황">
 
-  <!-- 구글 폰트 및 폰트어썸 아이콘 -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+	<!-- 구글 폰트 및 폰트어썸 아이콘 -->
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link
+		href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap"
+		rel="stylesheet">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  <link rel="stylesheet" href="css/style.css">
+	<link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
 
-  <!-- ==========================================
-       핵심 애플리케이션 래퍼 (모든 화면 html이 공통으로 갖는 뼈대.
-       구조에 대한 자세한 설명은 main.html의 주석 참고)
-       헤더/사이드바는 정적 마크업이며, js/common.js의
-       initApplicationHeader()가 동적인 값만 채워 넣는다.
-       ========================================== -->
-  <div class="app-wrapper" id="appWrapper">
+	<!-- ==========================================
+	       핵심 애플리케이션 래퍼 (모든 화면 html이 공통으로 갖는 뼈대)
 
-    <!-- 상단 헤더 -->
-    <header class="header">
-      <div class="header-left">
-        <a href="main.html" class="logo" style="text-decoration:none;">
-          <div class="logo-box"><i class="fa-solid fa-cubes"></i></div>
-          <span style="margin-left: 0.5rem;">GROUPWARE</span>
-        </a>
-      </div>
+	       - #appWrapper: 안에 상단 헤더 + #mainBody가 들어간다.
+	       - #mainBody: 안에 좌측 사이드바 + <main class="view-content">가 들어간다.
+	       - <main class="view-content">: 페이지마다 실제로 다른 부분은
+	         이 안쪽뿐이다. main.html은 대시보드, notice.html은 공지 목록...
+	         이런 식으로 화면별 js 파일(dashboard.js 등)이 내용을 채운다.
 
-      <div class="header-right">
-        <button class="icon-btn" onclick="navigateTo('chat')" title="실시간 채팅">
-          <i class="fa-solid fa-comment-dots"></i>
-          <span class="badge" id="headerChatBadge">0</span>
-        </button>
-        <div class="user-dropdown" onclick="navigateTo('mypage')">
-          <div class="user-avatar" id="headerAvatar">홍</div>
-          <div class="user-details">
-            <span class="user-name-text" id="headerName">홍길동</span>
-            <span class="user-role-text" id="headerDept">개발팀 사원</span>
-          </div>
-        </div>
-        <button class="icon-btn" onclick="doLogout()" title="로그아웃" style="color: var(--color-danger); border-color: rgba(248,113,113,0.2);">
-          <i class="fa-solid fa-right-from-bracket"></i>
-        </button>
-      </div>
-    </header>
+	       아래 헤더/사이드바는 모든 화면 html에 똑같이 복사되어 있는 정적
+	       마크업이다 (나중에 layout.html을 타임리프 조각으로 연결해 중복을
+	       없앨 예정 - layout.html 참고). js/common.js의 initApplicationHeader()가
+	       사용자 이름/아바타/안읽은 채팅 수, 관리자 메뉴 노출 여부, 현재 메뉴
+	       강조(active) 표시 등 "동적으로 바뀌는 값"만 채워 넣는다.
+	       ========================================== -->
+	<div class="app-wrapper" id="appWrapper">
 
-    <!-- 메인 내비게이션 영역 -->
-    <div class="main-body" id="mainBody">
+		<!-- 상단 헤더 - 공통 조각(fragments/layout.html) 재사용 -->
+		<header th:replace="~{fragments/layout :: header}"></header>
 
-      <!-- 좌측 사이드바 -->
-      <aside class="sidebar">
-        <ul class="sidebar-menu">
-          <li class="sidebar-item" id="menu-dashboard"><a href="main.html"><i class="fa-solid fa-chart-line"></i> 대시보드</a></li>
+		<!-- 메인 내비게이션 영역 -->
+		<div class="main-body" id="mainBody">
 
-          <li class="sidebar-group-label">업무</li>
-          <li class="sidebar-item sub" id="menu-calendar"><a href="calendar.html"><i class="fa-solid fa-calendar-days"></i> 일정 캘린더</a></li>
-          <li class="sidebar-item sub" id="menu-approval"><a href="approval.html"><i class="fa-solid fa-signature"></i> 전자결재</a></li>
-          <li class="sidebar-item sub" id="menu-notice"><a href="notice.html"><i class="fa-solid fa-bullhorn"></i> 공지사항</a></li>
-          <li class="sidebar-item sub" id="menu-archive"><a href="archive.html"><i class="fa-solid fa-file-shield"></i> 자료실</a></li>
-
-          <li class="sidebar-group-label">조직 · 소통</li>
-          <li class="sidebar-item sub" id="menu-org"><a href="org.html"><i class="fa-solid fa-sitemap"></i> 조직도</a></li>
-          <li class="sidebar-item sub" id="menu-chat"><a href="chat.html"><i class="fa-solid fa-comment-dots"></i> 실시간 채팅</a></li>
-
-          <li class="sidebar-group-label">근태관리</li>
-          <li class="sidebar-item sub" id="menu-attendance"><a href="attendance.html"><i class="fa-solid fa-clock"></i> 출결 현황</a></li>
-
-          <li class="sidebar-item" id="menu-mypage"><a href="mypage.html"><i class="fa-solid fa-user-gear"></i> 마이페이지</a></li>
-
-          <!-- 관리자 전용 메뉴 - 기본 숨김, 로그인 사용자가 admin이면 JS가 보여준다 -->
-          <li class="sidebar-group-label" id="adminGroupLabel" style="display: none;">관리자</li>
-          <li class="sidebar-item sub" id="menu-admin" style="display: none;"><a href="admin.html"><i class="fa-solid fa-gears"></i> 계정·인사정보 관리</a></li>
-          <li class="sidebar-item sub" id="menu-adminAttendance" style="display: none;"><a href="admin-attendance.html"><i class="fa-solid fa-user-clock"></i> 직원 출결 관리</a></li>
-        </ul>
-      </aside>
-
-      <!-- 중앙 동적 화면 콘텐츠 영역 -->
-      <main class="view-content">
-
-        <!-- ==========================================
+			<!-- 좌측 사이드바 - 공통 조각(fragments/layout.html) 재사용 -->
+			<aside th:replace="~{fragments/layout :: sidebar}"></aside>
+			
+			<!-- 중앙 동적 화면 콘텐츠 영역 -->
+			<main class="view-content">
+				<!-- ==========================================
              화면: 출결 현황 (로그인한 "본인"의 이번 달 기록만 보여준다.
              전 직원 조회/수정은 admin-attendance.html이 따로 담당)
              js/attendance.js의 renderAttendanceStatus()가 아래 통계와
              달력을 함께 그린다.
              ========================================== -->
-        <div class="card" style="margin-bottom: 0.25rem;">
-          <div class="card-header">
-            <h2>이번 달 출결 현황 (2026년 6월)</h2>
-          </div>
-          <div class="grid-3">
-            <div class="approval-stat-box">
-              <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">출근일수</div>
-              <div class="approval-stat-count" style="color: var(--color-success);" id="attPresentDays">19</div>
-            </div>
-            <div class="approval-stat-box">
-              <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">지각</div>
-              <div class="approval-stat-count" style="color: var(--color-warning);" id="attLateDays">2</div>
-            </div>
-            <div class="approval-stat-box">
-              <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">휴가</div>
-              <div class="approval-stat-count" style="color: var(--color-primary);" id="attLeaveDays">2</div>
-            </div>
-          </div>
-        </div>
+				<div class="card" style="margin-bottom: 0.25rem;">
+					<div class="card-header">
+						<h2>이번 달 출결 현황<span>(2026년 6월)</span></h2>
+					</div>
+					<div class="grid-3">
+						<div class="approval-stat-box">
+							<div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">출근일수
+							</div>
+							<div class="approval-stat-count" style="color: var(--color-success);" id="attPresentDays">19
+							</div>
+						</div>
+						<div class="approval-stat-box">
+							<div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">지각
+							</div>
+							<div class="approval-stat-count" style="color: var(--color-warning);" id="attLateDays">2
+							</div>
+						</div>
+						<div class="approval-stat-box">
+							<div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">휴가
+							</div>
+							<div class="approval-stat-count" style="color: var(--color-primary);" id="attLeaveDays">2
+							</div>
+						</div>
+					</div>
+				</div>
 
-        <div class="card">
-          <div class="calendar-wrapper">
-            <div class="calendar-controls">
-              <h3>출결 캘린더</h3>
-            </div>
-            <div class="calendar-grid" id="attendanceCalendarGrid">
-              <!-- Mock 데이터 (JS 렌더링 시 대체됨) - 기본 로그인 사용자(홍길동) 기준 -->
-              <div class="mini-cal-day-header" style="padding:0.75rem 0;">일</div>
-              <div class="mini-cal-day-header" style="padding:0.75rem 0;">월</div>
-              <div class="mini-cal-day-header" style="padding:0.75rem 0;">화</div>
-              <div class="mini-cal-day-header" style="padding:0.75rem 0;">수</div>
-              <div class="mini-cal-day-header" style="padding:0.75rem 0;">목</div>
-              <div class="mini-cal-day-header" style="padding:0.75rem 0;">금</div>
-              <div class="mini-cal-day-header" style="padding:0.75rem 0;">토</div>
-              <div class="cal-cell other-month">
-                <div class="cal-cell-header"><span class="cal-day-num">31</span></div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">1</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-success" style="font-size:0.6rem;">정상</span>
-                  <div>출근 08:57</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">2</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-warning" style="font-size:0.6rem;">지각</span>
-                  <div>출근 09:22</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">3</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-success" style="font-size:0.6rem;">정상</span>
-                  <div>출근 08:57</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">4</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-success" style="font-size:0.6rem;">정상</span>
-                  <div>출근 08:57</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">5</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-success" style="font-size:0.6rem;">정상</span>
-                  <div>출근 08:57</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">6</span></div>
-                <div style="font-size:0.7rem; color:var(--text-muted);">주말</div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">7</span></div>
-                <div style="font-size:0.7rem; color:var(--text-muted);">주말</div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">8</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-success" style="font-size:0.6rem;">정상</span>
-                  <div>출근 08:57</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">9</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-success" style="font-size:0.6rem;">정상</span>
-                  <div>출근 08:57</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">10</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-success" style="font-size:0.6rem;">정상</span>
-                  <div>출근 08:57</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">11</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-success" style="font-size:0.6rem;">정상</span>
-                  <div>출근 08:57</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">12</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-success" style="font-size:0.6rem;">정상</span>
-                  <div>출근 08:57</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">13</span></div>
-                <div style="font-size:0.7rem; color:var(--text-muted);">주말</div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">14</span></div>
-                <div style="font-size:0.7rem; color:var(--text-muted);">주말</div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">15</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-success" style="font-size:0.6rem;">정상</span>
-                  <div>출근 08:57</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">16</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-success" style="font-size:0.6rem;">정상</span>
-                  <div>출근 08:57</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">17</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-success" style="font-size:0.6rem;">정상</span>
-                  <div>출근 08:57</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">18</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-success" style="font-size:0.6rem;">정상</span>
-                  <div>출근 08:57</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">19</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-success" style="font-size:0.6rem;">정상</span>
-                  <div>출근 08:57</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">20</span></div>
-                <div style="font-size:0.7rem; color:var(--text-muted);">주말</div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">21</span></div>
-                <div style="font-size:0.7rem; color:var(--text-muted);">주말</div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">22</span></div>
-                <div class="cal-event-bar" style="background-color: var(--color-primary);">휴가</div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">23</span></div>
-                <div class="cal-event-bar" style="background-color: var(--color-primary);">휴가</div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">24</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-success" style="font-size:0.6rem;">정상</span>
-                  <div>출근 08:57</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">25</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-success" style="font-size:0.6rem;">정상</span>
-                  <div>출근 08:57</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">26</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-warning" style="font-size:0.6rem;">지각</span>
-                  <div>출근 09:22</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">27</span></div>
-                <div style="font-size:0.7rem; color:var(--text-muted);">주말</div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">28</span></div>
-                <div style="font-size:0.7rem; color:var(--text-muted);">주말</div>
-              </div>
-              <div class="cal-cell">
-                <div class="cal-cell-header"><span class="cal-day-num">29</span></div>
-                <div style="font-size:0.65rem; line-height:1.5;">
-                  <span class="badge badge-success" style="font-size:0.6rem;">정상</span>
-                  <div>출근 08:57</div>
-                  <div>퇴근 18:04</div>
-                </div>
-              </div>
-              <div class="cal-cell today">
-                <div class="cal-cell-header"><span class="cal-day-num">30</span></div>
-                <div style="font-size:0.7rem; color:var(--text-muted);">미출근</div>
-              </div>
-              <div class="cal-cell other-month">
-                <div class="cal-cell-header"><span class="cal-day-num">1</span></div>
-              </div>
-              <div class="cal-cell other-month">
-                <div class="cal-cell-header"><span class="cal-day-num">2</span></div>
-              </div>
-              <div class="cal-cell other-month">
-                <div class="cal-cell-header"><span class="cal-day-num">3</span></div>
-              </div>
-              <div class="cal-cell other-month">
-                <div class="cal-cell-header"><span class="cal-day-num">4</span></div>
-              </div>
-            </div>
-          </div>
-        </div>
+				<div class="card">
+					<div class="calendar-wrapper">
+						<div class="calendar-controls">
+							<h3>출결 캘린더</h3>
+						</div>
+						<div class="calendar-grid" id="attendanceCalendarGrid">
+							<!-- Mock 데이터 (JS 렌더링 시 대체됨) - 기본 로그인 사용자(홍길동) 기준 -->
+							<div class="mini-cal-day-header" style="padding:0.75rem 0;">일</div>
+							<div class="mini-cal-day-header" style="padding:0.75rem 0;">월</div>
+							<div class="mini-cal-day-header" style="padding:0.75rem 0;">화</div>
+							<div class="mini-cal-day-header" style="padding:0.75rem 0;">수</div>
+							<div class="mini-cal-day-header" style="padding:0.75rem 0;">목</div>
+							<div class="mini-cal-day-header" style="padding:0.75rem 0;">금</div>
+							<div class="mini-cal-day-header" style="padding:0.75rem 0;">토</div>
+							<div class="cal-cell other-month">
+								<div class="cal-cell-header"><span class="cal-day-num">31</span></div>
+							</div>
+							<div class="cal-cell">
+								<div class="cal-cell-header"><span class="cal-day-num">1</span></div>
+								<div style="font-size:0.65rem; line-height:1.5;">
+									<span class="badge badge-success" style="font-size:0.6rem;">정상</span>
+									<div>출근 08:57</div>
+									<div>퇴근 18:04</div>
+								</div>
+							</div>
+							
+						</div>
+					</div>
+				</div>
 
-      </main>
-    </div>
-  </div>
+			</main>
+		</div>
+	</div>
 
-  <!-- 토스트 알림 컨테이너 -->
-  <div id="toast-container" class="toast-container"></div>
+	<!-- 토스트 알림 컨테이너 -->
+	<div id="toast-container" class="toast-container"></div>
 
-  <script src="js/common.js"></script>
-  <script src="js/attendance.js"></script>
+	<script src="js/common.js"></script>
+	<script src="js/calendar.js"></script>
 </body>
+
 </html>

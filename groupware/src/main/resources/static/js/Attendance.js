@@ -5,7 +5,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         const response = await fetch('/api/attendance/status');
         const data = await response.json();
-        updateButtonUI(data.status);
+        updateButtonUI(data.nextStatus);
+      updateAttendanceDisplay(data);
     } catch (e) {
         console.error("상태 조회 실패", e);
     }
@@ -39,10 +40,9 @@ async function commute() {
         if (result.success) {
             // 성공 시 서버가 준 nextStatus로 버튼 UI 갱신
             updateButtonUI(result.nextStatus);
-            // showToast(result.message, 'success'); // 기존 토스트 함수 유지
-            alert(result.message); // 테스트용
-        } else {
-            alert(result.message);
+         updateAttendanceDisplay(result);
+		 const message=action === 'checkIn' ? '출근처리되었습니다':'퇴근처리되었습니다.';
+           showToast(message, 'success'); // 기존 토스트 함수 유지
         }
     } catch (error) {
         console.error('통신 오류:', error);
@@ -69,4 +69,10 @@ function updateButtonUI(status) {
         btn.classList.add('btn', 'btn-secondary');
         btn.disabled = true;
     }
+}
+
+function updateAttendanceDisplay(data) {
+    document.getElementById('dashCommuteStatus').innerText = `[${data.attendanceStatus}]`;
+    document.getElementById('dashCheckinTime').innerText = data.checkInTime;
+    document.getElementById('dashWorkTimer').innerText = data.checkOutTime;
 }
