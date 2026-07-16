@@ -26,10 +26,13 @@ public class NoticeController {
 	@GetMapping("/notice/list")
 	public String noticeList(@RequestParam(value = "keyword", required = false) String keyword,
 			@RequestParam(value = "page", defaultValue = "1") int page, Model model) {
+		int totalPages = noticeService.getTotalPages(keyword);
 		model.addAttribute("notices", noticeService.getNoticeList(keyword, page));
-		model.addAttribute("totalPages", noticeService.getTotalPages(keyword));
+		model.addAttribute("totalPages", totalPages);
 		model.addAttribute("currentPage", page);
 		model.addAttribute("keyword", keyword);
+		model.addAttribute("groupStart", noticeService.getPageGroupStart(page));
+		model.addAttribute("groupEnd", noticeService.getPageGroupEnd(page, totalPages));
 		return "notice/notice";
 	}
 

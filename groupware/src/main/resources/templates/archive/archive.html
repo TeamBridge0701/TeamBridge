@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="light">
+<html lang="ko" data-theme="light" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,108 +12,61 @@
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body>
 
   <!-- ==========================================
-       핵심 애플리케이션 래퍼 (모든 화면 html이 공통으로 갖는 뼈대.
-       구조에 대한 자세한 설명은 main.html의 주석 참고)
-       헤더/사이드바는 정적 마크업이며, js/common.js의
-       initApplicationHeader()가 동적인 값만 채워 넣는다.
+       핵심 애플리케이션 래퍼 - 헤더/사이드바는 fragments/layout.html 공통 조각 재사용
        ========================================== -->
   <div class="app-wrapper" id="appWrapper">
 
-    <!-- 상단 헤더 -->
-    <header class="header">
-      <div class="header-left">
-        <a href="main.html" class="logo" style="text-decoration:none;">
-          <div class="logo-box"><i class="fa-solid fa-cubes"></i></div>
-          <span style="margin-left: 0.5rem;">GROUPWARE</span>
-        </a>
-      </div>
+    <header th:replace="~{fragments/layout :: header}"></header>
 
-      <div class="header-right">
-        <button class="icon-btn" onclick="navigateTo('chat')" title="실시간 채팅">
-          <i class="fa-solid fa-comment-dots"></i>
-          <span class="badge" id="headerChatBadge">0</span>
-        </button>
-        <div class="user-dropdown" onclick="navigateTo('mypage')">
-          <div class="user-avatar" id="headerAvatar">홍</div>
-          <div class="user-details">
-            <span class="user-name-text" id="headerName">홍길동</span>
-            <span class="user-role-text" id="headerDept">개발팀 사원</span>
-          </div>
-        </div>
-        <button class="icon-btn" onclick="doLogout()" title="로그아웃" style="color: var(--color-danger); border-color: rgba(248,113,113,0.2);">
-          <i class="fa-solid fa-right-from-bracket"></i>
-        </button>
-      </div>
-    </header>
-
-    <!-- 메인 내비게이션 영역 -->
     <div class="main-body" id="mainBody">
 
-      <!-- 좌측 사이드바 -->
-      <aside class="sidebar">
-        <ul class="sidebar-menu">
-          <li class="sidebar-item" id="menu-dashboard"><a href="main.html"><i class="fa-solid fa-chart-line"></i> 대시보드</a></li>
+      <aside th:replace="~{fragments/layout :: sidebar}"></aside>
 
-          <li class="sidebar-group-label">업무</li>
-          <li class="sidebar-item sub" id="menu-calendar"><a href="calendar.html"><i class="fa-solid fa-calendar-days"></i> 일정 캘린더</a></li>
-          <li class="sidebar-item sub" id="menu-approval"><a href="approval.html"><i class="fa-solid fa-signature"></i> 전자결재</a></li>
-          <li class="sidebar-item sub" id="menu-notice"><a href="notice.html"><i class="fa-solid fa-bullhorn"></i> 공지사항</a></li>
-          <li class="sidebar-item sub" id="menu-archive"><a href="archive.html"><i class="fa-solid fa-file-shield"></i> 자료실</a></li>
-
-          <li class="sidebar-group-label">조직 · 소통</li>
-          <li class="sidebar-item sub" id="menu-org"><a href="org.html"><i class="fa-solid fa-sitemap"></i> 조직도</a></li>
-          <li class="sidebar-item sub" id="menu-chat"><a href="chat.html"><i class="fa-solid fa-comment-dots"></i> 실시간 채팅</a></li>
-
-          <li class="sidebar-group-label">근태관리</li>
-          <li class="sidebar-item sub" id="menu-attendance"><a href="attendance.html"><i class="fa-solid fa-clock"></i> 출결 현황</a></li>
-
-          <li class="sidebar-item" id="menu-mypage"><a href="mypage.html"><i class="fa-solid fa-user-gear"></i> 마이페이지</a></li>
-
-          <!-- 관리자 전용 메뉴 - 기본 숨김, 로그인 사용자가 admin이면 JS가 보여준다 -->
-          <li class="sidebar-group-label" id="adminGroupLabel" style="display: none;">관리자</li>
-          <li class="sidebar-item sub" id="menu-admin" style="display: none;"><a href="admin.html"><i class="fa-solid fa-gears"></i> 계정·인사정보 관리</a></li>
-          <li class="sidebar-item sub" id="menu-adminAttendance" style="display: none;"><a href="admin-attendance.html"><i class="fa-solid fa-user-clock"></i> 직원 출결 관리</a></li>
-        </ul>
-      </aside>
-
-      <!-- 중앙 동적 화면 콘텐츠 영역 -->
       <main class="view-content">
 
         <!-- ==========================================
-             화면: 자료실 (게시글 = 제목+본문 글 하나에 첨부파일 1개 이상)
+             화면: 자료실 (좌측 폴더 = 로그인 사용자가 접근 가능한 REPOSITORY 목록,
+             우측 표 = 선택된 REPO_ID의 ARCHIVE 게시글 목록 - ArchiveController가 SSR)
              ========================================== -->
         <div class="grid-12">
 
-          <!-- 좌측 폴더 목록 - 클릭하면 js/archive.js의 switchFolder()가 실행된다 -->
+          <!-- 좌측 폴더 목록 - 링크 클릭 시 GET /archive/list?repoId=... 로 재요청 -->
           <div class="col-3">
             <div class="card" style="padding: 1.25rem;">
               <h4 style="margin-bottom: 1rem; font-size: 0.95rem;">자료 카테고리</h4>
               <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.25rem;">
-                <li>
-                  <a class="org-node active" id="folder-public" onclick="switchFolder('public')">
-                    <i class="fa-solid fa-folder-open"></i> 전사 공용 자료실
-                  </a>
-                </li>
-                <li>
-                  <a class="org-node" id="folder-dept" onclick="switchFolder('dept')">
-                    <i class="fa-solid fa-folder"></i> 부서 제한 자료실
+                <li th:each="repo : ${repositories}">
+                  <a class="org-node" th:classappend="${repo.repoId == currentRepoId} ? 'active'"
+                     th:href="@{/archive/list(repoId=${repo.repoId})}">
+                    <i class="fa-solid" th:classappend="${repo.deptId == null} ? 'fa-folder-open' : 'fa-folder'"></i>
+                    <span th:text="${repo.repoName}">자료실</span>
                   </a>
                 </li>
               </ul>
             </div>
           </div>
 
-          <!-- 우측 파일(게시글) 목록 - js/archive.js의 renderArchive()가 그린다 -->
+          <!-- 우측 게시글 목록 -->
           <div class="col-9">
             <div class="card">
               <div class="card-header">
-                <h3 id="archiveFolderTitle">전사 공용 자료실</h3>
-                <button class="btn btn-primary btn-sm" onclick="openWriteModal()"><i class="fa-solid fa-pen"></i> 글쓰기</button>
+                <h3 th:text="${currentRepoName}">자료실</h3>
+                <div style="display: flex; gap: 0.5rem;">
+                  <!-- 검색창: notice.html과 동일하게 제출(엔터) 시 GET 재요청. 폴더(repoId)는 유지, 페이지는 1로 초기화 -->
+                  <form th:action="@{/archive/list}" method="get" style="display:flex;">
+                    <input type="hidden" name="repoId" th:value="${currentRepoId}">
+                    <input type="text" name="keyword" class="form-control" placeholder="제목/본문 검색..."
+                           th:value="${keyword}" style="width: 220px; font-size: 0.85rem;">
+                  </form>
+                  <button type="button" class="btn btn-primary btn-sm" onclick="openWriteModal()">
+                    <i class="fa-solid fa-pen"></i> 글쓰기
+                  </button>
+                </div>
               </div>
 
               <div class="table-container">
@@ -126,58 +79,37 @@
                       <th>등록일</th>
                     </tr>
                   </thead>
-                  <tbody id="fileTableBody">
-                    <!-- Mock 데이터 (JS 렌더링 시 대체됨) - 기본 선택 폴더(전사 공용) 기준 -->
-                    <tr class="clickable" onclick="viewArchiveDetail(1)">
-                      <td><i class="fa-solid fa-file-lines" style="color:var(--color-primary); margin-right:0.5rem;"></i> <strong>2026년 사내 복지제도 가이드북 안내</strong></td>
-                      <td style="text-align:center;">1개</td>
-                      <td>인사본부</td>
-                      <td style="font-family:'Fira Code'; font-size:0.8rem;">2026-06-15</td>
+                  <tbody>
+                    <tr class="clickable" th:each="a : ${archives}" th:onclick="'viewArchiveDetail(' + ${a.archiveId} + ')'">
+                      <td>
+                        <i class="fa-solid fa-file-lines" style="color:var(--color-primary); margin-right:0.5rem;"></i>
+                        <strong th:text="${a.archiveTitle}">제목</strong>
+                      </td>
+                      <td style="text-align:center;" th:text="${a.fileCount} + '개'">1개</td>
+                      <td th:text="${a.writerDeptName != null ? a.writerName + ' (' + a.writerDeptName + ')' : a.writerName}">작성자</td>
+                      <td style="font-family:'Fira Code'; font-size:0.8rem;"
+                          th:text="${a.createdAt != null ? #strings.substring(a.createdAt, 0, 10) : ''}">2026-06-30</td>
                     </tr>
-                    <tr class="clickable" onclick="viewArchiveDetail(2)">
-                      <td><i class="fa-solid fa-file-lines" style="color:var(--color-primary); margin-right:0.5rem;"></i> <strong>Spring Boot + MyBatis 개발표준 규격서 공유</strong></td>
-                      <td style="text-align:center;">1개</td>
-                      <td>김우주</td>
-                      <td style="font-family:'Fira Code'; font-size:0.8rem;">2026-06-25</td>
-                    </tr>
-                    <tr class="clickable" onclick="viewArchiveDetail(4)">
-                      <td><i class="fa-solid fa-file-lines" style="color:var(--color-primary); margin-right:0.5rem;"></i> <strong>정보보안 교육 이수 안내문 배포</strong></td>
-                      <td style="text-align:center;">1개</td>
-                      <td>총무팀</td>
-                      <td style="font-family:'Fira Code'; font-size:0.8rem;">2026-06-24</td>
-                    </tr>
-                    <tr class="clickable" onclick="viewArchiveDetail(5)">
-                      <td><i class="fa-solid fa-file-lines" style="color:var(--color-primary); margin-right:0.5rem;"></i> <strong>2분기 실적공유회 발표자료 공유</strong></td>
-                      <td style="text-align:center;">1개</td>
-                      <td>김영훈</td>
-                      <td style="font-family:'Fira Code'; font-size:0.8rem;">2026-06-24</td>
-                    </tr>
-                    <tr class="clickable" onclick="viewArchiveDetail(8)">
-                      <td><i class="fa-solid fa-file-lines" style="color:var(--color-primary); margin-right:0.5rem;"></i> <strong>하계 휴가비 지급 기준 안내</strong></td>
-                      <td style="text-align:center;">1개</td>
-                      <td>인사본부</td>
-                      <td style="font-family:'Fira Code'; font-size:0.8rem;">2026-06-20</td>
-                    </tr>
-                    <tr class="clickable" onclick="viewArchiveDetail(9)">
-                      <td><i class="fa-solid fa-file-lines" style="color:var(--color-primary); margin-right:0.5rem;"></i> <strong>신규 입사자 온보딩 체크리스트</strong></td>
-                      <td style="text-align:center;">1개</td>
-                      <td>이다니엘</td>
-                      <td style="font-family:'Fira Code'; font-size:0.8rem;">2026-06-28</td>
-                    </tr>
-                    <tr class="clickable" onclick="viewArchiveDetail(11)">
-                      <td><i class="fa-solid fa-file-lines" style="color:var(--color-primary); margin-right:0.5rem;"></i> <strong>사내 주차장 이용규정 개정안 공지</strong></td>
-                      <td style="text-align:center;">1개</td>
-                      <td>총무팀</td>
-                      <td style="font-family:'Fira Code'; font-size:0.8rem;">2026-06-15</td>
-                    </tr>
-                    <tr class="clickable" onclick="viewArchiveDetail(13)">
-                      <td><i class="fa-solid fa-file-lines" style="color:var(--color-primary); margin-right:0.5rem;"></i> <strong>개인정보보호 정책 변경 안내서 배포</strong></td>
-                      <td style="text-align:center;">1개</td>
-                      <td>경영지원본부</td>
-                      <td style="font-family:'Fira Code'; font-size:0.8rem;">2026-06-05</td>
+                    <tr th:if="${#lists.isEmpty(archives)}">
+                      <td colspan="4" style="text-align:center; color:var(--text-muted); padding: 2rem 0;">등록된 자료가 없습니다.</td>
                     </tr>
                   </tbody>
                 </table>
+              </div>
+
+              <!-- 페이지네이션: 공지사항과 동일한 그룹(5개) + 이전/다음 화살표 방식 -->
+              <div style="display:flex; justify-content:center; align-items:center; gap:0.4rem; margin-top:1rem;" th:if="${totalPages > 1}">
+                <a th:if="${groupStart > 1}" th:href="@{/archive/list(repoId=${currentRepoId}, keyword=${keyword}, page=${groupStart - 1})}"
+                   class="btn btn-sm btn-secondary" style="min-width:2.2rem; text-align:center;">‹</a>
+
+                <a th:each="p : ${#numbers.sequence(groupStart, groupEnd)}"
+                   th:href="@{/archive/list(repoId=${currentRepoId}, keyword=${keyword}, page=${p})}"
+                   th:text="${p}"
+                   th:classappend="${p == currentPage} ? 'btn-primary' : 'btn-secondary'"
+                   class="btn btn-sm" style="min-width:2.2rem; text-align:center;">1</a>
+
+                <a th:if="${groupEnd < totalPages}" th:href="@{/archive/list(repoId=${currentRepoId}, keyword=${keyword}, page=${groupEnd + 1})}"
+                   class="btn btn-sm btn-secondary" style="min-width:2.2rem; text-align:center;">›</a>
               </div>
             </div>
           </div>
@@ -189,11 +121,11 @@
   </div>
 
   <!-- ==========================================
-       동적 모달 (이 페이지에서 사용)
+       동적 모달 - 상세/작성 기능은 다음 단계에서 구현 예정.
+       지금은 목록(SSR) 단계까지만이라 마크업만 남겨두고 동작은 아직 없음.
        ========================================== -->
   <div class="modal-overlay" id="modalOverlay">
 
-    <!-- 자료실 게시글 상세 모달 - 목록 한 줄 클릭(viewArchiveDetail)으로 열린다 -->
     <div class="modal-content" id="modal-archive-detail" style="display:none;">
       <div class="modal-header">
         <h3 id="mArchiveTitle">게시글 제목</h3>
@@ -213,17 +145,17 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-danger" id="mArchiveDeleteBtn" onclick="deleteArchivePost(activeArchivePostId)" style="margin-right:auto;">삭제</button>
+        <button class="btn btn-danger" id="mArchiveDeleteBtn" style="display:none; margin-right:auto;" onclick="deleteArchive()">삭제</button>
+        <button class="btn btn-secondary" id="mArchiveEditBtn" style="display:none;" onclick="openEditArchiveModal()">수정</button>
         <button class="btn btn-secondary" onclick="closeModal()">닫기</button>
       </div>
     </div>
 
-    <!-- Archive Write Modal (제목 + 본문 + 다중 첨부) - "글쓰기" 버튼으로 열린다.
-         첨부파일은 실제로 업로드되지 않고, 파일명/용량만 기억해 뒀다가
-         "등록" 시 게시글에 같이 저장된다 (js/archive.js의 handleArchiveFileSelect 참고) -->
+    <!-- 자료 작성/수정 공용 모달 - "글쓰기" 버튼(신규) 또는 상세 모달의 "수정" 버튼(기존 글)으로 연다.
+         수정 모드에서는 첨부파일 교체를 지원하지 않아 파일 선택 영역을 숨긴다(ArchiveService.updateArchive 참고) -->
     <div class="modal-content" id="modal-archive-write" style="display:none;">
       <div class="modal-header">
-        <h3>자료 게시글 등록</h3>
+        <h3 id="archiveWriteModalTitle">자료 게시글 등록</h3>
         <button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form onsubmit="submitArchivePost(event)">
@@ -236,22 +168,20 @@
             <label class="form-label" for="aWriteContent">내용</label>
             <textarea id="aWriteContent" class="form-control" required placeholder="자료에 대한 설명을 입력하세요"></textarea>
           </div>
-          <div class="form-group">
-            <label class="form-label">첨부파일 (여러 개 선택 가능)</label>
-            <!-- 이 박스를 클릭하면 숨겨진 파일 선택창(archiveFileInput)이 열린다 -->
+          <div class="form-group" id="aFileUploadSection">
+            <label class="form-label">첨부파일 (여러 개 선택 가능, 선택 안 해도 됨)</label>
             <div style="border: 2px dashed var(--border-color); border-radius: 8px; padding: 1.5rem; text-align: center; cursor: pointer; color: var(--text-secondary);" onclick="document.getElementById('archiveFileInput').click()">
               <i class="fa-solid fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--color-primary); margin-bottom: 0.5rem;"></i>
-              <div>클릭 또는 파일을 여기에 드래그 앤 드롭</div>
-              <div style="font-size: 0.75rem; color:var(--text-muted); margin-top:0.25rem;">최대 50MB (임시 가상 업로드)</div>
+              <div>클릭해서 파일 선택</div>
+              <div style="font-size: 0.75rem; color:var(--text-muted); margin-top:0.25rem;">파일 1개당 최대 10MB</div>
               <input type="file" id="archiveFileInput" multiple style="display:none;" onchange="handleArchiveFileSelect(this)">
             </div>
-            <!-- 방금 선택한 첨부파일들의 미리보기 목록 (renderSelectedArchiveFiles가 채움) -->
             <div id="aSelectedFileList" style="margin-top: 0.5rem; display:flex; flex-direction:column; gap:0.35rem;"></div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="closeModal()">취소</button>
-          <button type="submit" class="btn btn-primary">등록</button>
+          <button type="submit" class="btn btn-primary" id="aWriteSubmitBtn">등록</button>
         </div>
       </form>
     </div>
@@ -261,7 +191,14 @@
   <!-- 토스트 알림 컨테이너 -->
   <div id="toast-container" class="toast-container"></div>
 
-  <script src="js/common.js"></script>
-  <script src="js/archive.js"></script>
+  <!-- 서버가 이미 계산한 값 - 자료 작성은 지금 선택된 폴더(REPO_ID) 기준,
+       수정/삭제 버튼 노출은 "관리자이거나 작성자 본인" 여부로 판단 (실제 처리는 서버가 다시 검증) -->
+  <script th:inline="javascript">
+    const currentRepoId = /*[[${currentRepoId}]]*/ 0;
+    const currentEmployeeId = /*[[${employee.employeeId}]]*/ 0;
+    const isAdmin = /*[[${employee.employeeRole == 'ADMIN'}]]*/ false;
+  </script>
+  <script th:src="@{/js/common.js}"></script>
+  <script th:src="@{/js/archive.js}"></script>
 </body>
 </html>

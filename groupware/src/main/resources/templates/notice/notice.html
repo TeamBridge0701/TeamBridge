@@ -92,13 +92,20 @@
             </table>
           </div>
 
-          <!-- 페이지네이션: 현재 페이지 강조, 검색어(keyword)는 유지한 채 페이지만 이동 -->
-          <div style="display:flex; justify-content:center; gap:0.4rem; margin-top:1rem;" th:if="${totalPages > 1}">
-            <a th:each="p : ${#numbers.sequence(1, totalPages)}"
+          <!-- 페이지네이션: 5개씩 그룹으로 묶어서 보여주고, 이전/다음 화살표로 그룹 이동
+               (계산은 NoticeService.getPageGroupStart/End) -->
+          <div style="display:flex; justify-content:center; align-items:center; gap:0.4rem; margin-top:1rem;" th:if="${totalPages > 1}">
+            <a th:if="${groupStart > 1}" th:href="@{/notice/list(keyword=${keyword}, page=${groupStart - 1})}"
+               class="btn btn-sm btn-secondary" style="min-width:2.2rem; text-align:center;">‹</a>
+
+            <a th:each="p : ${#numbers.sequence(groupStart, groupEnd)}"
                th:href="@{/notice/list(keyword=${keyword}, page=${p})}"
                th:text="${p}"
                th:classappend="${p == currentPage} ? 'btn-primary' : 'btn-secondary'"
                class="btn btn-sm" style="min-width:2.2rem; text-align:center;">1</a>
+
+            <a th:if="${groupEnd < totalPages}" th:href="@{/notice/list(keyword=${keyword}, page=${groupEnd + 1})}"
+               class="btn btn-sm btn-secondary" style="min-width:2.2rem; text-align:center;">›</a>
           </div>
         </div>
 
