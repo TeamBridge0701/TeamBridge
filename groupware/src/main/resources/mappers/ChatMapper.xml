@@ -5,6 +5,29 @@
 
 <mapper namespace="com.groupware.mapper.ChatMapper">
 
+    <!-- TEXT/FILE 메시지를 같은 DTO로 읽고, FILE일 때만 attachment를 채운다. -->
+    <resultMap id="chatMessageResult" type="com.groupware.dto.ChatMessageDTO">
+        <id property="messageId" column="MESSAGE_ID" />
+        <result property="roomId" column="ROOM_ID" />
+        <result property="senderId" column="SENDER_ID" />
+        <result property="messageType" column="MESSAGE_TYPE" />
+        <result property="content" column="CONTENT" />
+        <result property="sentAt" column="SENT_AT" />
+		<result property="sentDateKey" column="SENT_DATE_KEY" />
+		<result property="displaySentDate" column="DISPLAY_SENT_DATE" />
+		<result property="displaySentTime" column="DISPLAY_SENT_TIME" />
+        <result property="unreadMemberCount" column="UNREAD_MEMBER_COUNT" />
+        <result property="senderName" column="SENDER_NAME" />
+        <result property="senderProfileImg" column="SENDER_PROFILE_IMG" />
+        <association property="attachment" javaType="com.groupware.dto.ChatAttachmentDTO">
+            <id property="attachId" column="ATTACH_ID" />
+            <result property="messageId" column="ATTACH_MESSAGE_ID" />
+            <result property="fileName" column="FILE_NAME" />
+            <result property="filePath" column="FILE_PATH" />
+            <result property="fileSize" column="FILE_SIZE" />
+        </association>
+    </resultMap>
+
 	<!--
       - 로그인한 직원이 들어가 있는 채팅방 목록 
       DM은 참여자 중 본인이 아닌 상대 이름을, GROUP은 ROOM_NAME을 표시한다.
@@ -55,7 +78,18 @@
                
 			<!-- 마지막 메시지 내용을 가져온다 -->
                (
-                   SELECT cm.CONTENT  
+                   SELECT CASE
+                              WHEN cm.MESSAGE_TYPE = 'FILE' THEN CONCAT(
+                                  '[파일] ',
+                                  COALESCE(
+                                      (SELECT ca.FILE_NAME
+                                       FROM CHAT_ATTACHMENT ca
+                                       WHERE ca.MESSAGE_ID = cm.MESSAGE_ID),
+                                      '파일'
+                                  )
+                              )
+                              ELSE cm.CONTENT
+                          END
                    FROM CHAT_MESSAGE cm
                    WHERE cm.ROOM_ID = r.ROOM_ID
                 <!-- 
@@ -188,19 +222,43 @@
     <!--
 	  특정 채팅방의 기존 메시지 내역을 조회하는 기능이다.
     -->
-    <select id="findMessagesByRoomId" resultType="com.groupware.dto.ChatMessageDTO">
+    <select id="findMessagesByRoomId" resultMap="chatMessageResult">
         SELECT cm.MESSAGE_ID,
                cm.ROOM_ID,
                cm.SENDER_ID,
                cm.MESSAGE_TYPE,
                cm.CONTENT,
                cm.SENT_AT,
+			   DATE_FORMAT(cm.SENT_AT, '%Y-%m-%d') AS SENT_DATE_KEY,
+			   CONCAT(
+			       DATE_FORMAT(cm.SENT_AT, '%Y년 %c월 %e일 '),
+			       ELT(DAYOFWEEK(cm.SENT_AT), '일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일')
+			   ) AS DISPLAY_SENT_DATE,
+			   CONCAT(
+			       CASE WHEN HOUR(cm.SENT_AT) &lt; 12 THEN '오전 ' ELSE '오후 ' END,
+			       DATE_FORMAT(cm.SENT_AT, '%h:%i')
+			   ) AS DISPLAY_SENT_TIME,
+               (
+                   SELECT COUNT(*)
+                   FROM CHAT_ROOM_MEMBER readMember
+                   WHERE readMember.ROOM_ID = cm.ROOM_ID
+                     AND readMember.EMPLOYEE_ID != cm.SENDER_ID
+                     AND (readMember.LAST_READ_MESSAGE_ID IS NULL
+                          OR readMember.LAST_READ_MESSAGE_ID &lt; cm.MESSAGE_ID)
+               ) AS UNREAD_MEMBER_COUNT,
                e.EMPLOYEE_NAME AS SENDER_NAME,
-               e.PROFILE_IMG AS SENDER_PROFILE_IMG
+               e.PROFILE_IMG AS SENDER_PROFILE_IMG,
+               ca.ATTACH_ID,
+               ca.MESSAGE_ID AS ATTACH_MESSAGE_ID,
+               ca.FILE_NAME,
+               ca.FILE_PATH,
+               ca.FILE_SIZE
         FROM CHAT_MESSAGE cm
         LEFT JOIN EMPLOYEE e
         <!-- 시스템 메시지는 SENDER_ID가 null일 수 있으므로 EMPLOYEE는 LEFT JOIN한다. -->
           ON e.EMPLOYEE_ID = cm.SENDER_ID
+        LEFT JOIN CHAT_ATTACHMENT ca
+          ON ca.MESSAGE_ID = cm.MESSAGE_ID
         WHERE cm.ROOM_ID = #{roomId}
         ORDER BY cm.MESSAGE_ID ASC
     </select>
@@ -269,7 +327,183 @@
             #{employeeId}
         )
     </insert>
+
+    <!-- 기존 방 참여자는 그대로 두고, 초대 시 새 그룹방에 넣을 인원만 조회한다. -->
+    <select id="findRoomMemberIds" resultType="int">
+        SELECT EMPLOYEE_ID
+        FROM CHAT_ROOM_MEMBER
+        WHERE ROOM_ID = #{roomId}
+        ORDER BY MEMBER_ROW_ID ASC
+    </select>
+
+    <!-- /user/queue/chat-rooms 개인 알림을 보낼 때 Spring Security 사용자명(사번)을 사용한다. -->
+    <select id="findRoomMemberEmployeeNos" resultType="string">
+        SELECT e.EMPLOYEE_NO
+        FROM CHAT_ROOM_MEMBER member
+        JOIN EMPLOYEE e
+          ON e.EMPLOYEE_ID = member.EMPLOYEE_ID
+        WHERE member.ROOM_ID = #{roomId}
+    </select>
+
+    <select id="findLatestMessageId" resultType="int">
+        SELECT MAX(MESSAGE_ID)
+        FROM CHAT_MESSAGE
+        WHERE ROOM_ID = #{roomId}
+    </select>
+
+    <select id="findLastReadMessageId" resultType="int">
+        SELECT LAST_READ_MESSAGE_ID
+        FROM CHAT_ROOM_MEMBER
+        WHERE ROOM_ID = #{roomId}
+          AND EMPLOYEE_ID = #{employeeId}
+    </select>
+
+    <!-- 헤더·사이드바 배지는 내가 보낸 메시지를 제외한 전체 안 읽은 메시지 수다. -->
+    <select id="countMyUnreadMessages" resultType="int">
+        SELECT COUNT(*)
+        FROM CHAT_ROOM_MEMBER member
+        JOIN CHAT_MESSAGE cm
+          ON cm.ROOM_ID = member.ROOM_ID
+        WHERE member.EMPLOYEE_ID = #{employeeId}
+          AND (cm.SENDER_ID IS NULL OR cm.SENDER_ID != #{employeeId})
+          AND cm.MESSAGE_ID &gt; COALESCE(member.LAST_READ_MESSAGE_ID, 0)
+    </select>
+
+    <!-- 더 큰 읽음 번호일 때만 UPDATE해 같은 읽음 이벤트의 중복 방송을 막는다. -->
+    <update id="updateLastReadMessageId">
+        UPDATE CHAT_ROOM_MEMBER
+        SET LAST_READ_MESSAGE_ID = #{messageId}
+        WHERE ROOM_ID = #{roomId}
+          AND EMPLOYEE_ID = #{employeeId}
+          AND (LAST_READ_MESSAGE_ID IS NULL
+               OR LAST_READ_MESSAGE_ID &lt; #{messageId})
+         <!-- &lt = <를 표현한 거다 -->
+    </update>
+
+    <update id="updateGroupRoomName">
+        UPDATE CHAT_ROOM
+        SET ROOM_NAME = #{roomName}
+        WHERE ROOM_ID = #{roomId}
+          AND ROOM_TYPE = 'GROUP'
+    </update>
     
     
+    <!-- ============ 채팅 실시간 추가함 ========== -->
+    
+     <!--
+      실시간으로 보낼 텍스트 메시지를 먼저 DB에 저장한다.
+      SENT_AT은 CHAT_MESSAGE의 DEFAULT NOW()가 자동으로 넣는다.
+    -->
+    <insert id="insertChatMessage"
+            parameterType="com.groupware.dto.ChatMessageDTO"
+            useGeneratedKeys="true"
+            keyProperty="messageId"
+            keyColumn="MESSAGE_ID">
+
+        INSERT INTO CHAT_MESSAGE (
+            ROOM_ID,
+            SENDER_ID,
+            MESSAGE_TYPE,
+            CONTENT
+        ) VALUES (
+            #{roomId},
+            #{senderId},
+            #{messageType},
+            #{content}
+        )
+    </insert>
+    
+    <!--
+      INSERT만 하면 생성 시간과 발신자 이름은 DTO에 없음. 그래서
+      WebSocket으로 방송할 완성된 메시지 정보를 다시 조회한다. (이유)
+    -->
+    <select id="findMessageById"
+            resultMap="chatMessageResult">
+
+        SELECT cm.MESSAGE_ID,
+               cm.ROOM_ID,
+               cm.SENDER_ID,
+               cm.MESSAGE_TYPE,
+               cm.CONTENT,
+               cm.SENT_AT, <!-- 발송 시간 -->
+			   DATE_FORMAT(cm.SENT_AT, '%Y-%m-%d') AS SENT_DATE_KEY,
+			   CONCAT(
+			       DATE_FORMAT(cm.SENT_AT, '%Y년 %c월 %e일 '),
+			       ELT(DAYOFWEEK(cm.SENT_AT), '일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일')
+			   ) AS DISPLAY_SENT_DATE,
+			   CONCAT(
+			       CASE WHEN HOUR(cm.SENT_AT) &lt; 12 THEN '오전 ' ELSE '오후 ' END,
+			       DATE_FORMAT(cm.SENT_AT, '%h:%i')
+			   ) AS DISPLAY_SENT_TIME,
+               (
+                   SELECT COUNT(*)
+                   FROM CHAT_ROOM_MEMBER readMember
+                   WHERE readMember.ROOM_ID = cm.ROOM_ID
+                     AND readMember.EMPLOYEE_ID != cm.SENDER_ID
+                     AND (readMember.LAST_READ_MESSAGE_ID IS NULL
+                          OR readMember.LAST_READ_MESSAGE_ID &lt; cm.MESSAGE_ID)
+               ) AS UNREAD_MEMBER_COUNT,
+               e.EMPLOYEE_NAME AS SENDER_NAME,
+               e.PROFILE_IMG AS SENDER_PROFILE_IMG,
+               ca.ATTACH_ID,
+               ca.MESSAGE_ID AS ATTACH_MESSAGE_ID,
+               ca.FILE_NAME,
+               ca.FILE_PATH,
+               ca.FILE_SIZE
+               <!-- 
+				메시지를 보낸 사람의 이름과 프로필 이미지를 가져온다.
+				DB 컬럼 이름은 EMPLOYEE_NAME, PROFILE_IMG지만 DTO에서는 다음 이름으로 사용한다. 
+			   -->
+               
+        FROM CHAT_MESSAGE cm
+        LEFT JOIN EMPLOYEE e
+          ON e.EMPLOYEE_ID = cm.SENDER_ID
+		LEFT JOIN CHAT_ATTACHMENT ca
+		  ON ca.MESSAGE_ID = cm.MESSAGE_ID
+          <!-- 
+			LEFT JOIN을 사용하는 이유는 SENDER_ID가 null인 메세지도 조회해야 하기 때문이다.
+			- null 인 메세지는 시스템 메세지를 말한다. 
+			  ex) 내가 입장했습니다 / 대화를 시작하세요 
+           -->
+        WHERE cm.MESSAGE_ID = #{messageId}
+    </select>
+
+    <insert id="insertChatAttachment"
+            parameterType="com.groupware.dto.ChatAttachmentDTO"
+            useGeneratedKeys="true"
+            keyProperty="attachId"
+            keyColumn="ATTACH_ID">
+        INSERT INTO CHAT_ATTACHMENT (
+            MESSAGE_ID,
+            FILE_NAME,
+            FILE_PATH,
+            FILE_SIZE
+        ) VALUES (
+            #{messageId},
+            #{fileName},
+            #{filePath},
+            #{fileSize}
+        )
+    </insert>
+
+    <!-- 다운로드 전 첨부파일이 어느 방에 속하는지도 조회해 참여자 권한을 검사한다. -->
+    <select id="findAttachmentById" resultType="com.groupware.dto.ChatAttachmentDTO">
+        SELECT ca.ATTACH_ID,
+               ca.MESSAGE_ID,
+               cm.ROOM_ID,
+               ca.FILE_NAME,
+               ca.FILE_PATH,
+               ca.FILE_SIZE
+        FROM CHAT_ATTACHMENT ca
+        JOIN CHAT_MESSAGE cm
+          ON cm.MESSAGE_ID = ca.MESSAGE_ID
+        WHERE ca.ATTACH_ID = #{attachId}
+    </select>
+
+
+
+
+
+
 
 </mapper>

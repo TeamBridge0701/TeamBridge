@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="light">
+<html lang="ko"
+      data-theme="light"
+      xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,7 +14,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body>
 
@@ -27,27 +29,53 @@
     <!-- 상단 헤더 -->
     <header class="header">
       <div class="header-left">
-        <a href="main.html" class="logo" style="text-decoration:none;">
+        <a th:href="@{/main}" class="logo" style="text-decoration:none;">
           <div class="logo-box"><i class="fa-solid fa-cubes"></i></div>
           <span style="margin-left: 0.5rem;">GROUPWARE</span>
         </a>
       </div>
 
       <div class="header-right">
-        <button class="icon-btn" onclick="navigateTo('chat')" title="실시간 채팅">
+        <a class="icon-btn"
+           th:href="@{/chat}"
+           title="실시간 채팅"
+           style="text-decoration:none; color:inherit;">
           <i class="fa-solid fa-comment-dots"></i>
-          <span class="badge" id="headerChatBadge">0</span>
-        </button>
-        <div class="user-dropdown" onclick="navigateTo('mypage')">
-          <div class="user-avatar" id="headerAvatar">홍</div>
-          <div class="user-details">
-            <span class="user-name-text" id="headerName">홍길동</span>
-            <span class="user-role-text" id="headerDept">개발팀 사원</span>
+          <!-- 전체 안 읽은 메시지 수는 chat.js가 /chat/unread-count에서 받아 표시한다. -->
+          <span class="badge" id="headerChatBadge" style="display:none;">0</span>
+        </a>
+
+        <a class="user-dropdown"
+           th:href="@{/mypage}"
+           style="text-decoration:none; color:inherit;">
+          <!-- 로그인한 직원 이름의 첫 글자를 아바타로 출력한다. -->
+          <div class="user-avatar"
+               th:text="${#strings.substring(employee.employeeName, 0, 1)}">
+            홍
           </div>
-        </div>
-        <button class="icon-btn" onclick="doLogout()" title="로그아웃" style="color: var(--color-danger); border-color: rgba(248,113,113,0.2);">
-          <i class="fa-solid fa-right-from-bracket"></i>
-        </button>
+          <div class="user-details">
+            <!-- GlobalModelAdvice가 넣은 실제 로그인 사용자 이름이다. -->
+            <span class="user-name-text"
+                  th:text="${employee.employeeName}">
+              홍길동
+            </span>
+            <!-- 실제 로그인 사용자의 부서와 직급을 출력한다. -->
+            <span class="user-role-text"
+                  th:text="${employee.deptName + ' · ' + employee.positionName}">
+              개발팀 · 사원
+            </span>
+          </div>
+        </a>
+
+        <!-- SecurityConfig의 /logout은 POST 요청으로 처리한다. -->
+        <form th:action="@{/logout}" method="post" style="margin:0;">
+          <button type="submit"
+                  class="icon-btn"
+                  title="로그아웃"
+                  style="color: var(--color-danger); border-color: rgba(248,113,113,0.2);">
+            <i class="fa-solid fa-right-from-bracket"></i>
+          </button>
+        </form>
       </div>
     </header>
 
@@ -67,7 +95,7 @@
 
           <li class="sidebar-group-label">조직 · 소통</li>
           <li class="sidebar-item sub" id="menu-org"><a href="org.html"><i class="fa-solid fa-sitemap"></i> 조직도</a></li>
-          <li class="sidebar-item sub" id="menu-chat"><a href="chat.html"><i class="fa-solid fa-comment-dots"></i> 실시간 채팅</a></li>
+          <li class="sidebar-item sub" id="menu-chat"><a href="chat.html"><i class="fa-solid fa-comment-dots"></i> 실시간 채팅 <span class="chat-sidebar-badge" id="sidebarChatBadge" style="display:none;">0</span></a></li>
 
           <li class="sidebar-group-label">근태관리</li>
           <li class="sidebar-item sub" id="menu-attendance"><a href="attendance.html"><i class="fa-solid fa-clock"></i> 출결 현황</a></li>
@@ -107,188 +135,281 @@
                 <div class="chat-filter-tab" id="chatFilter-group" onclick="switchChatFilter('group')">그룹</div>
               </div>
 
-              <div class="chat-room-list" id="chatRoomList">
-                <!-- Mock 데이터 (JS 렌더링 시 대체됨) - 기본 로그인 사용자(홍길동) 기준, 최근 대화순 -->
-                <div class="chat-room-item active" onclick="openChatRoom(1)">
-                  <div class="chat-room-avatar">
-                    김
-                    <span class="chat-online-dot"></span>
-                  </div>
-                  <div class="chat-room-info">
-                    <div class="chat-room-name-row">
-                      <span class="chat-room-name">김우주 팀장</span>
-                      <span class="chat-room-time">오후 2:41</span>
-                    </div>
-                    <div class="chat-room-preview-row">
-                      <span class="chat-room-preview">네, 확인하고 회신드릴게요!</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="chat-room-item" onclick="openChatRoom(2)">
-                  <div class="chat-room-avatar group">
-                    그
-                  </div>
-                  <div class="chat-room-info">
-                    <div class="chat-room-name-row">
-                      <span class="chat-room-name">그룹웨어 개편 프로젝트 TF (4)</span>
-                      <span class="chat-room-time">오후 1:05</span>
-                    </div>
-                    <div class="chat-room-preview-row">
-                      <span class="chat-room-preview">이다니엘: 회의는 3시에 진행할게요</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="chat-room-item" onclick="openChatRoom(3)">
-                  <div class="chat-room-avatar">
-                    이
-                  </div>
-                  <div class="chat-room-info">
-                    <div class="chat-room-name-row">
-                      <span class="chat-room-name">이다니엘 팀장</span>
-                      <span class="chat-room-time">오후 4:22</span>
-                    </div>
-                    <div class="chat-room-preview-row">
-                      <span class="chat-room-preview">자료 잘 받았습니다 감사해요</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="chat-room-item" onclick="openChatRoom(4)">
-                  <div class="chat-room-avatar group">
-                    신
-                  </div>
-                  <div class="chat-room-info">
-                    <div class="chat-room-name-row">
-                      <span class="chat-room-name">신규 프로젝트 TF (5)</span>
-                      <span class="chat-room-time">오후 3:52</span>
-                    </div>
-                    <div class="chat-room-preview-row">
-                      <span class="chat-room-preview">정진국: 와이어프레임 초안도 같이 올려두었습니다.</span>
-                      <span class="chat-room-unread">2</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="chat-room-item" onclick="openChatRoom(5)">
-                  <div class="chat-room-avatar">
-                    김
-                  </div>
-                  <div class="chat-room-info">
-                    <div class="chat-room-name-row">
-                      <span class="chat-room-name">김영훈 부서장</span>
-                      <span class="chat-room-time">오전 11:15</span>
-                    </div>
-                    <div class="chat-room-preview-row">
-                      <span class="chat-room-preview">결재 검토 부탁드립니다.</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+				<div class="chat-room-list" id="chatRoomList">
+
+				  <!-- ChatController가 model에 담은 rooms 목록을 한 방씩 반복한다. -->
+				  <a class="chat-room-item"
+				     th:each="room : ${rooms}"
+				     th:href="@{/chat/room/{roomId}(roomId=${room.roomId})}"
+				     th:classappend="${currentRoom != null and room.roomId == currentRoom.roomId}
+				                     ? ' active' : ''"
+				     th:attr="data-room-id=${room.roomId},
+				              data-room-type=${room.roomType}">
+
+				    <!-- GROUP이면 group 클래스를 추가해서 그룹방 아바타 스타일을 적용한다. -->
+				    <div class="chat-room-avatar"
+				         th:classappend="${room.roomType == 'GROUP'} ? ' group' : ''"
+				         th:text="${#strings.isEmpty(room.displayName)
+				                   ? '채'
+				                   : #strings.substring(room.displayName, 0, 1)}">채</div>
+
+				    <div class="chat-room-info">
+				      <div class="chat-room-name-row">
+
+				        <!-- DM은 상대방 이름, GROUP은 방 이름을 출력한다. -->
+				        <span class="chat-room-name"
+				              th:text="${room.displayName}">채팅방 이름</span>
+
+				        <!-- 마지막 메시지 시간이 없으면 빈 문자열을 출력한다. -->
+				        <span class="chat-room-time"
+				              th:text="${room.lastSentAt != null ? room.lastSentAt : ''}">
+				        </span>
+				      </div>
+
+				      <div class="chat-room-preview-row">
+
+				        <!-- 아직 메시지가 없는 새 방은 안내 문구를 출력한다. -->
+				        <span class="chat-room-preview"
+				              th:text="${room.lastMessage != null
+				                         ? room.lastMessage
+				                         : '대화 내용이 없습니다.'}">
+				        </span>
+
+				        <!-- 안 읽은 메시지가 있을 때만 숫자 배지를 표시한다. -->
+				        <span class="chat-room-unread"
+				              th:if="${room.unreadCount > 0}"
+				              th:text="${room.unreadCount}">
+				        </span>
+				      </div>
+				    </div>
+				  </a>
+
+				  <!-- 내 채팅방이 하나도 없을 때만 출력한다. -->
+				  <div class="empty-state"
+				       th:if="${#lists.isEmpty(rooms)}">
+				    아직 참여 중인 채팅방이 없습니다.
+				  </div>
+				</div>
+
             </div>
 
-            <!-- 우측: 메시지 스레드 -->
-            <div class="chat-main">
-              <div class="chat-thread-header">
-                <div class="chat-thread-who">
-                  <!-- Mock 데이터 (JS 렌더링 시 대체됨) - 기본 진입 대화방(김우주 팀장) 기준 -->
-                  <div class="chat-room-avatar" id="chatThreadAvatar">
-                    김
-                    <span class="chat-online-dot"></span>
-                  </div>
-                  <div>
-                    <div style="font-weight:700;" id="chatThreadName">김우주 팀장</div>
-                    <div class="chat-thread-status" id="chatThreadStatus">개발팀 · 접속 중</div>
-                  </div>
-                </div>
-                <button class="icon-btn" id="chatInviteBtn" onclick="openInviteChatModal()" title="대화 초대"><i class="fa-solid fa-user-plus"></i></button>
-              </div>
+				<!-- 우측: 현재 선택한 채팅방의 헤더, 이전 메시지, 입력창 -->
+			  <div class="chat-main"
+			       id="chatMain"
+			       th:attr="data-current-employee-id=${employee.employeeId},
+			                data-current-room-id=${currentRoom != null ? currentRoom.roomId : ''},
+			                data-current-room-type=${currentRoom != null ? currentRoom.roomType : ''}">
 
-              <div class="chat-messages" id="chatMessageList">
-                <!-- Mock 데이터 (JS 렌더링 시 대체됨) - 기본 진입 대화방(김우주 팀장, roomId=1) 기준 -->
-                <div class="chat-date-divider"><span>2026년 7월 1일 수요일</span></div>
+				  <!-- currentRoom이 있을 때만 채팅방 헤더를 출력한다. -->
+				  <div class="chat-thread-header"
+				       th:if="${currentRoom != null}">
 
-                <div class="chat-row in">
-                  <div class="chat-room-avatar">김</div>
-                  <div class="chat-bubble-col">
-                    <span class="chat-sender-name">김우주 팀장</span>
-                    <div class="chat-bubble-meta">
-                      <div class="chat-bubble">오늘 오후 미팅 자료 준비되셨나요?</div>
-                      <div style="display:flex; flex-direction:column; align-items:flex-start; gap:0.15rem;">
-                        <span class="chat-bubble-time">오후 2:32</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+			    <div class="chat-thread-who"
+			         th:classappend="${currentRoom.roomType == 'GROUP'} ? ' chat-thread-who-editable' : ''"
+			         th:attr="role=${currentRoom.roomType == 'GROUP'} ? 'button' : null,
+			                  tabindex=${currentRoom.roomType == 'GROUP'} ? 0 : null"
+			         th:onclick="${currentRoom.roomType == 'GROUP'} ? 'openRenameChatModal()' : null">
 
-                <div class="chat-row out">
-                  <div class="chat-room-avatar">홍</div>
-                  <div class="chat-bubble-col">
-                    <div class="chat-bubble-meta">
-                      <div class="chat-bubble">네 팀장님, 지금 마무리 중입니다. 30분 내로 공유드릴게요!</div>
-                      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:0.15rem;">
-                        <span class="chat-bubble-read">읽음</span>
-                        <span class="chat-bubble-time">오후 2:35</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+				      <!-- 방 이름의 첫 글자를 아바타로 표시한다. -->
+				      <div class="chat-room-avatar"
+				           th:classappend="${currentRoom.roomType == 'GROUP'} ? ' group' : ''"
+				           th:text="${#strings.isEmpty(currentRoom.displayName)
+				                     ? '채'
+				                     : #strings.substring(currentRoom.displayName, 0, 1)}">
+				        채
+				      </div>
 
-                <div class="chat-row out">
-                  <div class="chat-room-avatar">홍</div>
-                  <div class="chat-bubble-col">
-                    <div class="chat-bubble-meta">
-                      <div class="chat-bubble-file"><i class="fa-solid fa-file-arrow-down" style="color:var(--color-primary);"></i> <div><div style="font-weight:600;">3분기_기획안_v2.pptx</div><div style="color:var(--text-muted); font-size:0.75rem;">4.2 MB</div></div></div>
-                      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:0.15rem;">
-                        <span class="chat-bubble-read">읽음</span>
-                        <span class="chat-bubble-time">오후 2:36</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+				      <div>
+				        <!-- DM은 상대방 이름, GROUP은 그룹방 이름을 표시한다. -->
+				        <div style="font-weight:700;"
+				             id="chatThreadName"
+				             th:text="${currentRoom.displayName}">
+				          채팅방 이름
+				        </div>
 
-                <div class="chat-row in">
-                  <div class="chat-room-avatar">김</div>
-                  <div class="chat-bubble-col">
-                    <span class="chat-sender-name">김우주 팀장</span>
-                    <div class="chat-bubble-meta">
-                      <div class="chat-bubble">좋습니다, 확인해볼게요 👍</div>
-                      <div style="display:flex; flex-direction:column; align-items:flex-start; gap:0.15rem;">
-                        <span class="chat-bubble-time">오후 2:40</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+				        <!-- 현재는 온라인 상태 기능이 없으므로 방 유형만 표시한다. -->
+				        <div class="chat-thread-status"
+				             id="chatThreadStatus"
+				             th:text="${currentRoom.roomType == 'DM' ? '1:1 대화' : '그룹 대화'}">
+				        </div>
+				      </div>
+				    </div>
 
-                <div class="chat-row in">
-                  <div class="chat-room-avatar">김</div>
-                  <div class="chat-bubble-col">
-                    <span class="chat-sender-name">김우주 팀장</span>
-                    <div class="chat-bubble-meta">
-                      <div class="chat-bubble">네, 확인하고 회신드릴게요!</div>
-                      <div style="display:flex; flex-direction:column; align-items:flex-start; gap:0.15rem;">
-                        <span class="chat-bubble-time">오후 2:41</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+				    <div class="chat-thread-actions">
+			      <!-- 그룹방 이름 변경은 왼쪽 프로필·이름 영역을 눌러 열고, 이곳에는 참여자 초대만 둔다. -->
 
-                <div class="chat-row in">
-                  <div class="chat-room-avatar">김</div>
-                  <div class="chat-bubble-col">
-                    <span class="chat-sender-name">김우주 팀장</span>
-                    <div class="chat-typing"><span></span><span></span><span></span></div>
-                  </div>
-                </div>
-              </div>
+				      <!-- 개인방에서도 초대하면 기존 방은 유지하고 새 그룹방을 만든다. -->
+				      <button class="icon-btn"
+				              onclick="openInviteChatModal()"
+				              title="대화 초대">
+				        <i class="fa-solid fa-user-plus"></i>
+				      </button>
+				    </div>
+				  </div>
 
-              <!-- 메시지 입력창 - 전송 버튼/Enter로 sendChatMessage()가 실행된다 -->
-              <form class="chat-input-bar" onsubmit="sendChatMessage(event)">
-                <button type="button" class="icon-btn" onclick="document.getElementById('chatFileInput').click()" title="파일 첨부">
-                  <i class="fa-solid fa-paperclip"></i>
-                </button>
-                <input type="file" id="chatFileInput" style="display:none;" onchange="handleChatFileSelect(this)">
-                <input type="text" id="chatMessageInput" class="form-control" placeholder="메시지를 입력하세요">
-                <button type="submit" class="chat-send-btn"><i class="fa-solid fa-paper-plane"></i></button>
-              </form>
-            </div>
+				  <!-- 선택한 방이 없을 때 출력하는 초기 안내 화면 -->
+				  <div class="empty-state chat-empty-main"
+				       th:if="${currentRoom == null}">
+				    <i class="fa-solid fa-comments" aria-hidden="true"></i>
+				    <strong>대화방을 선택하세요.</strong>
+				  </div>
+
+				  <!-- 선택한 방의 이전 메시지를 Thymeleaf로 출력한다. -->
+				  <div class="chat-messages"
+				       id="chatMessageList"
+				       th:if="${currentRoom != null}">
+
+				    <!-- messages가 비어 있으면 새 방 안내 문구를 출력한다. -->
+				    <div class="empty-state chat-empty-messages"
+				         th:if="${#lists.isEmpty(messages)}">
+				      <i class="fa-solid fa-comment-dots" aria-hidden="true"></i>
+				      <strong>대화를 시작하세요.</strong>
+				    </div>
+
+			    <!-- messages 목록을 메시지 한 건씩 반복한다. -->
+			    <th:block th:each="message : ${messages}">
+
+			      <!-- 기존 메시지는 Service가 날짜 변경 여부를 계산해, 처음부터 날짜 구분선을 출력한다. -->
+			      <div class="chat-date-divider"
+			           th:if="${message.showDateDivider}">
+			        <!--
+			          showDateDivider는 ChatService가 이전 메시지의 날짜와 비교해 만든 boolean 값이다.
+			          화면을 처음 열 때 JavaScript가 모든 메시지 날짜를 다시 계산하지 않아도 되게 한다.
+			        -->
+			        <span th:text="${message.displaySentDate}">2026년 7월 20일 일요일</span>
+			      </div>
+
+			      <!-- SYSTEM은 사람의 말풍선이 아니라 날짜 구분선처럼 가운데에 표시한다. -->
+			      <div class="chat-row chat-system-message"
+			           th:if="${message.messageType == 'SYSTEM'}"
+			           th:attr="data-message-id=${message.messageId},
+			                    data-sent-at=${message.sentAt},
+			                    data-sent-date-key=${message.sentDateKey}">
+			        <!--
+			          sentDateKey는 화면에 직접 보이는 값이 아니다.
+			          이미 출력된 마지막 메시지 날짜와 WebSocket으로 새로 도착한 메시지 날짜를
+			          chat.js가 비교해, 필요한 경우에만 새 날짜 구분선을 추가할 때 사용한다.
+			        -->
+			        <span th:text="${message.content}">시스템 메시지</span>
+			      </div>
+
+			      <div class="chat-row"
+			           th:unless="${message.messageType == 'SYSTEM'}"
+			           th:classappend="${message.senderId == employee.employeeId} ? ' out' : ' in'"
+			           th:attr="data-message-id=${message.messageId},
+			                    data-sent-at=${message.sentAt},
+			                    data-sent-date-key=${message.sentDateKey},
+			                    data-unread-member-count=${message.unreadMemberCount}">
+
+			        <!-- 상대방 메시지일 때만 왼쪽 아바타를 출력한다. -->
+			        <div class="chat-room-avatar"
+			             th:if="${message.senderId != employee.employeeId}"
+			             th:text="${#strings.isEmpty(message.senderName)
+			                       ? '시'
+			                       : #strings.substring(message.senderName, 0, 1)}">
+			          상
+			        </div>
+
+			        <div class="chat-bubble-col">
+
+			          <!-- 상대방 메시지일 때만 보낸 사람 이름을 출력한다. -->
+			          <span class="chat-sender-name"
+			                th:if="${message.senderId != employee.employeeId}"
+			                th:text="${message.senderName != null
+			                          ? message.senderName
+			                          : '시스템'}">
+			            보낸 사람
+			          </span>
+
+			          <div class="chat-bubble-meta">
+
+			            <!-- th:text는 HTML을 문자로 처리하므로 XSS 문자열도 화면을 망가뜨리지 않는다. -->
+			            <div class="chat-bubble"
+			                 th:if="${message.messageType != 'FILE'}"
+			                 th:text="${message.content}">
+			              메시지 내용
+			            </div>
+
+			            <!-- FILE 메시지는 원본 파일명을 누르면 참여자만 다운로드할 수 있다. -->
+			            <a class="chat-bubble-file"
+			               th:if="${message.messageType == 'FILE' and message.attachment != null}"
+			               th:href="@{/chat/attachment/{attachId}(attachId=${message.attachment.attachId})}">
+			              <i class="fa-solid fa-file-arrow-down" style="color:var(--color-primary);"></i>
+			              <div>
+			                <div style="font-weight:600;" th:text="${message.attachment.fileName}">파일 이름</div>
+			                <!--
+			                  displayFileSize는 ChatService가 byte 값을 KB/MB 문자열로 바꾼 값이다.
+			                  기존 메시지를 열 때마다 chat.js가 파일 크기를 다시 계산하지 않게 한다.
+			                -->
+			                <div class="chat-file-size"
+			                     style="color:var(--text-muted); font-size:0.75rem;"
+			                     th:text="${message.attachment.displayFileSize}">파일 크기</div>
+			              </div>
+			            </a>
+
+			            <div style="display:flex; flex-direction:column; gap:0.15rem;"
+			                 th:styleappend="${message.senderId == employee.employeeId}
+			                                 ? 'align-items:flex-end;'
+			                                 : 'align-items:flex-start;'">
+
+			              <!-- 내 메시지는 DM에서 1/읽음, GROUP에서 아직 읽지 않은 참여자 수를 표시한다. -->
+			              <span class="chat-bubble-read"
+			                    th:if="${message.senderId == employee.employeeId
+			                             and (currentRoom.roomType == 'DM' or message.unreadMemberCount > 0)}"
+			                    th:text="${currentRoom.roomType == 'DM'
+			                              ? (message.unreadMemberCount > 0 ? '1' : '읽음')
+			                              : message.unreadMemberCount}">
+			                읽음 상태
+			              </span>
+
+			              <!--
+			                displaySentTime은 Mapper SQL이 오전/오후 시:분 형식으로 만든 값이다.
+			                초기 메시지 시간 형식을 Thymeleaf가 바로 출력하고,
+			                JavaScript는 실시간으로 새로 들어온 메시지만 화면에 추가한다.
+			              -->
+			              <span class="chat-bubble-time"
+			                    th:text="${message.displaySentTime}">
+			                전송 시간
+			              </span>
+			            </div>
+			          </div>
+			        </div>
+			      </div>
+			    </th:block>
+			  </div>
+
+				  <!-- 방을 선택했을 때만 입력창을 표시한다. -->
+				  <form class="chat-input-bar"
+				        th:if="${currentRoom != null}"
+				        onsubmit="sendChatMessage(event)">
+
+				    <!-- 파일은 HTTP multipart로 저장한 뒤 WebSocket 방송으로 같은 방에 표시한다. -->
+				    <button type="button"
+				            class="icon-btn"
+				            onclick="document.getElementById('chatFileInput').click()"
+				            title="파일 첨부">
+				      <i class="fa-solid fa-paperclip"></i>
+				    </button>
+
+				    <input type="file"
+				           id="chatFileInput"
+				           style="display:none;"
+				           onchange="sendChatFile(this)">
+
+				    <input type="text"
+				           id="chatMessageInput"
+				           class="form-control"
+				           maxlength="1000"
+				           placeholder="메시지를 입력하세요"
+				           autocomplete="off">
+
+				    <button type="submit"
+				            class="chat-send-btn"
+				            title="메시지 전송">
+				      <i class="fa-solid fa-paper-plane"></i>
+				    </button>
+				  </form>
+				</div>
 
           </div>
         </div>
@@ -313,23 +434,28 @@
         <div class="org-container" style="height: 360px;">
           <div class="org-tree">
             <ul id="newChatDeptTree" style="list-style:none;">
-              <!-- Mock 데이터 (JS 렌더링 시 대체됨) -->
-              <li><a class="org-node active" id="newChatDeptNode-all" onclick="filterNewChatDept('all')"><i class="fa-solid fa-building"></i> 전체보기</a></li>
-              <li style="margin-left: 0.75rem;">
-                <a class="org-node" id="newChatDeptNode-인사팀" onclick="filterNewChatDept('인사팀')">인사팀</a>
-              </li>
-              <li style="margin-left: 0.75rem;">
-                <a class="org-node" id="newChatDeptNode-기획팀" onclick="filterNewChatDept('기획팀')">기획팀</a>
-              </li>
-              <li style="margin-left: 0.75rem;">
-                <a class="org-node" id="newChatDeptNode-개발팀" onclick="filterNewChatDept('개발팀')">개발팀</a>
-              </li>
-              <li style="margin-left: 0.75rem;">
-                <a class="org-node" id="newChatDeptNode-디자인팀" onclick="filterNewChatDept('디자인팀')">디자인팀</a>
-              </li>
-              <li style="margin-left: 0.75rem;">
-                <a class="org-node" id="newChatDeptNode-총무팀" onclick="filterNewChatDept('총무팀')">총무팀</a>
-              </li>
+				<!-- 전체보기 -->
+				  <li>
+				    <a href="#"
+				       class="org-node active"
+				       data-dept-id="">
+				      <i class="fa-solid fa-building"></i>
+				      전체보기
+				    </a>
+				  </li>
+
+				  <!-- ChatController의 departments 목록을 반복 출력 -->
+				  <li th:each="department : ${departments}"
+				      style="margin-left: 0.75rem;">
+
+				    <!-- 다음 chat.js에서 data-dept-id를 기준으로 직원 목록을 필터링한다. -->
+				    <a href="#"
+				       class="org-node"
+				       th:attr="data-dept-id=${department.deptId}"
+				       th:text="${department.deptName}">
+				      부서명
+				    </a>
+				  </li>
             </ul>
           </div>
           <div class="org-members">
@@ -344,37 +470,41 @@
                     <th>상태</th>
                   </tr>
                 </thead>
-                <tbody id="newChatMemberTableBody">
-                  <!-- Mock 데이터 (JS 렌더링 시 대체됨) - 기본 전체보기 기준 (본인 홍길동 제외) -->
-                  <tr>
-                    <td style="text-align:center;"><input type="checkbox" onchange="toggleNewChatUser('20260102', this.checked)"></td>
-                    <td><strong>김우주</strong></td>
-                    <td>개발팀</td>
-                    <td><span class="badge badge-primary">팀장</span></td>
-                    <td><span class="badge badge-success">접속 중</span></td>
-                  </tr>
-                  <tr>
-                    <td style="text-align:center;"><input type="checkbox" onchange="toggleNewChatUser('20260010', this.checked)"></td>
-                    <td><strong>김영훈</strong></td>
-                    <td>기획팀</td>
-                    <td><span class="badge badge-primary">부서장</span></td>
-                    <td><span class="badge badge-muted">오프라인</span></td>
-                  </tr>
-                  <tr>
-                    <td style="text-align:center;"><input type="checkbox" onchange="toggleNewChatUser('20260901', this.checked)"></td>
-                    <td><strong>이다니엘</strong></td>
-                    <td>인사팀</td>
-                    <td><span class="badge badge-primary">팀장</span></td>
-                    <td><span class="badge badge-muted">오프라인</span></td>
-                  </tr>
-                  <tr>
-                    <td style="text-align:center;"><input type="checkbox" onchange="toggleNewChatUser('20260803', this.checked)"></td>
-                    <td><strong>정진국</strong></td>
-                    <td>디자인팀</td>
-                    <td><span class="badge badge-primary">사원</span></td>
-                    <td><span class="badge badge-muted">오프라인</span></td>
-                  </tr>
-                </tbody>
+				<tbody id="newChatMemberTableBody">
+
+				  <!-- employees 목록 중 현재 로그인한 본인은 제외하고 출력한다. -->
+				  <tr th:each="candidate : ${employees}"
+				      th:if="${candidate.employeeId != employee.employeeId}"
+				      th:attr="data-dept-id=${candidate.deptId},
+				               data-employee-id=${candidate.employeeId}">
+
+				    <td style="text-align:center;">
+
+				      <!-- 1명은 DM, 2명 이상은 그룹방이므로 checkbox를 사용한다. -->
+				      <input type="checkbox"
+				             name="employeeIds"
+				             class="new-chat-member-checkbox"
+				             th:value="${candidate.employeeId}">
+				    </td>
+
+				    <td>
+				      <strong th:text="${candidate.employeeName}">직원 이름</strong>
+				    </td>
+
+				    <td th:text="${candidate.deptName}">부서명</td>
+
+				    <td>
+				      <span class="badge badge-primary"
+				            th:text="${candidate.positionName}">
+				        직급
+				      </span>
+				    </td>
+
+				    <td>
+				      <span class="badge badge-success">재직</span>
+				    </td>
+				  </tr>
+				</tbody>
               </table>
             </div>
           </div>
@@ -386,33 +516,50 @@
       </div>
     </div>
 
-    <!-- Invite Chat Modal - 현재 대화방에 새 인원을 초대해 새 그룹채팅방 개설 -->
+    <!-- Rename Chat Modal - GROUP 방 이름만 변경한다. -->
+    <div class="modal-content" id="modal-rename-chat" style="display:none; max-width: 420px;">
+      <div class="modal-header">
+        <h3>대화방 이름 변경</h3>
+        <button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="renameChatRoom(event)">
+        <div class="modal-body">
+          <input type="text"
+                 id="chatRoomNameInput"
+                 class="form-control"
+                 maxlength="100"
+                 placeholder="대화방 이름">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">취소</button>
+          <button type="submit" class="btn btn-primary">저장</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Invite Chat Modal - 기존 방은 그대로 두고 선택한 인원까지 포함한 새 GROUP 방을 만든다. -->
     <div class="modal-content" id="modal-invite-chat" style="display:none; max-width: 720px;">
       <div class="modal-header">
         <h3>대화 초대</h3>
         <button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">초대된 인원과 기존 대화방 참여자가 모두 포함된 새 그룹 대화방이 개설됩니다. 기존 대화방은 그대로 유지됩니다.</p>
         <div class="org-container" style="height: 360px;">
           <div class="org-tree">
             <ul id="inviteChatDeptTree" style="list-style:none;">
-              <!-- Mock 데이터 (JS 렌더링 시 대체됨) -->
-              <li><a class="org-node active" id="inviteDeptNode-all" onclick="filterInviteDept('all')"><i class="fa-solid fa-building"></i> 전체보기</a></li>
-              <li style="margin-left: 0.75rem;">
-                <a class="org-node" id="inviteDeptNode-인사팀" onclick="filterInviteDept('인사팀')">인사팀</a>
+              <li>
+                <a href="#" class="org-node active" data-dept-id="">
+                  <i class="fa-solid fa-building"></i>
+                  전체보기
+                </a>
               </li>
-              <li style="margin-left: 0.75rem;">
-                <a class="org-node" id="inviteDeptNode-기획팀" onclick="filterInviteDept('기획팀')">기획팀</a>
-              </li>
-              <li style="margin-left: 0.75rem;">
-                <a class="org-node" id="inviteDeptNode-개발팀" onclick="filterInviteDept('개발팀')">개발팀</a>
-              </li>
-              <li style="margin-left: 0.75rem;">
-                <a class="org-node" id="inviteDeptNode-디자인팀" onclick="filterInviteDept('디자인팀')">디자인팀</a>
-              </li>
-              <li style="margin-left: 0.75rem;">
-                <a class="org-node" id="inviteDeptNode-총무팀" onclick="filterInviteDept('총무팀')">총무팀</a>
+              <li th:each="department : ${departments}" style="margin-left: 0.75rem;">
+                <a href="#"
+                   class="org-node"
+                   th:attr="data-dept-id=${department.deptId}"
+                   th:text="${department.deptName}">
+                  부서명
+                </a>
               </li>
             </ul>
           </div>
@@ -429,27 +576,22 @@
                   </tr>
                 </thead>
                 <tbody id="inviteChatMemberTableBody">
-                  <!-- Mock 데이터 (JS 렌더링 시 대체됨) - 기본 진입 대화방(김우주 팀장과의 1:1) 기준, 이미 참여 중인 홍길동/김우주 제외 -->
-                  <tr>
-                    <td style="text-align:center;"><input type="checkbox" onchange="toggleInviteUser('20260010', this.checked)"></td>
-                    <td><strong>김영훈</strong></td>
-                    <td>기획팀</td>
-                    <td><span class="badge badge-primary">부서장</span></td>
-                    <td><span class="badge badge-muted">오프라인</span></td>
-                  </tr>
-                  <tr>
-                    <td style="text-align:center;"><input type="checkbox" onchange="toggleInviteUser('20260901', this.checked)"></td>
-                    <td><strong>이다니엘</strong></td>
-                    <td>인사팀</td>
-                    <td><span class="badge badge-primary">팀장</span></td>
-                    <td><span class="badge badge-muted">오프라인</span></td>
-                  </tr>
-                  <tr>
-                    <td style="text-align:center;"><input type="checkbox" onchange="toggleInviteUser('20260803', this.checked)"></td>
-                    <td><strong>정진국</strong></td>
-                    <td>디자인팀</td>
-                    <td><span class="badge badge-primary">사원</span></td>
-                    <td><span class="badge badge-muted">오프라인</span></td>
+                  <!-- 현재 방에 이미 참여한 사람은 제외하고 ACTIVE 직원만 출력한다. -->
+                  <tr th:each="candidate : ${employees}"
+                      th:if="${!#lists.contains(currentMemberIds, candidate.employeeId)}"
+                      th:attr="data-dept-id=${candidate.deptId}">
+                    <td style="text-align:center;">
+                      <input type="checkbox"
+                             class="invite-chat-member-checkbox"
+                             th:value="${candidate.employeeId}">
+                    </td>
+                    <td><strong th:text="${candidate.employeeName}">직원 이름</strong></td>
+                    <td th:text="${candidate.deptName}">부서명</td>
+                    <td>
+                      <span class="badge badge-primary"
+                            th:text="${candidate.positionName}">직급</span>
+                    </td>
+                    <td><span class="badge badge-success">재직</span></td>
                   </tr>
                 </tbody>
               </table>
@@ -468,7 +610,13 @@
   <!-- 토스트 알림 컨테이너 -->
   <div id="toast-container" class="toast-container"></div>
 
-  <script src="js/common.js"></script>
-  <script src="js/chat.js"></script>
+  <!-- SockJS: WebSocket 연결 담당 -->
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+
+  <!-- STOMP: 구독과 메시지 전송 담당 -->
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+  <script th:src="@{/js/common.js}"></script>
+  <script th:src="@{/js/chat.js}"></script>
 </body>
 </html>

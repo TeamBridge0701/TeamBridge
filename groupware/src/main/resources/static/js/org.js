@@ -93,9 +93,29 @@ async function viewOrgMemberDetail(employeeId) {
   
   chatButton.style.display = employee.employeeId === currentEmployeeId ? 'none' : 'inline-flex';
   
-  chatButton.onclick = () => {
-    window.location.href = `/chat?chatWith=${employee.employeeId}`;
-	// 직원 번호에 따라서 대화방 생성.
+  chatButton.onclick = async () => {
+    // 조직도에서 상대를 누르면 서버가 기존 DM을 재사용하거나 새 DM을 만든다.
+    const requestBody = new URLSearchParams();
+    requestBody.append('employeeIds', employee.employeeId);
+
+    try {
+      const response = await fetch('/chat/room', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+        },
+        body: requestBody.toString()
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || '채팅방을 만들지 못했습니다.');
+      }
+
+      window.location.href = `/chat/room/${result.roomId}`;
+    } catch (error) {
+      showToast(error.message, 'danger');
+    }
   };
 
   openModal('modal-org-member');
