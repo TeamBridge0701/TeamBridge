@@ -96,12 +96,12 @@ public class EmployeeService {
 		if(!ALLOWED_PROFILE_IMG_EXTENSIONS.contains(ext)) {
 			throw new IllegalArgumentException("이미지 파일(jpg, png, gif, webp)만 업로드할 수 있습니다.");
 		}
-		
+
 		// storedName : 서버가 새로 지어준 저장용 파일명(원본 파일명 그대로 두면 덮어써질 수 있어 UUID로 대체)
 		String storedName = UUID.randomUUID() + ext;
 		// targetPath: 실제 저장될 파일 경로 (예: uploads/profileImg/a1b2c3.jpg)
 		Path targetPath = Paths.get(profileImgUploadDir, storedName);
-		
+
 		try {
 			// 폴더가 없으면 만들어줌(이미 있으면 아무 일 안 하고 통과) - 처음 실행하는 PC엔 uploads 폴더가 없을 수 있어서 필요
 			Files.createDirectories(targetPath.getParent());
@@ -111,7 +111,7 @@ public class EmployeeService {
 			// 체크 예외를 언체크로 바꿔서 호출부에 강제 try-catch 안 걸리게 함. e는 원인 보존용(로그 추적용)
 			throw new RuntimeException("프로필 사진 저장에 실패했습니다: " + originalName, e);
 		}
-		
+
 		return storedName;
 	}
 

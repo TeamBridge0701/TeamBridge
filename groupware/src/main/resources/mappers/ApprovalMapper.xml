@@ -7,9 +7,9 @@
 	     - 같은 트랜잭션에서 바로 APPROVAL_LINE/APPROVAL_REFERENCE INSERT에 FK로 써야 하기 때문 -->
 	<insert id="insertApproval" useGeneratedKeys="true" keyProperty="approvalId">
 	    INSERT INTO APPROVAL (DRAFTER_ID, FORM_TYPE_ID, APPROVAL_TITLE, APPROVAL_CONTENT,
-	                           LEAVE_START_DATE, LEAVE_END_DATE)
+	                           LEAVE_START_DATE, LEAVE_END_DATE, AMOUNT)
 	    VALUES (#{drafterId}, #{formTypeId}, #{approvalTitle}, #{approvalContent},
-	            #{leaveStartDate}, #{leaveEndDate})
+	            #{leaveStartDate}, #{leaveEndDate}, #{amount})
 	</insert>
 
 	<!--

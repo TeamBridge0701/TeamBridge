@@ -42,55 +42,55 @@
 	    </where>
 	</select>
 
-   <!-- 공지 상세 조회 - 목록(findNotices)과 동일하게 작성자 이름/부서명 조인 -->
-   <select id="findNoticeDetail" resultType="com.groupware.dto.NoticeDTO">
-       SELECT n.*,
-              e.EMPLOYEE_NAME AS writerName,
-              d.DEPT_NAME AS writerDeptName
-       FROM NOTICE n
-           JOIN EMPLOYEE e ON n.WRITER_ID = e.EMPLOYEE_ID
-           LEFT JOIN DEPARTMENT d ON e.DEPT_ID = d.DEPT_ID
-       WHERE n.NOTICE_ID = #{noticeId}
-   </select>
+	<!-- 공지 상세 조회 - 목록(findNotices)과 동일하게 작성자 이름/부서명 조인 -->
+	<select id="findNoticeDetail" resultType="com.groupware.dto.NoticeDTO">
+	    SELECT n.*,
+	           e.EMPLOYEE_NAME AS writerName,
+	           d.DEPT_NAME AS writerDeptName
+	    FROM NOTICE n
+	        JOIN EMPLOYEE e ON n.WRITER_ID = e.EMPLOYEE_ID
+	        LEFT JOIN DEPARTMENT d ON e.DEPT_ID = d.DEPT_ID
+	    WHERE n.NOTICE_ID = #{noticeId}
+	</select>
 
-   <!-- 조회수 원자적 증가 - "SELECT로 읽고 +1해서 다시 UPDATE"가 아니라 DB에서 바로 +1 -->
-   <update id="incrementViewCount">
-       UPDATE NOTICE
-       SET VIEW_COUNT = VIEW_COUNT + 1
-       WHERE NOTICE_ID = #{noticeId}
-   </update>
+	<!-- 조회수 원자적 증가 - "SELECT로 읽고 +1해서 다시 UPDATE"가 아니라 DB에서 바로 +1 -->
+	<update id="incrementViewCount">
+	    UPDATE NOTICE
+	    SET VIEW_COUNT = VIEW_COUNT + 1
+	    WHERE NOTICE_ID = #{noticeId}
+	</update>
 
-   <!-- 수정 모달 프리필용 - findNoticeDetail과 조회는 동일하지만 조회수를 올리지 않음 -->
-   <select id="findNoticeForEdit" resultType="com.groupware.dto.NoticeDTO">
-       SELECT n.*,
-              e.EMPLOYEE_NAME AS writerName,
-              d.DEPT_NAME AS writerDeptName
-       FROM NOTICE n
-           JOIN EMPLOYEE e ON n.WRITER_ID = e.EMPLOYEE_ID
-           LEFT JOIN DEPARTMENT d ON e.DEPT_ID = d.DEPT_ID
-       WHERE n.NOTICE_ID = #{noticeId}
-   </select>
+	<!-- 수정 모달 프리필용 - findNoticeDetail과 조회는 동일하지만 조회수를 올리지 않음 -->
+	<select id="findNoticeForEdit" resultType="com.groupware.dto.NoticeDTO">
+	    SELECT n.*,
+	           e.EMPLOYEE_NAME AS writerName,
+	           d.DEPT_NAME AS writerDeptName
+	    FROM NOTICE n
+	        JOIN EMPLOYEE e ON n.WRITER_ID = e.EMPLOYEE_ID
+	        LEFT JOIN DEPARTMENT d ON e.DEPT_ID = d.DEPT_ID
+	    WHERE n.NOTICE_ID = #{noticeId}
+	</select>
 
-   <!-- 신규 등록 - NOTICE_ID(AUTO_INCREMENT), VIEW_COUNT(DEFAULT 0), CREATED_AT(DEFAULT NOW())은
-        DB가 채우므로 여기서 넣지 않음 -->
-   <insert id="insertNotice">
-       INSERT INTO NOTICE (WRITER_ID, NOTICE_TITLE, NOTICE_CONTENT, IS_PINNED)
-       VALUES (#{writerId}, #{noticeTitle}, #{noticeContent}, #{isPinned})
-   </insert>
+	<!-- 신규 등록 - NOTICE_ID(AUTO_INCREMENT), VIEW_COUNT(DEFAULT 0), CREATED_AT(DEFAULT NOW())은
+	     DB가 채우므로 여기서 넣지 않음 -->
+	<insert id="insertNotice">
+	    INSERT INTO NOTICE (WRITER_ID, NOTICE_TITLE, NOTICE_CONTENT, IS_PINNED)
+	    VALUES (#{writerId}, #{noticeTitle}, #{noticeContent}, #{isPinned})
+	</insert>
 
-   <!-- 수정 - 작성자(WRITER_ID)는 바뀌지 않음. UPDATED_AT은 현재 시각으로 갱신 -->
-   <update id="updateNotice">
-       UPDATE NOTICE
-       SET NOTICE_TITLE = #{noticeTitle},
-           NOTICE_CONTENT = #{noticeContent},
-           IS_PINNED = #{isPinned},
-           UPDATED_AT = NOW()
-       WHERE NOTICE_ID = #{noticeId}
-   </update>
+	<!-- 수정 - 작성자(WRITER_ID)는 바뀌지 않음. UPDATED_AT은 현재 시각으로 갱신 -->
+	<update id="updateNotice">
+	    UPDATE NOTICE
+	    SET NOTICE_TITLE = #{noticeTitle},
+	        NOTICE_CONTENT = #{noticeContent},
+	        IS_PINNED = #{isPinned},
+	        UPDATED_AT = NOW()
+	    WHERE NOTICE_ID = #{noticeId}
+	</update>
 
-   <delete id="deleteNotice">
-       DELETE FROM NOTICE
-       WHERE NOTICE_ID = #{noticeId}
-   </delete>
+	<delete id="deleteNotice">
+	    DELETE FROM NOTICE
+	    WHERE NOTICE_ID = #{noticeId}
+	</delete>
 
 </mapper>
