@@ -56,7 +56,7 @@
              ========================================== -->
 				<div class="card" style="margin-bottom: 0.25rem;">
 					<div class="card-header">
-						<h2>이번 달 출결 현황<span>(2026년 6월)</span></h2>
+						<h2>이번 달 출결 현황<span>(<span th:text="${currentYear}">2026</span>년 <span th:text="${currentMonth}">7</span>월)</span></h2>
 					</div>
 					<div class="grid-3">
 						<div class="approval-stat-box">
@@ -85,27 +85,8 @@
 						<div class="calendar-controls">
 							<h3>출결 캘린더</h3>
 						</div>
-						<div class="calendar-grid" id="attendanceCalendarGrid">
-							<!-- Mock 데이터 (JS 렌더링 시 대체됨) - 기본 로그인 사용자(홍길동) 기준 -->
-							<div class="mini-cal-day-header" style="padding:0.75rem 0;">일</div>
-							<div class="mini-cal-day-header" style="padding:0.75rem 0;">월</div>
-							<div class="mini-cal-day-header" style="padding:0.75rem 0;">화</div>
-							<div class="mini-cal-day-header" style="padding:0.75rem 0;">수</div>
-							<div class="mini-cal-day-header" style="padding:0.75rem 0;">목</div>
-							<div class="mini-cal-day-header" style="padding:0.75rem 0;">금</div>
-							<div class="mini-cal-day-header" style="padding:0.75rem 0;">토</div>
-							<div class="cal-cell other-month">
-								<div class="cal-cell-header"><span class="cal-day-num">31</span></div>
-							</div>
-							<div class="cal-cell">
-								<div class="cal-cell-header"><span class="cal-day-num">1</span></div>
-								<div style="font-size:0.65rem; line-height:1.5;">
-									<span class="badge badge-success" style="font-size:0.6rem;">정상</span>
-									<div>출근 08:57</div>
-									<div>퇴근 18:04</div>
-								</div>
-							</div>
-							
+						<!-- 자바스크립트가 요일 헤더와 날짜 그리드를 동적으로 채워넣을 공간 -->
+						<div class="calendar-grid" id="fullCalendarGrid">
 						</div>
 					</div>
 				</div>
@@ -119,6 +100,7 @@
 
 	<script src="js/common.js"></script>
 	<script src="js/calendar.js"></script>
+	<script src="js/Attendance.js"></script>
 </body>
 
 </html>

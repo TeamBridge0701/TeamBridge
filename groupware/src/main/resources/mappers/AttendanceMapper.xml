@@ -4,7 +4,8 @@
 <mapper namespace="com.groupware.mapper.AttendanceMapper">
 
 	<!-- 1. 조회 -->
-	<select id="selectTodayAttendance" resultType="com.groupware.dto.AttendanceDTO">
+	<select id="selectTodayAttendance"
+		resultType="com.groupware.dto.AttendanceDTO">
 		SELECT
 		ATTENDANCE_ID AS attendanceId,
 		EMPLOYEE_ID AS employeeId,
@@ -30,5 +31,13 @@
 		SET CHECK_OUT_TIME = #{checkOutTime}
 		WHERE EMPLOYEE_ID = #{employeeId} AND WORK_DATE = #{today}
 	</update>
+
+	<!-- 4. 월별 조회 -->
+	<select id="selectAttendanceByPeriod"
+		resultType="com.groupware.dto.AttendanceDTO">
+		SELECT * FROM ATTENDANCE
+		WHERE EMPLOYEE_ID = #{employeeId}
+		AND WORK_DATE BETWEEN #{startDate} AND #{endDate}
+	</select>
 
 </mapper>
