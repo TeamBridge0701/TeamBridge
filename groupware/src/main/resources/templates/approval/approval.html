@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="light">
+<html lang="ko" data-theme="light" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,83 +12,26 @@
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body>
 
-  <!-- ==========================================
-       핵심 애플리케이션 래퍼 (모든 화면 html이 공통으로 갖는 뼈대.
-       구조에 대한 자세한 설명은 main.html의 주석 참고)
-       헤더/사이드바는 정적 마크업이며, js/common.js의
-       initApplicationHeader()가 동적인 값만 채워 넣는다.
-       ========================================== -->
   <div class="app-wrapper" id="appWrapper">
 
-    <!-- 상단 헤더 -->
-    <header class="header">
-      <div class="header-left">
-        <a href="main.html" class="logo" style="text-decoration:none;">
-          <div class="logo-box"><i class="fa-solid fa-cubes"></i></div>
-          <span style="margin-left: 0.5rem;">GROUPWARE</span>
-        </a>
-      </div>
+    <header th:replace="~{fragments/layout :: header}"></header>
 
-      <div class="header-right">
-        <button class="icon-btn" onclick="navigateTo('chat')" title="실시간 채팅">
-          <i class="fa-solid fa-comment-dots"></i>
-          <span class="badge" id="headerChatBadge">0</span>
-        </button>
-        <div class="user-dropdown" onclick="navigateTo('mypage')">
-          <div class="user-avatar" id="headerAvatar">홍</div>
-          <div class="user-details">
-            <span class="user-name-text" id="headerName">홍길동</span>
-            <span class="user-role-text" id="headerDept">개발팀 사원</span>
-          </div>
-        </div>
-        <button class="icon-btn" onclick="doLogout()" title="로그아웃" style="color: var(--color-danger); border-color: rgba(248,113,113,0.2);">
-          <i class="fa-solid fa-right-from-bracket"></i>
-        </button>
-      </div>
-    </header>
-
-    <!-- 메인 내비게이션 영역 -->
     <div class="main-body" id="mainBody">
 
-      <!-- 좌측 사이드바 -->
-      <aside class="sidebar">
-        <ul class="sidebar-menu">
-          <li class="sidebar-item" id="menu-dashboard"><a href="main.html"><i class="fa-solid fa-chart-line"></i> 대시보드</a></li>
+      <aside th:replace="~{fragments/layout :: sidebar}"></aside>
 
-          <li class="sidebar-group-label">업무</li>
-          <li class="sidebar-item sub" id="menu-calendar"><a href="calendar.html"><i class="fa-solid fa-calendar-days"></i> 일정 캘린더</a></li>
-          <li class="sidebar-item sub" id="menu-approval"><a href="approval.html"><i class="fa-solid fa-signature"></i> 전자결재</a></li>
-          <li class="sidebar-item sub" id="menu-notice"><a href="notice.html"><i class="fa-solid fa-bullhorn"></i> 공지사항</a></li>
-          <li class="sidebar-item sub" id="menu-archive"><a href="archive.html"><i class="fa-solid fa-file-shield"></i> 자료실</a></li>
-
-          <li class="sidebar-group-label">조직 · 소통</li>
-          <li class="sidebar-item sub" id="menu-org"><a href="org.html"><i class="fa-solid fa-sitemap"></i> 조직도</a></li>
-          <li class="sidebar-item sub" id="menu-chat"><a href="chat.html"><i class="fa-solid fa-comment-dots"></i> 실시간 채팅</a></li>
-
-          <li class="sidebar-group-label">근태관리</li>
-          <li class="sidebar-item sub" id="menu-attendance"><a href="attendance.html"><i class="fa-solid fa-clock"></i> 출결 현황</a></li>
-
-          <li class="sidebar-item" id="menu-mypage"><a href="mypage.html"><i class="fa-solid fa-user-gear"></i> 마이페이지</a></li>
-
-          <!-- 관리자 전용 메뉴 - 기본 숨김, 로그인 사용자가 admin이면 JS가 보여준다 -->
-          <li class="sidebar-group-label" id="adminGroupLabel" style="display: none;">관리자</li>
-          <li class="sidebar-item sub" id="menu-admin" style="display: none;"><a href="admin.html"><i class="fa-solid fa-gears"></i> 계정·인사정보 관리</a></li>
-          <li class="sidebar-item sub" id="menu-adminAttendance" style="display: none;"><a href="admin-attendance.html"><i class="fa-solid fa-user-clock"></i> 직원 출결 관리</a></li>
-        </ul>
-      </aside>
-
-      <!-- 중앙 동적 화면 콘텐츠 영역 -->
       <main class="view-content">
 
         <!-- ==========================================
              화면: 전자결재
              좌측 탭 4개(기안/받은결재함/보낸기안함/참조문서함) 중 하나만
              .approval-tab-content가 보이고 나머지는 숨겨진다.
-             js/approval.js의 switchApprovalTab()이 전환을 담당한다.
+             지금은 "결재 상신(기안)" 탭만 실제로 동작한다 - 받은/보낸/참조는
+             역할구분.md 3-3 체크리스트 3번에서 구현 예정 (아직 자리만 있음).
              ========================================== -->
         <div class="grid-12">
 
@@ -98,7 +41,7 @@
               <h4 style="margin-bottom: 1rem; font-size: 0.95rem;">전자결재 메뉴</h4>
               <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.25rem;">
                 <li><a class="org-node active" id="appTab-write" onclick="switchApprovalTab('write')"><i class="fa-solid fa-file-pen"></i> 결재 상신 (기안)</a></li>
-                <li><a class="org-node" id="appTab-inbox" onclick="switchApprovalTab('inbox')"><i class="fa-solid fa-inbox"></i> 받은 결재함 <span class="badge badge-warning" id="inboxCountBadge" style="margin-left:auto; display:none;">0</span></a></li>
+                <li><a class="org-node" id="appTab-inbox" onclick="switchApprovalTab('inbox')"><i class="fa-solid fa-inbox"></i> 받은 결재함</a></li>
                 <li><a class="org-node" id="appTab-outbox" onclick="switchApprovalTab('outbox')"><i class="fa-solid fa-paper-plane"></i> 보낸 기안함</a></li>
                 <li><a class="org-node" id="appTab-ref" onclick="switchApprovalTab('ref')"><i class="fa-solid fa-eye"></i> 참조 문서함</a></li>
               </ul>
@@ -113,147 +56,26 @@
               <div class="card">
                 <h3 style="margin-bottom: 1rem;">새 결재 상신</h3>
                 <div class="grid-3" style="margin-bottom: 1.5rem;">
-                  <div class="approval-stat-box" onclick="initApprovalForm('연차휴가신청서')">
-                    <i class="fa-solid fa-umbrella-beach" style="font-size: 1.8rem; color: var(--color-primary); margin-bottom: 0.5rem;"></i>
-                    <div style="font-weight: 700; font-size: 0.9rem;">연차휴가신청서</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">팀장 전결 승인 건</div>
-                  </div>
-                  <div class="approval-stat-box" onclick="initApprovalForm('지출결의서')">
-                    <i class="fa-solid fa-receipt" style="font-size: 1.8rem; color: var(--color-success); margin-bottom: 0.5rem;"></i>
-                    <div style="font-weight: 700; font-size: 0.9rem;">지출결의서</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">팀장 거쳐 부서장 최종</div>
-                  </div>
-                  <div class="approval-stat-box" onclick="initApprovalForm('프로젝트품의서')">
-                    <i class="fa-solid fa-file-shield" style="font-size: 1.8rem; color: var(--color-accent); margin-bottom: 0.5rem;"></i>
-                    <div style="font-weight: 700; font-size: 0.9rem;">프로젝트 품의서</div>
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">2단계 정식 상신 및 참조</div>
+                  <!-- 서식 카드 - DB(APPROVAL_FORM_TYPE)에서 조회한 3종을 그대로 반복 렌더링.
+                       formTypeName(문자열)은 onclick 안에 따옴표로 직접 끼워넣지 않고 data 속성에
+                       담아뒀다가 JS(initApprovalForm)에서 this.dataset로 읽는다 - 따옴표 중첩 문제 방지 -->
+                  <div class="approval-stat-box" th:each="ft : ${formTypes}"
+                       th:data-form-name="${ft.formTypeName}"
+                       th:onclick="'initApprovalForm(' + ${ft.formTypeId} + ', this, ' + ${ft.approvalStepCount} + ')'">
+                    <i class="fa-solid fa-file-lines" style="font-size: 1.8rem; color: var(--color-primary); margin-bottom: 0.5rem;"></i>
+                    <div style="font-weight: 700; font-size: 0.9rem;" th:text="${ft.formTypeName}">서식명</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;"
+                         th:text="${ft.approvalStepCount == 1} ? '팀장 전결 승인 건' : '팀장 거쳐 부서장 최종'">단계 안내</div>
                   </div>
                 </div>
 
-                <!-- 동적 결재 양식 컨테이너 - 위 3개 카드 중 하나를 클릭(initApprovalForm)하면
-                     그 서식에 맞는 입력 폼 전체가 이 안에 새로 그려진다 -->
-                <div id="approvalFormContainer" style="display:none; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
-                  <!-- Mock 데이터 (JS 렌더링 시 대체됨) - "연차휴가신청서" 선택 시 예시 -->
-                  <h4 style="margin-bottom:1rem; color:var(--color-primary)">연차휴가신청서 기안 서식 작성</h4>
-                  <form onsubmit="submitDraft(event, '연차휴가신청서')">
-                    <div class="form-group">
-                      <label class="form-label" for="draftTitle">기안문 제목</label>
-                      <input type="text" id="draftTitle" class="form-control" required value="[기안] 연차휴가신청서 상신 건">
-                    </div>
-                    <div class="form-group">
-                      <label class="form-label" for="draftContent">상세 기안 사유 및 내역</label>
-                      <textarea id="draftContent" class="form-control" required>하반기 개인 휴가 연차 사용을 기안합니다.
-사유:
-업무 대행자: </textarea>
-                    </div>
-
-                    <div class="grid-2">
-                      <div class="form-group">
-                        <label class="form-label" for="draftLeaveStart">휴가 시작일</label>
-                        <select id="draftLeaveStart" class="form-control">
-                          <option value="1">6월 1일</option>
-                          <option value="2">6월 2일</option>
-                          <option value="3">6월 3일</option>
-                          <option value="4">6월 4일</option>
-                          <option value="5">6월 5일</option>
-                          <option value="6">6월 6일</option>
-                          <option value="7">6월 7일</option>
-                          <option value="8">6월 8일</option>
-                          <option value="9">6월 9일</option>
-                          <option value="10">6월 10일</option>
-                          <option value="11">6월 11일</option>
-                          <option value="12">6월 12일</option>
-                          <option value="13">6월 13일</option>
-                          <option value="14">6월 14일</option>
-                          <option value="15">6월 15일</option>
-                          <option value="16">6월 16일</option>
-                          <option value="17">6월 17일</option>
-                          <option value="18">6월 18일</option>
-                          <option value="19">6월 19일</option>
-                          <option value="20">6월 20일</option>
-                          <option value="21">6월 21일</option>
-                          <option value="22">6월 22일</option>
-                          <option value="23">6월 23일</option>
-                          <option value="24">6월 24일</option>
-                          <option value="25">6월 25일</option>
-                          <option value="26">6월 26일</option>
-                          <option value="27">6월 27일</option>
-                          <option value="28">6월 28일</option>
-                          <option value="29">6월 29일</option>
-                          <option value="30">6월 30일</option>
-                        </select>
-                      </div>
-                      <div class="form-group">
-                        <label class="form-label" for="draftLeaveEnd">휴가 종료일</label>
-                        <select id="draftLeaveEnd" class="form-control">
-                          <option value="1">6월 1일</option>
-                          <option value="2">6월 2일</option>
-                          <option value="3">6월 3일</option>
-                          <option value="4">6월 4일</option>
-                          <option value="5">6월 5일</option>
-                          <option value="6">6월 6일</option>
-                          <option value="7">6월 7일</option>
-                          <option value="8">6월 8일</option>
-                          <option value="9">6월 9일</option>
-                          <option value="10">6월 10일</option>
-                          <option value="11">6월 11일</option>
-                          <option value="12">6월 12일</option>
-                          <option value="13">6월 13일</option>
-                          <option value="14">6월 14일</option>
-                          <option value="15">6월 15일</option>
-                          <option value="16">6월 16일</option>
-                          <option value="17">6월 17일</option>
-                          <option value="18">6월 18일</option>
-                          <option value="19">6월 19일</option>
-                          <option value="20">6월 20일</option>
-                          <option value="21">6월 21일</option>
-                          <option value="22">6월 22일</option>
-                          <option value="23">6월 23일</option>
-                          <option value="24">6월 24일</option>
-                          <option value="25">6월 25일</option>
-                          <option value="26">6월 26일</option>
-                          <option value="27">6월 27일</option>
-                          <option value="28">6월 28일</option>
-                          <option value="29">6월 29일</option>
-                          <option value="30">6월 30일</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div class="grid-2">
-                      <div class="form-group">
-                        <label class="form-label" for="draftSigner1">1차 승인자 (팀장)</label>
-                        <select id="draftSigner1" class="form-control">
-                          <option value="20260102">김우주 팀장 (개발팀)</option>
-                          <option value="20260901">이다니엘 팀장 (인사팀)</option>
-                        </select>
-                      </div>
-                      <div class="form-group">
-                        <label class="form-label" for="draftSigner2">최종 승인자 (부서장)</label>
-                        <select id="draftSigner2" class="form-control">
-                          <option value="20260010">김영훈 부서장 (기획팀)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div class="form-group">
-                      <label class="form-label">참조 대상 지정</label>
-                      <div style="display:flex; align-items:center; gap:0.75rem;">
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="openRefPicker()"><i class="fa-solid fa-sitemap"></i> 조직도에서 선택</button>
-                        <span id="refSelectionSummary" style="font-size:0.85rem; color:var(--text-secondary);">선택된 참조 대상 없음</span>
-                      </div>
-                    </div>
-
-                    <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.5rem;">
-                      <button type="button" class="btn btn-secondary" onclick="document.getElementById('approvalFormContainer').style.display='none'">작성 취소</button>
-                      <button type="submit" class="btn btn-primary">결재 상신</button>
-                    </div>
-                  </form>
-                </div>
+                <!-- 동적 결재 양식 컨테이너 - 서식 카드를 클릭(initApprovalForm)하면
+                     그 서식에 맞는 입력 폼 전체가 JS로 이 안에 새로 그려진다 -->
+                <div id="approvalFormContainer" style="display:none; border-top: 1px solid var(--border-color); padding-top: 1.5rem;"></div>
               </div>
             </div>
 
-            <!-- 탭 화면: 수신함 -->
+            <!-- 탭 화면: 수신함 - GET /approval/inbox를 fetch로 받아 renderInbox()가 채운다 -->
             <div id="approval-view-inbox" class="approval-tab-content" style="display:none;">
               <div class="card">
                 <h3 style="margin-bottom: 1rem;">결재 수신함 (받은 결재)</h3>
@@ -269,16 +91,13 @@
                         <th>단계</th>
                       </tr>
                     </thead>
-                    <tbody id="inboxTableBody">
-                      <!-- Mock 데이터 (JS 렌더링 시 대체됨) - 기본 로그인 사용자(홍길동) 기준 수신 대기 문서 없음 -->
-                      <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">수신된 결재 요청 문서가 없습니다.</td></tr>
-                    </tbody>
+                    <tbody id="inboxTableBody"></tbody>
                   </table>
                 </div>
               </div>
             </div>
 
-            <!-- 탭 화면: 발신함 -->
+            <!-- 탭 화면: 발신함 - GET /approval/outbox를 fetch로 받아 renderOutbox()가 채운다 -->
             <div id="approval-view-outbox" class="approval-tab-content" style="display:none;">
               <div class="card">
                 <h3 style="margin-bottom: 1rem;">보낸 기안함 (내가 올린 결재)</h3>
@@ -293,22 +112,13 @@
                         <th>결재선 상태</th>
                       </tr>
                     </thead>
-                    <tbody id="outboxTableBody">
-                      <!-- Mock 데이터 (JS 렌더링 시 대체됨) -->
-                      <tr class="clickable" onclick="viewApprovalDetail(1002)">
-                        <td>#1002</td>
-                        <td><span class="badge badge-primary">지출결의서</span></td>
-                        <td><strong>도서구입 지출결의서 (인쇄출판비)</strong></td>
-                        <td style="font-family:'Fira Code'; font-size:0.8rem;">2026-06-29</td>
-                        <td><span class="badge badge-warning">진행중</span></td>
-                      </tr>
-                    </tbody>
+                    <tbody id="outboxTableBody"></tbody>
                   </table>
                 </div>
               </div>
             </div>
 
-            <!-- 탭 화면: 참조 -->
+            <!-- 탭 화면: 참조 - GET /approval/reference를 fetch로 받아 renderReferenceBox()가 채운다 -->
             <div id="approval-view-ref" class="approval-tab-content" style="display:none;">
               <div class="card">
                 <h3 style="margin-bottom: 1rem;">참조 및 공유 문서함</h3>
@@ -324,10 +134,7 @@
                         <th>최종 상태</th>
                       </tr>
                     </thead>
-                    <tbody id="refTableBody">
-                      <!-- Mock 데이터 (JS 렌더링 시 대체됨) - 기본 로그인 사용자(홍길동) 기준 참조 문서 없음 -->
-                      <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">참조 수신된 결재 문서가 없습니다.</td></tr>
-                    </tbody>
+                    <tbody id="refTableBody"></tbody>
                   </table>
                 </div>
               </div>
@@ -341,12 +148,11 @@
   </div>
 
   <!-- ==========================================
-       동적 모달 (이 페이지에서 사용)
+       동적 모달
        ========================================== -->
   <div class="modal-overlay" id="modalOverlay">
 
-    <!-- 문서 상세 화면 (결재 상세) - 어느 탭에서든 문서 한 줄을 클릭
-         (viewApprovalDetail)하면 열린다 -->
+    <!-- 결재 문서 상세 - 어느 탭에서든 문서 한 줄을 클릭(viewApprovalDetail)하면 열린다 -->
     <div class="modal-content" id="modal-approval-detail" style="display:none; max-width: 650px;">
       <div class="modal-header">
         <h3 id="mAppFormName">결재 기안문</h3>
@@ -355,34 +161,31 @@
       <div class="modal-body">
 
         <!-- 결재선 진행 상황을 "기안 → 1차 → 2차" 형태의 아이콘 흐름으로 보여준다 -->
-        <div class="flow-stepper" id="mAppStepper">
-          <!-- 결재 흐름 시각화 -->
-        </div>
+        <div class="flow-stepper" id="mAppStepper"></div>
 
         <div style="background-color: var(--bg-tertiary); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color); font-size: 0.9rem; margin-bottom: 1rem;">
-          <div style="margin-bottom: 0.5rem;"><strong>기안자:</strong> <span id="mAppDrafter">홍길동 사원</span></div>
-          <div style="margin-bottom: 0.5rem;"><strong>기안 제목:</strong> <span id="mAppTitle">도서 구입 신청</span></div>
-          <div style="margin-bottom: 0.5rem;"><strong>기안 일자:</strong> <span id="mAppDate">2026-06-30</span></div>
+          <div style="margin-bottom: 0.5rem;"><strong>기안자:</strong> <span id="mAppDrafter"></span></div>
+          <div style="margin-bottom: 0.5rem;"><strong>기안 제목:</strong> <span id="mAppTitle"></span></div>
+          <div style="margin-bottom: 0.5rem;"><strong>기안 일자:</strong> <span id="mAppDate"></span></div>
           <div style="border-top:1px solid var(--border-color); margin-top: 0.75rem; padding-top: 0.75rem;">
             <strong>기안 내용:</strong>
-            <div id="mAppContent" style="white-space: pre-wrap; margin-top: 0.5rem; color: var(--text-secondary);">내용...</div>
+            <div id="mAppContent" style="white-space: pre-wrap; margin-top: 0.5rem; color: var(--text-secondary);"></div>
           </div>
         </div>
 
-        <!-- 반려 사유 박스 -->
+        <!-- 반려 사유 박스 - 문서 상태가 REJECTED일 때만 보인다 -->
         <div id="mAppRejectBox" style="display:none; background-color: rgba(248,113,113,0.1); border-left:4px solid var(--color-danger); padding: 0.75rem 1rem; border-radius: 4px; font-size: 0.85rem; margin-bottom: 1rem;">
-          <strong>반려 사유:</strong> <span id="mAppRejectReason" style="color:var(--text-primary);">이유...</span>
+          <strong>반려 사유:</strong> <span id="mAppRejectReason"></span>
         </div>
 
-        <!-- 결재 코멘트/액션 박스 - "지금 내가 결재할 차례"인 문서를 열었을 때만
-             보이고, 그 외에는 숨겨진다 (js/approval.js의 viewApprovalDetail 참고) -->
+        <!-- 결재 코멘트/액션 박스 - "지금 내가 결재할 차례"인 문서를 열었을 때만 보인다.
+             canDecide는 서버(ApprovalService.canDecideApproval)가 계산해 내려준 값이고,
+             버튼 노출용일 뿐 실제 승인/반려는 서버가 다시 검증한다(버튼 숨김은 보안이 아님). -->
         <div id="mAppActionBox" style="display:none; border-top:1px solid var(--border-color); padding-top: 1rem;">
-          <form onsubmit="event.preventDefault();">
-            <div class="form-group">
-              <label class="form-label" for="appActionComment">의견 또는 반려 사유 (반려 시 필수 입력)</label>
-              <input type="text" id="appActionComment" class="form-control" placeholder="승인/반려 의견을 입력하세요">
-            </div>
-          </form>
+          <div class="form-group">
+            <label class="form-label" for="appActionComment">의견 또는 반려 사유 (반려 시 필수 입력)</label>
+            <input type="text" id="appActionComment" class="form-control" placeholder="승인/반려 의견을 입력하세요">
+          </div>
         </div>
 
       </div>
@@ -396,7 +199,9 @@
     </div>
 
     <!-- 참조인(CC) 선택 모달 - 조직도 스타일. 기안 폼의
-         "조직도에서 선택" 버튼(openRefPicker)으로 열린다 -->
+         "조직도에서 선택" 버튼(openRefPicker)으로 열린다.
+         부서 트리/직원 목록은 GET /approval/ref-departments, /approval/ref-employees로
+         조직도(GET /org)와 같은 조회를 재사용해서 채운다 (하드코딩 REF_DEPTS 폐기). -->
     <div class="modal-content" id="modal-ref-picker" style="display:none; max-width: 720px;">
       <div class="modal-header">
         <h3>참조 대상 선택</h3>
@@ -406,30 +211,7 @@
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">부서 앞 체크박스는 부서 전체를 참조로 지정하고, 부서명을 클릭하면 오른쪽 목록만 그 부서로 필터됩니다. 개별 직원은 오른쪽 목록에서 체크하세요.</p>
         <div class="org-container" style="height: 380px;">
           <div class="org-tree">
-            <ul id="refDeptTree" style="list-style:none;">
-              <!-- Mock 데이터 (JS 렌더링 시 대체됨) -->
-              <li><a class="org-node active" id="refDeptNode-all" onclick="filterRefDeptView('all')"><i class="fa-solid fa-building"></i> 전체보기</a></li>
-              <li style="margin-left: 0.75rem; display:flex; align-items:center; gap:0.4rem;">
-                <input type="checkbox" id="refDeptCheck-인사팀" onchange="toggleRefDept('인사팀', this.checked)">
-                <a class="org-node" id="refDeptNode-인사팀" onclick="filterRefDeptView('인사팀')" style="flex:1;">인사팀</a>
-              </li>
-              <li style="margin-left: 0.75rem; display:flex; align-items:center; gap:0.4rem;">
-                <input type="checkbox" id="refDeptCheck-기획팀" onchange="toggleRefDept('기획팀', this.checked)">
-                <a class="org-node" id="refDeptNode-기획팀" onclick="filterRefDeptView('기획팀')" style="flex:1;">기획팀</a>
-              </li>
-              <li style="margin-left: 0.75rem; display:flex; align-items:center; gap:0.4rem;">
-                <input type="checkbox" id="refDeptCheck-개발팀" onchange="toggleRefDept('개발팀', this.checked)">
-                <a class="org-node" id="refDeptNode-개발팀" onclick="filterRefDeptView('개발팀')" style="flex:1;">개발팀</a>
-              </li>
-              <li style="margin-left: 0.75rem; display:flex; align-items:center; gap:0.4rem;">
-                <input type="checkbox" id="refDeptCheck-디자인팀" onchange="toggleRefDept('디자인팀', this.checked)">
-                <a class="org-node" id="refDeptNode-디자인팀" onclick="filterRefDeptView('디자인팀')" style="flex:1;">디자인팀</a>
-              </li>
-              <li style="margin-left: 0.75rem; display:flex; align-items:center; gap:0.4rem;">
-                <input type="checkbox" id="refDeptCheck-총무팀" onchange="toggleRefDept('총무팀', this.checked)">
-                <a class="org-node" id="refDeptNode-총무팀" onclick="filterRefDeptView('총무팀')" style="flex:1;">총무팀</a>
-              </li>
-            </ul>
+            <ul id="refDeptTree" style="list-style:none;"></ul>
           </div>
           <div class="org-members">
             <div class="table-container">
@@ -442,39 +224,7 @@
                     <th>직급</th>
                   </tr>
                 </thead>
-                <tbody id="refMemberTableBody">
-                  <!-- Mock 데이터 (JS 렌더링 시 대체됨) - 기본 전체보기 기준 -->
-                  <tr>
-                    <td style="text-align:center;"><input type="checkbox" onchange="toggleRefUser('20260601', this.checked)"></td>
-                    <td><strong>홍길동</strong></td>
-                    <td>개발팀</td>
-                    <td><span class="badge badge-primary">사원</span></td>
-                  </tr>
-                  <tr>
-                    <td style="text-align:center;"><input type="checkbox" onchange="toggleRefUser('20260102', this.checked)"></td>
-                    <td><strong>김우주</strong></td>
-                    <td>개발팀</td>
-                    <td><span class="badge badge-primary">팀장</span></td>
-                  </tr>
-                  <tr>
-                    <td style="text-align:center;"><input type="checkbox" onchange="toggleRefUser('20260010', this.checked)"></td>
-                    <td><strong>김영훈</strong></td>
-                    <td>기획팀</td>
-                    <td><span class="badge badge-primary">부서장</span></td>
-                  </tr>
-                  <tr>
-                    <td style="text-align:center;"><input type="checkbox" onchange="toggleRefUser('20260901', this.checked)"></td>
-                    <td><strong>이다니엘</strong></td>
-                    <td>인사팀</td>
-                    <td><span class="badge badge-primary">팀장</span></td>
-                  </tr>
-                  <tr>
-                    <td style="text-align:center;"><input type="checkbox" onchange="toggleRefUser('20260803', this.checked)"></td>
-                    <td><strong>정진국</strong></td>
-                    <td>디자인팀</td>
-                    <td><span class="badge badge-primary">사원</span></td>
-                  </tr>
-                </tbody>
+                <tbody id="refMemberTableBody"></tbody>
               </table>
             </div>
           </div>
@@ -491,7 +241,13 @@
   <!-- 토스트 알림 컨테이너 -->
   <div id="toast-container" class="toast-container"></div>
 
-  <script src="js/common.js"></script>
-  <script src="js/approval.js"></script>
+  <!-- 결재선 후보(1차=팀장/최종=부서장) select 옵션용 - 서버가 이미 필터링해서 내려준 목록
+       (클라이언트에서 position==='팀장'처럼 다시 거르지 않음) -->
+  <script th:inline="javascript">
+    const teamLeadCandidates = /*[[${teamLeadCandidates}]]*/ [];
+    const deptHeadCandidates = /*[[${deptHeadCandidates}]]*/ [];
+  </script>
+  <script th:src="@{/js/common.js}"></script>
+  <script th:src="@{/js/approval.js}"></script>
 </body>
 </html>

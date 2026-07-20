@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const response = await fetch('/attendance/status');
         const data = await response.json();
         updateButtonUI(data.nextStatus);
-      updateAttendanceDisplay(data);
+		updateAttendanceDisplay(data);
     } catch (e) {
         console.error("상태 조회 실패", e);
     }

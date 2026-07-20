@@ -30,17 +30,17 @@
 	    LIMIT #{size} OFFSET #{offset}
 	</select>
 
-   <!-- 위 findNotices와 검색 조건(WHERE)을 동일하게 유지해야 페이지 수 계산이 어긋나지 않음 -->
-   <select id="countNotices" resultType="int">
-       SELECT COUNT(*)
-       FROM NOTICE n
-       <where>
-           <if test="keyword != null and keyword != ''">
-               n.NOTICE_TITLE LIKE CONCAT('%', #{keyword}, '%')
-               OR n.NOTICE_CONTENT LIKE CONCAT('%', #{keyword}, '%')
-           </if>
-       </where>
-   </select>
+	<!-- 위 findNotices와 검색 조건(WHERE)을 동일하게 유지해야 페이지 수 계산이 어긋나지 않음 -->
+	<select id="countNotices" resultType="int">
+	    SELECT COUNT(*)
+	    FROM NOTICE n
+	    <where>
+	        <if test="keyword != null and keyword != ''">
+	            n.NOTICE_TITLE LIKE CONCAT('%', #{keyword}, '%')
+	            OR n.NOTICE_CONTENT LIKE CONCAT('%', #{keyword}, '%')
+	        </if>
+	    </where>
+	</select>
 
    <!-- 공지 상세 조회 - 목록(findNotices)과 동일하게 작성자 이름/부서명 조인 -->
    <select id="findNoticeDetail" resultType="com.groupware.dto.NoticeDTO">

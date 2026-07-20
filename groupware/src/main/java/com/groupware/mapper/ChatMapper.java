@@ -5,6 +5,7 @@ import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import com.groupware.dto.ChatAttachmentDTO;
 import com.groupware.dto.ChatMessageDTO;
 import com.groupware.dto.ChatRoomDTO;
 
@@ -39,4 +40,71 @@ public interface ChatMapper {
     int insertChatRoomMember(
             @Param("roomId") int roomId,
             @Param("employeeId") int employeeId);
+
+    
+    // ========================= 0719에 추가함 =======================
+    
+    
+    // 방에 참여한 직원 번호와 WebSocket 개인 알림용 사번을 각각 조회한다.
+    
+    // 특정 채팅방에 참여한 직원들의 ID 목록을 조회한다.
+    // 직원 아이디가 여러개여서 list로 반환 
+    List<Integer> findRoomMemberIds(@Param("roomId") int roomId);
+    								// XML에서 이 값을 #{roomId}라는 이름으로 사용하기 위한 설정이다
+    // 특정 채팅방 참여자들의 사번 목록을 조회한다.
+    List<String> findRoomMemberEmployeeNos(@Param("roomId") int roomId);
+
+    
+    
+    // 특정 채팅방에서 가장 최근 메시지의 ID를 조회.
+    Integer findLatestMessageId(@Param("roomId") int roomId);
+
+    // 특정 직원이 특정 채팅방에서 마지막으로 읽은 메시지 ID를 조회한다.
+    Integer findLastReadMessageId(
+            @Param("roomId") int roomId,
+            @Param("employeeId") int employeeId);
+    // ex) 채팅방 3번에서 직원 1001이 마지막으로 읽은 메시지 ID = 20 로 찾음
+
+    // 현재 읽지 않은 메시지의 전체 개수를 조회.
+    int countMyUnreadMessages(@Param("employeeId") int employeeId);
+
+    // 특정 채팅방을 어디까지 읽었는지 갱신함.
+    int updateLastReadMessageId(
+            @Param("roomId") int roomId,
+            @Param("employeeId") int employeeId,
+            @Param("messageId") int messageId);
+
+    // 갠방은 이름이 없으므로 그룹방만 이 SQL을 통해 이름을 바꿈.
+    int updateGroupRoomName(
+    // 반환되는 int는 수정된 행의 개수이다. 
+    		
+            @Param("roomId") int roomId,
+            @Param("roomName") String roomName);
+    
+    
+    
+    
+    // =========== 실시간 채팅 추가 =============
+    
+    // 새 텍스트 메시지를 CHAT_MESSAGE에 저장한다.
+    // INSERT 후 생성된 MESSAGE_ID는 ChatMessageDTO.messageId에 담긴다.
+    int insertChatMessage(ChatMessageDTO chatMessage);
+
+    // INSERT 직후 메시지 시간, 발신자 이름, 프로필까지 포함한 한 건을 다시 조회한다.
+    ChatMessageDTO findMessageById(
+            @Param("messageId") int messageId);
+
+    // 파일 메시지와 연결되는 첨부파일 한 건을 저장,조회한다.
+    int insertChatAttachment(ChatAttachmentDTO attachment);
+    											// 파일 정보가 담긴 DTO
+
+    // 첨부파일 ID로 첨부파일 정보를 하나 조회.
+    ChatAttachmentDTO findAttachmentById(@Param("attachId") int attachId);
+    // attachId - 첨부파일 번호
+    // 첨부파일 다운로드나 파일 정보 표시 전에 사용할 수 있다. 
+    
+    
+    
+    
+    
 }

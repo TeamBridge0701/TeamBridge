@@ -1023,6 +1023,38 @@
       min-height: 0;
       padding-left: 1.25rem;
     }
+    /* 방 선택 전, 새 채팅방의 안내 문구를 가운데에 표시한다. */
+    .chat-main > .empty-state,
+    .chat-messages > .empty-state {
+      flex: 1;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.7rem;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    .chat-main > .empty-state i,
+    .chat-messages > .empty-state i {
+      color: var(--color-primary);
+      font-size: 2rem;
+    }
+    .chat-main > .empty-state strong,
+    .chat-messages > .empty-state strong {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+    /* 채팅방이 하나도 없을 때 왼쪽 목록에서 안내한다. */
+    .chat-room-list > .empty-state {
+      padding: 1.5rem 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-align: center;
+    }
     .chat-thread-header {
       display: flex;
       align-items: center;
@@ -1035,6 +1067,17 @@
       display: flex;
       align-items: center;
       gap: 0.65rem;
+    }
+    .chat-thread-who-editable {
+      cursor: pointer;
+    }
+    .chat-thread-who-editable:hover #chatThreadName {
+      color: var(--color-primary);
+    }
+    .chat-thread-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
     }
     .chat-thread-status {
       font-size: 0.75rem;
@@ -1050,6 +1093,10 @@
       padding-right: 0.25rem;
     }
     .chat-date-divider {
+      align-self: stretch;
+      width: 100%;
+      display: flex;
+      justify-content: center;
       text-align: center;
       margin: 0.5rem 0;
     }
@@ -1061,11 +1108,34 @@
       padding: 0.25rem 0.75rem;
       border-radius: 12px;
     }
-    .chat-system-message {
+    .chat-row.chat-system-message {
+      align-self: stretch;
+      width: 100%;
+      max-width: none;
+      display: flex;
+      justify-content: center;
       text-align: center;
       font-size: 0.75rem;
       color: var(--text-muted);
-      margin: 0.25rem 0;
+      margin: 0.5rem 0;
+    }
+    .chat-system-message span {
+      background-color: var(--bg-tertiary);
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+    }
+    .chat-sidebar-badge {
+      margin-left: auto;
+      min-width: 18px;
+      height: 18px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 0.35rem;
+      border-radius: 9px;
+      background-color: var(--color-danger);
+      color: #fff;
+      font-size: 0.68rem;
+      font-weight: 700;
     }
     /* 채팅 한 줄(아바타 + 말풍선). 기본은 상대방 메시지(왼쪽 정렬)이고,
        .out 클래스(내가 보낸 메시지)가 붙으면 flex-direction을 뒤집어서
@@ -1127,6 +1197,8 @@
       border-radius: 14px 14px 14px 2px;
       font-size: 0.85rem;
       cursor: pointer;
+      color: var(--text-primary);
+      text-decoration: none;
     }
     .chat-row.out .chat-bubble-file {
       background-color: rgba(var(--color-primary-rgb), 0.1);

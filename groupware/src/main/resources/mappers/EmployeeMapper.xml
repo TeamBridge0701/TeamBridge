@@ -38,6 +38,16 @@
         ORDER BY DEPT_NAME
     </select>
 
+    <!-- [전자결재] 결재선 후보 - 특정 직급 서열의 ACTIVE 직원 전체, 부서명과 함께 -->
+    <select id="findByPositionRank" resultType="com.groupware.dto.EmployeeDTO">
+        SELECT e.EMPLOYEE_ID, e.EMPLOYEE_NAME, e.EMPLOYEE_STATUS, d.DEPT_NAME, p.POSITION_NAME
+        FROM EMPLOYEE e
+            LEFT JOIN DEPARTMENT d ON e.DEPT_ID = d.DEPT_ID
+            JOIN `POSITION` p ON e.POSITION_ID = p.POSITION_ID
+        WHERE e.EMPLOYEE_STATUS = 'ACTIVE' AND p.POSITION_RANK = #{positionRank}
+        ORDER BY d.DEPT_NAME, e.EMPLOYEE_NAME
+    </select>
+
     <!--
       [조직도 직원 표]
       정지/퇴사 계정은 조직도와 채팅 대상에 표시하지 않기 위해 ACTIVE만 조회한다.
@@ -108,7 +118,7 @@
 	
 	
 	
-	
+
 	<!--
 		마이페이지 비밀번호 변경
 		newPassword는 Service에서 이미 BCrypt로 해싱된 값 - 여기선 그대로 저장만 함
@@ -119,11 +129,14 @@
 	    WHERE EMPLOYEE_ID = #{employeeId}
 	</update>
 
-	<!-- 마이페이지 전화번호/이메일 수정 (프로필 사진은 경로 협의 후 별도 추가 예정) -->
+	<!-- 마이페이지 전화번호/이메일/프로필 사진 수정 -->
 	<update id="updateContact">
 	    UPDATE EMPLOYEE
 	    SET EMPLOYEE_PHONE = #{employeePhone},
 	        EMPLOYEE_EMAIL = #{employeeEmail}
+			<if test="profileImg != null"> <!-- 프로필 사진 없을 시 수정 안함 -->
+				, PROFILE_IMG = #{profileImg}
+			</if>
 	    WHERE EMPLOYEE_ID = #{employeeId}
 	</update>
 

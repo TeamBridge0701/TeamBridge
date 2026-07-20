@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupware.mapper.ApprovalFormTypeMapper">
+
+	<select id="findAll" resultType="com.groupware.dto.ApprovalFormTypeDTO">
+	    SELECT FORM_TYPE_ID, FORM_TYPE_NAME, APPROVAL_STEP_COUNT
+	    FROM APPROVAL_FORM_TYPE
+	    ORDER BY FORM_TYPE_ID
+	</select>
+
+	<select id="findById" resultType="com.groupware.dto.ApprovalFormTypeDTO">
+	    SELECT FORM_TYPE_ID, FORM_TYPE_NAME, APPROVAL_STEP_COUNT
+	    FROM APPROVAL_FORM_TYPE
+	    WHERE FORM_TYPE_ID = #{formTypeId}
+	</select>
+
+</mapper>

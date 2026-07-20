@@ -11,4 +11,8 @@ public class ApprovalLineDTO {
 	private String lineStatus;
 	private String lineComment;
 	private String decidedAt;
+
+	// 결재 상세 모달의 스테퍼 표시용 - 조인 결과(테이블 컬럼 아님)
+	private String approverName;
+	private String approverPositionName;
 }

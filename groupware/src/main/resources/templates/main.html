@@ -43,11 +43,13 @@
 		<!-- 메인 내비게이션 영역 -->
 		<div class="main-body" id="mainBody">
 
+
 			<!-- 좌측 사이드바 - 공통 조각(fragments/layout.html) 재사용 -->
 			<aside th:replace="~{fragments/layout :: sidebar}"></aside>
 
 			<!-- 중앙 동적 화면 콘텐츠 영역 -->
 			<main class="view-content">
+
 
 				<div style="margin-bottom: 1.25rem;">
 					<h2 style="font-size: 1.35rem;">안녕하세요, <span id="dashGreetingName" th:if="${employee != null}"
@@ -233,7 +235,8 @@
 					<!-- 우측 위젯 -->
 					<div class="col-3" style="display: flex; flex-direction: column; gap: 0.25rem;">
 						<!-- 날씨 위젯 -->
-						<div th:replace="~{fragments/weather::weatherWidget}"></div>
+						<div th:replace="~{fragments/weather :: weatherWidget}"></div>
+
 						<!-- 미니 캘린더 -->
 						<div class="card" style="padding: 1.25rem;">
 							<div class="card-header" style="margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
