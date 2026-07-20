@@ -30,6 +30,7 @@ public class AdminController {
 	// GET /admin/member를 호출해서 채운다 (검색어 입력 시 재호출하는 구조라 SSR 대신 AJAX로 감).
 	@GetMapping("/admin")
 	public String admin() {
+		System.out.println("aa");
 		return "admin/admin";
 	}
 
