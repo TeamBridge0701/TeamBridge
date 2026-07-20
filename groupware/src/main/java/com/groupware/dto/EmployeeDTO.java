@@ -19,7 +19,9 @@ public class EmployeeDTO {
 	private String employeeRole;	// EMPLOYEE / ADMIN
 	private String employeePhone;
 	private String employeeEmail;
-	private String profileImg;
+	// 저장된 파일명만(예 : a1b2c3.jpg) - ArchiveFileDTO와 달리 전체 경로 아님.
+	// /uploads/profileImg/ + 이 값으로 화면에서 URL 조립해서 씀(정적 리소스로 서빙)
+	private String profileImg;  
 	private String employeeStatus;	// ACTIVE / SUSPENDED
 	private String hireDate;
 	private String createdAt;
