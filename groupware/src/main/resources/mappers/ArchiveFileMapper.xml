@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupware.mapper.ArchiveFileMapper">
+
+	<insert id="insertArchiveFile">
+	    INSERT INTO ARCHIVE_FILE (ARCHIVE_ID, FILE_NAME, FILE_PATH, FILE_SIZE)
+	    VALUES (#{archiveId}, #{fileName}, #{filePath}, #{fileSize})
+	</insert>
+
+	<select id="findFilesByArchiveId" resultType="com.groupware.dto.ArchiveFileDTO">
+	    SELECT FILE_ID, ARCHIVE_ID, FILE_NAME, FILE_PATH, FILE_SIZE, UPLOADED_AT
+	    FROM ARCHIVE_FILE
+	    WHERE ARCHIVE_ID = #{archiveId}
+	    ORDER BY FILE_ID
+	</select>
+
+	<select id="findFileById" resultType="com.groupware.dto.ArchiveFileDTO">
+	    SELECT FILE_ID, ARCHIVE_ID, FILE_NAME, FILE_PATH, FILE_SIZE, UPLOADED_AT
+	    FROM ARCHIVE_FILE
+	    WHERE FILE_ID = #{fileId}
+	</select>
+
+	<delete id="deleteFilesByArchiveId">
+	    DELETE FROM ARCHIVE_FILE
+	    WHERE ARCHIVE_ID = #{archiveId}
+	</delete>
+
+</mapper>

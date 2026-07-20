@@ -55,6 +55,18 @@ public class NoticeService {
 		return Math.max(1, (int) Math.ceil(totalCount / (double) PAGE_SIZE));
 	}
 
+	// 페이지 번호를 5개씩 그룹으로 묶어서 보여주기 위한 그룹 시작/끝 계산
+	// (예: 1~5, 6~10, 11~13 ... 화면에는 "‹ [그룹시작..그룹끝] ›" 형태로 표시)
+	private static final int PAGE_GROUP_SIZE = 5;
+
+	public int getPageGroupStart(int currentPage) {
+		return ((currentPage - 1) / PAGE_GROUP_SIZE) * PAGE_GROUP_SIZE + 1;
+	}
+
+	public int getPageGroupEnd(int currentPage, int totalPages) {
+		return Math.min(getPageGroupStart(currentPage) + PAGE_GROUP_SIZE - 1, totalPages);
+	}
+
 	// 조회수를 먼저 +1 한 뒤 조회해야 화면에 방금 조회한 결과(+1 반영된 값)가 나옴
 	public NoticeDTO getNoticeDetail(int noticeId) {
 		noticeMapper.incrementViewCount(noticeId);

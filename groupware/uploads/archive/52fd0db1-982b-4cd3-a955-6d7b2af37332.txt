@@ -1,0 +1,223 @@
+day04
+
+0. 복습
+
+브랜치(branch)
+- 독립적인 작업 공간(브랜치끼리 서로 영향을 주지 않는다)
+- 브랜치를 새로 만들면 작업 내용을 복사해서 새로운 
+  작업을 시작할 수 있다
+- 브랜치를 새로 만드는 것은 평행 세계를 만드는 것과 유사
+
+1) 브랜치 주요 명령어
+- git branch : 브랜치 목록 확인
+- git branch [이름] : 새 브랜치 생성
+- git checkout [이름] : 브랜치 이동
+- git checkout -b [이름] : 생성하며 이동
+- git branch -d [이름] : 브랜치 삭제
+- git merge [브랜치명] : 현재 브랜치에 병합
+
++) 브랜치 이동 주의사항
+- git status로 현재 상태 확인
+- 작업 중인 파일이 있는지 확인
+- 커밋되지 않은 변경사항 확인
+
+
+병합(merge)
+1) fast-forward merge
+- main 브랜치에 변경사항이 없을 때 발생
+- 브랜치의 커밋을 그대로 가져오는 방식 
+- 별도의 병합 커밋이 생기지 않음
+
+2) 3-way merge
+- 양쪽 브랜치에 새로운  커밋이 있을때 발생
+- 자동으로 병합 후 새로운 병합 커밋 생성
+
+충돌
+- 3-way Merge에서 발생됨
+- 양쪽 브랜치에서 같은 파일의 같은 부분을 다르게 수정
+- 사용자가 직접 선택 해야함
+- 충돌표시 형식
+<<<<<<< HEAD
+현재 브랜치의 내용
+병합할 브랜치 내용
+>>>>>>> branch 이름
+
+1. 원격 저장소와 충돌(fetch)
+
+Remote 저장소
+1) 원격 저장소의 구조
+- 원격 저장소도 로컬처럼 브랜치를 가짐
+- 로컬의 브랜치와 원격의 브랜치는 독립적
+
+2) 동기화 과정
+- pull : 변경사항을 로컬로 가져온 후 merge
+- push : 로컬의 변경사항을 원격에 업로드 후 merge
+	(fast-forward만 가능)
+
+3) 충돌이 발생하는 경우
+- pull : 원격과 로컬이 같은 부분을 다르게 수정
+- push : 원격에 새로운 커밋이 있는 경우 (먼저 pull 필요)
+
++) 충돌 오류
+error: failed to push some refs to 'https://github.com/jinkuk1113-ship-it
+/remote_test.git'
+=> 원격에 로컬에 없는 새로운 커밋이 있어서 push 거부됨
+
+2. Fetch
+- git fetch[원격 저장소] [브랜치]
+- 원격의 변경사항을 확인만 하는 명령어
+- 실제 파일은 가져오지 않음
+- 원격 브랜치의 정보만 업데이트
++) 사용 목적
+- 원격의 변경사항을 안전하게 확인
+- 병합 전에 코드 검토
+- 충돌 가능성 미리 파악
+
++) fetch와 pull의 차이
+- pull = fetch + merge
+- fetch : 변경사항 확인만 함
+- pull : 변경사항을 가져와서 병합까지 함
+- 관련 명령어
+	git branch -a : 원격 브랜치 목록까지 조회
+	git log --all : 원격 저장소 +로컬 저장소 모든
+		브랜치 로그 조회(--all이 없으면 현재 브랜치만)
+	git diff [브랜치1][브랜치2] : 두 브랜치 간 차이 비교
+
+3. GitHub 주요 기능
+
+1) Fork
+- 내 소유가 아닌 저장소를 내 계정의 Repository로 복사해 오는 것
+- 복사본은 내 소유의 저장소 이므로 마음대로 수정 가능
+- 원본 저장소와 연결되어 정보를 유지함
+
+2) Organization(조직)
+- 여러 사람이 공유하는 저장소 그룹
+- 팀/회사 단위의 프로젝트 관리에 적합
+- 주요 기능 :
+	팀 구성 및 권한 관리
+	Organization Repository(조직이 공유하는 저장소)
+		생성 가능
+3) pull Request(PR)
+- 코드 변경사항을 병합 요청하는 기능
+
+4. 팀 프로젝트 세팅 과정
+1) 팀장이 하는 일
+(1) Organization 생성
+	GitHub 메인 -> 프로필 ->  your organization -> new organization
+	무료 플랜
+	Organization 이름, 이메일 설정
+(2) 팀원초대
+	Organization 페이지 -> people
+	invite member 클릭
+	팀원 이메일 입력
+	권한 설정(member 권한)
+(3) Repository 생성
+	Organization 페이지 -> new repository
+	이름 설정 (ex : team-project)
+	public/private 선택
+	README.md 생성 체크
+(4) 기본 파일 설정(프로젝트 세팅)
+	공용 저장소의 fork 버튼을 눌러 내 개인 저장소로 복제
+	로컬에 프로젝트 폴더 만들기 클론 따기
+		git clone [개인 url]
+	리모트 연결 확인	
+		git remote -v
+		=> origin에 내 계정의 fork 딴 저장소가 등록 되어야함
+		(잘못되어 있다면 수정)
+	공용 저장소도 리모트 연결하기
+		git remote add[별칭] [고용 저장소 주소]
+		git remote -v 로 확인
+	.gitignore 파일 생성 등 프로젝트 기본 구조 만들기
+	변경사항 스테이징 -> 커밋 -> push(fork딴 origin으로 해야함)
+(5) 공용 저장소로 변경사항 PR 보내기
+	fork 딴 저장소 -> Pull Request
+	New pull request -> 변경사항 확인 후 (충돌 없는지 확인)
+		-> create pull request
+	PR제목(무엇을 수정 했는지 작성), 내용 설명(자세하게 무엇을 했는지 작성)
+	-> create pull request
+(6) PR 요청 확인과 병합하기
+	공용 저장소 -> pull request 에 숫자가 뜸
+	PR 목록 중 1개 선택
+	PR 설명과 Files changed에서 어떤 파일이 변경 되었는지 파악
+	이상이 없다면 Merge pull request
+(7) 팀원들에게 세팅 끝났다고 알려주기
+
+2) 팀원이 하는 일
+(1) 초대 수락
+- 이메일 초대 링크 수락
+- GitHub의 알림에서 수락
+
+(2) 팀장이 세팅을 다 끝내면 , Fork 생성
+- Organization 저장소 들어가고
+- Fork 버튼 클릭해서 내 저장소로 복제하기
+
+(3) 로컬 환경 설정
+- 로컬에서 프로젝트 폴더 만들고 클론 따기
+	git clone URL(개인 원격 저장소)
+- 리모트 연결 확인
+	git remote -v
+- 공용 저장소도 리모트 연결
+	git remote add [별칭][공용 저장소 주소]
+	git remote -v로 확인
+
+=====세팅 끝난 후==
+
+3) 작업할 때 순서(팀장/팀원공통)
+(1) 작업 시작 전 준비
+- main 브랜치로 이동
+- [공용 저장소]에서 pull을 받아 최신화
+- 최신 상태의 main 브랜치에서 작업용 브랜치 생성 ( main브랜치 에서 작업 하면 안됨!!)
+(2) 작업 진행
+- 작업용 브랜치 에서만 작업 !!!
+- 완료되면 커밋하고 , 필요하다면 여러번 커밋해도 무관
+
+(3) 원격 저장소에 push 준비
+- main 브랜치로 이동해서[공용 저장소]에서 pull 받기(최신화)
+- 작업 브랜치로 돌아와서 (checkout) main을 병합(merge) 하기
+	=> 충돌 발생하면 해결 후 커밋
+	=> 충돌 없으면 자동 커밋
+-[개인 원격 저장소]에 push 하기
+	git push origin [작업 브랜치명]
+	작업 브랜치명과 동일한 브랜치를 만들면서 push 하는 것
+
+(4) PR 생성하기
+- PR을 [공용 저장소] main으로 보내기
+- PR을 보낸 후 팀장에게 연락하기
+
+4) PR을 받았을 때 팀장이 하는 일
+- PR요청 확인과 병합하기
+	- 공용 저장소 -> pull request에 숫자가 뜸
+	- PR 목록 중 1개 선택
+	- PR 설명과 어떤 파일이 변경 되었는지 파악(충돌 없는지 파악)
+	- 이상이 없다면 Merge Pull Request 이상이 있다면
+		팀원에게 다시 보내라고 하기
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
