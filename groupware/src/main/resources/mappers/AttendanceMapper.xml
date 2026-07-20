@@ -32,10 +32,6 @@
 		WHERE EMPLOYEE_ID = #{employeeId} AND WORK_DATE = #{today}
 	</update>
 
-<<<<<<< HEAD
-=======
-
->>>>>>> main
 	<!-- 4. 월별 조회 -->
 	<select id="selectAttendanceByPeriod"
 		resultType="com.groupware.dto.AttendanceDTO">
@@ -43,8 +39,6 @@
 		WHERE EMPLOYEE_ID = #{employeeId}
 		AND WORK_DATE BETWEEN #{startDate} AND #{endDate}
 	</select>
-<<<<<<< HEAD
-=======
   
 	<!-- 5. 전자결재 최종 승인 시 휴가 반영 - 그 날짜에 이미 기록이 있으면 LEAVE로 덮어씀
 	     (UNIQUE(EMPLOYEE_ID, WORK_DATE) 제약과 충돌 시 값만 갱신) -->
@@ -53,6 +47,4 @@
 		VALUES (#{employeeId}, #{workDate}, 'LEAVE')
 		ON DUPLICATE KEY UPDATE ATTENDANCE_STATUS = 'LEAVE'
 	</insert>
->>>>>>> main
-
 </mapper>
