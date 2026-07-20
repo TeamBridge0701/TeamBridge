@@ -40,10 +40,6 @@ public interface EmployeeMapper {
 	// 마이페이지 전화번호/이메일/프로필 사진 수정
 	int updateContact(@Param("employeeId") int employeeId, @Param("employeePhone") String employeePhone,
 			@Param("employeeEmail") String employeeEmail, @Param("profileImg") String profileImg);
-<<<<<<< HEAD
-=======
-
->>>>>>> main
 
 	// 관리자: 계정 목록 조회 - keyword는 이름 검색어(없으면 전체)
 	List<EmployeeDTO> findAll(@Param("keyword") String keyword);

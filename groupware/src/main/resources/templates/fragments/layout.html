@@ -41,7 +41,7 @@
 				<a class="icon-btn" th:href="@{/chat}" title="실시간 채팅" style="text-decoration:none;">
 					<i class="fa-solid fa-comment-dots"></i>
 					<!-- 안읽음 수는 채팅 기능 만들 때 연동 - 지금은 0 고정 -->
-					<span class="badge" id="headerChatBadge">0</span>
+					<span class="badge" id="headerChatBadge" style="display:none;">0</span>
 				</a>
 				<a class="user-dropdown" th:href="@{/mypage}" style="text-decoration:none;">
 					<!-- 아바타 이니셜 자동 추출 -->
@@ -73,7 +73,7 @@
 					<li class="sidebar-group-label">업무</li>
 					<li class="sidebar-item sub" id="menu-calendar"><a th:href="@{/calendar}"><i
 								class="fa-solid fa-calendar-days"></i> 일정 캘린더</a></li>
-					<li class="sidebar-item sub" id="menu-approval"><a th:href="@{/approval/inbox}"><i
+					<li class="sidebar-item sub" id="menu-approval"><a th:href="@{/approval}"><i
 								class="fa-solid fa-signature"></i> 전자결재</a></li>
 					<li class="sidebar-item sub" id="menu-notice"><a th:href="@{/notice/list}"><i
 								class="fa-solid fa-bullhorn"></i> 공지사항</a></li>
@@ -115,7 +115,6 @@
 
 		</div>
 	</div>
-
 </body>
 
 </html>
