@@ -123,4 +123,5 @@ public class EmployeeService {
 		EmployeeDTO employee = employeeMapper.findMyPageInfo(employeeId);
 		employeeMapper.updatePassword(employeeId, passwordEncoder.encode(employee.getEmployeeNo()));
 	}
+
 }

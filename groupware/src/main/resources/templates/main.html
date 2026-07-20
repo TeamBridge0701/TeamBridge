@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="light">
+<html lang="ko" data-theme="light" xmlns:th="http://www.thymeleaf.org">
 
 <head>
 	<meta charset="UTF-8">
@@ -37,23 +37,18 @@
        ========================================== -->
   <div class="app-wrapper" id="appWrapper">
 
-	<!-- 상단 헤더 - 공통 조각(fragments/layout.html) 재사용 -->
-			<header th:replace="~{fragments/layout :: header}"></header>
+		<!-- 상단 헤더 - 공통 조각(fragments/layout.html) 재사용 -->
+		<header th:replace="~{fragments/layout :: header}"></header>
 
-			<!-- 메인 내비게이션 영역 -->
-					<div class="main-body" id="mainBody">
-            
+		<!-- 메인 내비게이션 영역 -->
+		<div class="main-body" id="mainBody">
 
-						<!-- 좌측 사이드바 - 공통 조각(fragments/layout.html) 재사용 -->
-						<aside th:replace="~{fragments/layout :: sidebar}"></aside>
+			<!-- 좌측 사이드바 - 공통 조각(fragments/layout.html) 재사용 -->
+			<aside th:replace="~{fragments/layout :: sidebar}"></aside>
 
-      <!-- 중앙 동적 화면 콘텐츠 영역 -->
-      <main class="view-content">
+			<!-- 중앙 동적 화면 콘텐츠 영역 -->
+			<main class="view-content">
 
-        <!-- ==========================================
-             화면: 대시보드 (로그인 후 처음 보이는 홈 화면)
-             아래 내용은 js/dashboard.js의 renderDashboard()가 다시 그린다.
-             ========================================== -->
 				<div style="margin-bottom: 1.25rem;">
 					<h2 style="font-size: 1.35rem;">안녕하세요, <span id="dashGreetingName" th:if="${employee != null}"
 							th:text="|${employee?.employeeName} · ${employee.positionName}|">홍길동 사원</span>님! 👋</h2>
@@ -70,7 +65,10 @@
 								id="dashRoleDept" th:if="${employee != null}"
 								th:text="|${employee.deptName} · ${employee.positionName}|">개발팀 · 사원</p>
 
-							<button id="btnCommute" class="btn">상태 로딩중...</button>
+							<button id="btnCommute" class="btn"
+								style="width: 100%; margin-bottom: 1rem; transition: all 0.3s ease;">
+								상태 확인 중...
+							</button>
 
 							<div class="commute-info-box">
 								<div class="commute-row">
@@ -80,13 +78,13 @@
 								</div>
 								<div class="commute-row">
 									<span>출근 시각</span>
-									<span class="commute-val" id="dashCheckinTime" 
-									      th:text="${attendance?.checkInTime != null ? #strings.substring(attendance.checkInTime, 0, 5) : '-'}">-</span>
+									<span class="commute-val" id="dashCheckinTime"
+										th:text="${attendance?.checkInTime != null ? #strings.substring(attendance.checkInTime, 0, 5) : '-'}">-</span>
 								</div>
 								<div class="commute-row">
 									<span>퇴근 시각</span>
-									<span class="commute-val" id="dashWorkTimer" 
-									      th:text="${attendance?.checkOutTime != null ? #strings.substring(attendance.checkOutTime, 0, 5) : '-'}">-</span>
+									<span class="commute-val" id="dashWorkTimer"
+										th:text="${attendance?.checkOutTime != null ? #strings.substring(attendance.checkOutTime, 0, 5) : '-'}">-</span>
 								</div>
 							</div>
 						</div>
@@ -235,18 +233,7 @@
 					<!-- 우측 위젯 -->
 					<div class="col-3" style="display: flex; flex-direction: column; gap: 0.25rem;">
 						<!-- 날씨 위젯 -->
-						<div class="card"
-							style="display: flex; align-items: center; gap: 1rem; padding: 1.15rem 1.5rem;">
-							<i class="fa-solid fa-cloud-sun-rain"
-								style="font-size: 2.25rem; color: var(--color-warning);"></i>
-							<div>
-								<div style="font-size: 0.75rem; color: var(--text-muted);">서울 기상 예보</div>
-								<div style="font-size: 1.3rem; font-weight: 800; font-family: 'Fira Code', monospace;">
-									24.8°C</div>
-								<div style="font-size: 0.75rem; color: var(--text-secondary);">구름조금 · 실시간 대기 좋음</div>
-							</div>
-						</div>
-
+						<div th:replace="~{fragments/weather::weatherWidget}"></div>
 						<!-- 미니 캘린더 -->
 						<div class="card" style="padding: 1.25rem;">
 							<div class="card-header" style="margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
