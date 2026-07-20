@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupware.mapper.RepositoryMapper">
+
+	<!--
+		로그인 사용자가 볼 수 있는 자료실 목록
+		- DEPT_ID가 NULL이면 전사 공용(전원 접근 가능), 값이 있으면 그 부서 전용
+		- 전사 공용을 항상 먼저 보여주고, 그 다음 이름순
+	-->
+	<select id="findAccessibleRepositories" resultType="com.groupware.dto.RepositoryDTO">
+	    SELECT REPO_ID, REPO_NAME, DEPT_ID, CREATED_AT
+	    FROM REPOSITORY
+	    WHERE DEPT_ID IS NULL OR DEPT_ID = #{deptId}
+	    ORDER BY (DEPT_ID IS NULL) DESC, REPO_NAME
+	</select>
+
+	<!-- 관리자 전용 - DEPT_ID 조건 없이 전체 자료실 -->
+	<select id="findAllRepositories" resultType="com.groupware.dto.RepositoryDTO">
+	    SELECT REPO_ID, REPO_NAME, DEPT_ID, CREATED_AT
+	    FROM REPOSITORY
+	    ORDER BY (DEPT_ID IS NULL) DESC, REPO_NAME
+	</select>
+
+	<select id="findRepositoryById" resultType="com.groupware.dto.RepositoryDTO">
+	    SELECT REPO_ID, REPO_NAME, DEPT_ID, CREATED_AT
+	    FROM REPOSITORY
+	    WHERE REPO_ID = #{repoId}
+	</select>
+
+</mapper>

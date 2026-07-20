@@ -58,6 +58,7 @@ const $ = id => document.getElementById(id);
 const toggleModal = (id, open) => open ? window.openModal?.(id) : window.closeModal?.();
 
 document.addEventListener('DOMContentLoaded', () => {
+  // 이벤트 연결 (Optional Chaining으로 깔끔하게 한 줄 처리)
   $('scheduleForm')?.addEventListener('submit', submitScheduleForm);
   $('addScheduleBtn')?.addEventListener('click', () => openScheduleModal(defaultScheduleDate()));
   $('calendarPrevBtn')?.addEventListener('click', () => moveCalendarMonth(-1));

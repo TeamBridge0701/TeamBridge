@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupware.mapper.ArchiveMapper">
+
+	<!--
+		자료실 게시글 목록 - 작성자 이름/부서명 조인 + 첨부파일 개수(서브쿼리)
+		(admin 계정은 DEPT_ID가 NULL이라 NoticeMapper와 동일하게 LEFT JOIN)
+		REPO_ID는 항상 고정 조건, keyword는 NoticeMapper.findNotices와 동일하게 제목/본문 LIKE 검색
+	-->
+	<select id="findArchives" resultType="com.groupware.dto.ArchiveDTO">
+	    SELECT a.*,
+	           e.EMPLOYEE_NAME AS writerName,
+	           d.DEPT_NAME AS writerDeptName,
+	           (SELECT COUNT(*) FROM ARCHIVE_FILE f WHERE f.ARCHIVE_ID = a.ARCHIVE_ID) AS fileCount
+	    FROM ARCHIVE a
+	        JOIN EMPLOYEE e ON a.WRITER_ID = e.EMPLOYEE_ID
+	        LEFT JOIN DEPARTMENT d ON e.DEPT_ID = d.DEPT_ID
+	    WHERE a.REPO_ID = #{repoId}
+	    <if test="keyword != null and keyword != ''">
+	        AND (a.ARCHIVE_TITLE LIKE CONCAT('%', #{keyword}, '%')
+	             OR a.ARCHIVE_CONTENT LIKE CONCAT('%', #{keyword}, '%'))
+	    </if>
+	    ORDER BY a.ARCHIVE_ID DESC
+	    LIMIT #{size} OFFSET #{offset}
+	</select>
+
+	<!-- 위 findArchives와 검색 조건(WHERE) 동일하게 유지해야 페이지 수 계산이 어긋나지 않음 -->
+	<select id="countArchives" resultType="int">
+	    SELECT COUNT(*)
+	    FROM ARCHIVE
+	    WHERE REPO_ID = #{repoId}
+	    <if test="keyword != null and keyword != ''">
+	        AND (ARCHIVE_TITLE LIKE CONCAT('%', #{keyword}, '%')
+	             OR ARCHIVE_CONTENT LIKE CONCAT('%', #{keyword}, '%'))
+	    </if>
+	</select>
+
+	<!-- 게시글 상세 - 첨부파일 목록은 ArchiveFileMapper.findFilesByArchiveId로 별도 조회 -->
+	<select id="findArchiveDetail" resultType="com.groupware.dto.ArchiveDTO">
+	    SELECT a.*,
+	           e.EMPLOYEE_NAME AS writerName,
+	           d.DEPT_NAME AS writerDeptName
+	    FROM ARCHIVE a
+	        JOIN EMPLOYEE e ON a.WRITER_ID = e.EMPLOYEE_ID
+	        LEFT JOIN DEPARTMENT d ON e.DEPT_ID = d.DEPT_ID
+	    WHERE a.ARCHIVE_ID = #{archiveId}
+	</select>
+
+	<!-- useGeneratedKeys: INSERT 직후 AUTO_INCREMENT된 ARCHIVE_ID를 archive.archiveId에 채워줌
+	     - 같은 트랜잭션에서 바로 ARCHIVE_FILE INSERT에 FK로 써야 하기 때문 -->
+	<insert id="insertArchive" useGeneratedKeys="true" keyProperty="archiveId">
+	    INSERT INTO ARCHIVE (REPO_ID, WRITER_ID, ARCHIVE_TITLE, ARCHIVE_CONTENT)
+	    VALUES (#{repoId}, #{writerId}, #{archiveTitle}, #{archiveContent})
+	</insert>
+
+	<update id="updateArchive">
+	    UPDATE ARCHIVE
+	    SET ARCHIVE_TITLE = #{archiveTitle},
+	        ARCHIVE_CONTENT = #{archiveContent},
+	        UPDATED_AT = NOW()
+	    WHERE ARCHIVE_ID = #{archiveId}
+	</update>
+
+	<delete id="deleteArchive">
+	    DELETE FROM ARCHIVE
+	    WHERE ARCHIVE_ID = #{archiveId}
+	</delete>
+
+</mapper>

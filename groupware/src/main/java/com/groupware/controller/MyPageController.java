@@ -17,8 +17,6 @@ import lombok.RequiredArgsConstructor;
 @Controller
 @RequiredArgsConstructor
 public class MyPageController {
-
-	
 	private final EmployeeService employeeService;
 	
 	// @AuthenticationPrincipal: 로그인 시 세션에 저장해둔 CustomUserDetails를
@@ -36,20 +34,17 @@ public class MyPageController {
 	@PostMapping("/mypage/password")
 	@ResponseBody
 	public ResponseEntity<String> changePassword(@AuthenticationPrincipal CustomUserDetails principal,
-			@RequestParam("currentPassword") String currentPassword,
-			@RequestParam("newPassword") String newPassword) {
+			@RequestParam("currentPassword") String currentPassword, @RequestParam("newPassword") String newPassword) {
 		boolean success = employeeService.changePassword(principal.getEmployeeDTO().getEmployeeId(), currentPassword,
 				newPassword);
 
-		return success ? ResponseEntity.ok("비밀번호가 변경되었습니다.")
-				: ResponseEntity.badRequest().body("현재 비밀번호가 일치하지 않습니다.");
+		return success ? ResponseEntity.ok("비밀번호가 변경되었습니다.") : ResponseEntity.badRequest().body("현재 비밀번호가 일치하지 않습니다.");
 	}
 
 	@PostMapping("/mypage/update")
 	@ResponseBody
 	public ResponseEntity<String> updateContact(@AuthenticationPrincipal CustomUserDetails principal,
-			@RequestParam("employeePhone") String employeePhone,
-			@RequestParam("employeeEmail") String employeeEmail) {
+			@RequestParam("employeePhone") String employeePhone, @RequestParam("employeeEmail") String employeeEmail) {
 		employeeService.updateContact(principal.getEmployeeDTO().getEmployeeId(), employeePhone, employeeEmail);
 		return ResponseEntity.ok("정보가 저장되었습니다.");
 	}

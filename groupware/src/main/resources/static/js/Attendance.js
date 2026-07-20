@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const response = await fetch('/attendance/status');
         const data = await response.json();
         updateButtonUI(data.nextStatus);
-        updateAttendanceDisplay(data);
+      updateAttendanceDisplay(data);
     } catch (e) {
         console.error("상태 조회 실패", e);
     }
@@ -85,9 +85,9 @@ async function commute() {
         if (result.success) {
             // 성공 시 서버가 준 nextStatus로 버튼 UI 갱신
             updateButtonUI(result.nextStatus);
-            updateAttendanceDisplay(result);
-            const message = action === 'checkIn' ? '출근처리되었습니다' : '퇴근처리되었습니다.';
-            showToast(message, 'success'); // 기존 토스트 함수 유지
+         updateAttendanceDisplay(result);
+		 const message=action === 'checkIn' ? '출근처리되었습니다':'퇴근처리되었습니다.';
+           showToast(message, 'success'); // 기존 토스트 함수 유지
         }
     } catch (error) {
         console.error('통신 오류:', error);
