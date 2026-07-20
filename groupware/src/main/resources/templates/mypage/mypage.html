@@ -35,11 +35,10 @@
 			<!-- 좌측 사이드바 - 공통 조각(fragments/layout.html) 재사용 -->
 			<aside th:replace="~{fragments/layout :: sidebar}"></aside>
 
-			<!-- 중앙 동적 화면 콘텐츠 영역 -->
-			<main class="view-content">
+         <!-- 중앙 동적 화면 콘텐츠 영역 -->
+         <main class="view-content">
 
-        <!-- ==========================================
-
+            <!-- ==========================================
              화면: 마이페이지 (로그인한 "본인"의 정보만 보고 수정한다)
              아래 값들은 서버가 th:text로 직접 렌더링(SSR) - Controller
              참고: MyPageController, GlobalModelAdvice

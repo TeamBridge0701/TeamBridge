@@ -91,6 +91,18 @@
 			align-items: center;
 			gap: 4px;
 		}
+		.dash-weather-icon {
+		      width: 56px;
+		      height: 56px;
+		      border-radius: 14px;
+		      background: linear-gradient(135deg, rgb(0, 0, 0), rgba(249, 115, 22, 0.14));
+		      display: flex;
+		      align-items: center;
+		      justify-content: center;
+		      flex-shrink: 0;
+		      box-shadow: 0 0 18px rgba(251, 191, 36, 0.25);
+		  }
+		
 	</style>
 		<!-- [HTML] 메인페이지 레이아웃 원하는 위치에 삽입하세요 -->
 		<div class="weather-widget-card">
@@ -102,7 +114,7 @@
 			</div>
 
 			<div class="widget-main">
-				<div class="widget-icon" id="wIcon">☀️</div>
+				<div class="widget-icon dash-weather-icon" id="wIcon">☀️</div>
 				<div class="widget-temp-box">
 					<div class="widget-current-temp"><span id="wTemp">--</span>°C</div>
 					<div class="widget-desc" id="wDesc">날씨 로딩 중...</div>

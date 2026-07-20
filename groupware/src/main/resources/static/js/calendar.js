@@ -49,8 +49,10 @@
 //     컬럼이 필요한지 추가 논의 필요.
 // ===================================================================
 
-let currentYear = 
-new Date().getFullYear(), currentMonth = new Date().getMonth() + 1, currentEvents = [], editingScheduleId = null;
+// ===================================================================
+// calendar.js - calendar.html(일정 캘린더) 전용 로직
+// ===================================================================
+let currentYear = new Date().getFullYear(), currentMonth = new Date().getMonth() + 1, currentEvents = [], editingScheduleId = null;
 
 const $ = id => document.getElementById(id);
 const toggleModal = (id, open) => open ? window.openModal?.(id) : window.closeModal?.();
@@ -65,62 +67,95 @@ document.addEventListener('DOMContentLoaded', () => {
   $('scheduleCancelBtn')?.addEventListener('click', closeScheduleModal);
   $('cEventDeleteBtn')?.addEventListener('click', deleteCalendarEvent);
 
-  renderCalendar(currentYear, currentMonth);
+  // ⭐️ [중요] 일반 일정 관리 페이지(calendar.html)일 때만 자체 일정 데이터를 불러와 렌더링
+  // 출결 현황 페이지(attendance.html)에서는 attendance.js가 이 폼 함수를 가져다 쓰므로 충돌하지 않음!
+  if ($('fullCalendarGrid') && document.getElementById('scheduleForm')) {
+    renderCalendar(currentYear, currentMonth);
+  }
 });
 
-// [조회] 백엔드에서 데이터 들고 와서 달력 그리기
-async function renderCalendar(year, month) {
-  currentYear = year; currentMonth = month;
-  try {
-    currentEvents = await apiFetch(`/api/calendar/events?year=${year}&month=${month}`);
-    renderCalendarGrid(year, month);
-  } catch (err) { showToast(err.message, 'error'); }
-}
-
-// 달력 날짜 칸(HTML 격자) 동적 생성 및 데이터 바인딩
-function renderCalendarGrid(year, month) {
-  if (!$('fullCalendarGrid')) return;
-  if ($('.calendar-controls h2')) $('.calendar-controls h2').textContent = `${year}년 ${month}월`;
-
+// ===================================================================
+// ⭐️ [핵심 공용 함수] 캘린더 격자 폼 생성기
+// - attendance.js 등 다른 페이지에서도 이 함수를 호출하여 폼을 재사용할 수 있습니다.
+// - customCellRenderer 함수를 넘겨주면, 날짜 칸 내부(event-list 영역)를 입맛대로 채울 수 있습니다.
+// ===================================================================
+function generateCalendarGridHtml(year, month, customCellRenderer) {
   const first = new Date(year, month - 1, 1), lastDate = new Date(year, month, 0).getDate();
   const prevLast = new Date(year, month - 1, 0).getDate(), startDay = first.getDay();
   const totalCells = Math.ceil((startDay + lastDate) / 7) * 7, today = new Date().toISOString().slice(0, 10);
 
-  const headers = ['일', '월', '화', '수', '목', '금', '토'].map(d => `<div class="mini-cal-day-header" style="padding:0.75rem 0;">${d}요일</div>`).join('');
+  // 요일 헤더 생성
+  const headers = ['일', '월', '화', '수', '목', '금', '토']
+    .map(d => `<div class="calendar-day-header" style="text-align:center; font-weight:bold; padding:0.5rem 0;">${d}</div>`)
+    .join('');
+
+  // 날짜 셀 그리드 생성
   const cells = Array.from({ length: totalCells }, (_, i) => {
     const dayNum = i - startDay + 1;
     const isOther = dayNum < 1 || dayNum > lastDate;
     const label = dayNum < 1 ? prevLast + dayNum : dayNum > lastDate ? dayNum - lastDate : dayNum;
-    const cellDate = dayNum < 1 ? formatDate(new Date(year, month - 2, label)) : dayNum > lastDate ? formatDate(new Date(year, month, label)) : `${year}-${String(month).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+    
+    let cellDate = '';
+    if (dayNum < 1) {
+        cellDate = `${year}-${String(month - 1).padStart(2, '0')}-${String(label).padStart(2, '0')}`;
+    } else if (dayNum > lastDate) {
+        cellDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(label).padStart(2, '0')}`;
+    } else {
+        cellDate = `${year}-${String(month).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+    }
+
+    // 각 날짜 칸 내부 영역에 들어갈 커스텀 HTML 주입
+    const innerContent = customCellRenderer ? customCellRenderer(cellDate) : '';
 
     return `
       <div class="calendar-day cal-cell${isOther ? ' other-month' : ''}${cellDate === today ? ' today' : ''}" data-date="${cellDate}">
-        <div class="cal-cell-header"><span class="day-number cal-day-num">${label}</span>${cellDate === today ? '<span style="font-size:0.6rem; color:var(--color-primary); font-weight:bold;">오늘</span>' : ''}</div>
-        <div class="event-list"></div>
+        <div class="cal-cell-header"><span class="day-number cal-day-num">${label}</span>${cellDate === today ? '<span style="font-size:0.6rem; color:var(--color-primary); font-weight:bold; margin-left:4px;">오늘</span>' : ''}</div>
+        <div class="event-list">${innerContent}</div>
       </div>`;
   });
-  $('fullCalendarGrid').innerHTML = `<div class="cal-weekday-row">${headers}</div><div class="calendar-grid">${cells.join('')}</div>`;
-  $('fullCalendarGrid').querySelectorAll('.calendar-day').forEach(c => c.addEventListener('click', () => openScheduleModal(c.dataset.date)));
 
-  // 일정 막대(버튼) 그리기
-  currentEvents.forEach(e => {
-    getDatesBetween(e.startDate, e.endDate).forEach(date => {
-      const list = document.querySelector(`.calendar-day[data-date="${date}"] .event-list`);
-      if (!list) return;
-      const bar = document.createElement('button');
-      bar.type = 'button'; bar.className = `event-bar ${String(e.scheduleType || '').toLowerCase()}`;
-      bar.textContent = e.title; bar.title = `${e.title} (${{PERSONAL:'개인', TEAM:'팀', COMPANY:'회사'}[e.scheduleType] || e.scheduleType} 일정)`;
-      bar.addEventListener('click', ev => { ev.stopPropagation(); openEditScheduleModal(e.scheduleId); });
-      list.appendChild(bar);
-    });
-  });
+  return headers + cells.join('');
 }
 
-// [등록/수정] ⭐️ FormData 치트키 적용 파트 (일일이 데이터 추출 안 함!)
+// ===================================================================
+// 기존 일정 캘린더(calendar.html) 전용 렌더링 로직
+// ===================================================================
+async function renderCalendar(year, month) {
+  currentYear = year; currentMonth = month;
+  try {
+    currentEvents = await apiFetch(`/calendar/events?year=${year}&month=${month}`);
+    renderCalendarGrid(year, month);
+  } catch (err) { showToast(err.message, 'error'); }
+}
+//attendance 및 calendar 공통 폼(캘린더 폼)
+function renderCalendarGrid(year, month) {
+  const container = $('fullCalendarGrid');
+  if (!container) return;
+  if ($('.calendar-controls h2')) $('.calendar-controls h2').textContent = `${year}년 ${month}월`;
+
+  // 공용 폼 생성 함수를 호출하여 일정 바(버튼)를 각 날짜 칸에 렌더링
+  container.innerHTML = generateCalendarGridHtml(year, month, (cellDate) => {
+    const matchedEvents = currentEvents.filter(e => {
+      // 시작일과 종료일 사이에 속하는 일정인지 체크
+      return cellDate >= e.startDate && cellDate <= e.endDate;
+    });
+
+    return matchedEvents.map(e => `
+      <button type="button" class="event-bar ${String(e.scheduleType || '').toLowerCase()}" 
+              title="${e.title} (${{PERSONAL:'개인', TEAM:'팀', COMPANY:'회사'}[e.scheduleType] || e.scheduleType} 일정)"
+              onclick="event.stopPropagation(); openEditScheduleModal('${e.scheduleId}')">
+        ${e.title}
+      </button>
+    `).join('');
+  });
+  
+  // 날짜 클릭 이벤트 바인딩
+  container.querySelectorAll('.calendar-day').forEach(c => c.addEventListener('click', () => openScheduleModal(c.dataset.date)));
+}
+
+// [등록/수정] 일정 폼 제출
 async function submitScheduleForm(event) {
   event.preventDefault();
-  
-  // HTML 폼의 name 속성을 바탕으로 데이터를 자동 포장 (JS 코드 대폭 감소)
   const payload = Object.fromEntries(new FormData(event.target));
   
   if (!payload.title || !payload.startDate || !payload.endDate) return showToast('필수 항목을 입력하세요.', 'error');
@@ -134,7 +169,7 @@ async function submitScheduleForm(event) {
   } catch (error) { showToast(error.message, 'error'); }
 }
 
-// [삭제] 특정 ID 삭제 요청 후 리로드
+// [삭제] 특정 일정 삭제
 async function deleteCalendarEvent() {
   if (!editingScheduleId) return;
   try {
@@ -167,19 +202,14 @@ function openEditScheduleModal(id) {
   toggleModal('modal-calendar-write', true);
 }
 
-// 유틸리티 함수들
+// 월 이동 유틸리티
 async function moveCalendarMonth(delta) {
   const moved = new Date(currentYear, currentMonth - 1 + delta, 1);
   await renderCalendar(moved.getFullYear(), moved.getMonth() + 1);
 }
 
-function getDatesBetween(start, end) {
-  const dates = [], curr = new Date(`${start}T00:00:00`), eDate = new Date(`${end}T00:00:00`);
-  while (curr <= eDate) { dates.push(formatDate(curr)); curr.setDate(curr.getDate() + 1); }
-  return dates;
-}
-
 const defaultScheduleDate = () => new Date().getFullYear() === currentYear && new Date().getMonth() + 1 === currentMonth ? formatDate(new Date()) : `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
 const formatDate = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-Object.assign(window, { closeScheduleModal, deleteCalendarEvent, moveCalendarMonth, openEditScheduleModal });
+// 다른 스크립트나 인라인 HTML에서 호출할 수 있도록 윈도우 객체에 등록
+Object.assign(window, { closeScheduleModal, deleteCalendarEvent, moveCalendarMonth, openEditScheduleModal, generateCalendarGridHtml });
