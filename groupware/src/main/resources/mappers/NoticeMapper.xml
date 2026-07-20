@@ -30,6 +30,38 @@
 	    LIMIT #{size} OFFSET #{offset}
 	</select>
 
+	<!-- 위 findNotices와 검색 조건(WHERE)을 동일하게 유지해야 페이지 수 계산이 어긋나지 않음 -->
+	<select id="countNotices" resultType="int">
+	    SELECT COUNT(*)
+	    FROM NOTICE n
+	    <where>
+	        <if test="keyword != null and keyword != ''">
+	            n.NOTICE_TITLE LIKE CONCAT('%', #{keyword}, '%')
+	            OR n.NOTICE_CONTENT LIKE CONCAT('%', #{keyword}, '%')
+	        </if>
+	    </where>
+	</select>
+
+		- NOTICE + EMPLOYEE(작성자) + DEPARTMENT(부서, LEFT JOIN) 조인. LEFT JOIN을 쓴 이유는
+		  관리자 계정은 DEPT_ID가 NULL이라 일반 JOIN이면 그 공지가 목록에서 아예 사라져 버리기 때문.
+	-->
+	<select id="findNotices" resultType="com.groupware.dto.NoticeDTO">
+	    SELECT n.*,
+	           e.EMPLOYEE_NAME AS writerName,
+	           d.DEPT_NAME AS writerDeptName
+	    FROM NOTICE n
+	        JOIN EMPLOYEE e ON n.WRITER_ID = e.EMPLOYEE_ID
+	        LEFT JOIN DEPARTMENT d ON e.DEPT_ID = d.DEPT_ID
+	    <where>
+	        <if test="keyword != null and keyword != ''">
+	            n.NOTICE_TITLE LIKE CONCAT('%', #{keyword}, '%')
+	            OR n.NOTICE_CONTENT LIKE CONCAT('%', #{keyword}, '%')
+	        </if>
+	    </where>
+	    ORDER BY n.IS_PINNED DESC, n.NOTICE_ID DESC
+	    LIMIT #{size} OFFSET #{offset}
+	</select>
+
    <!-- 위 findNotices와 검색 조건(WHERE)을 동일하게 유지해야 페이지 수 계산이 어긋나지 않음 -->
    <select id="countNotices" resultType="int">
        SELECT COUNT(*)

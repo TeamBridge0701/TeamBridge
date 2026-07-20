@@ -1,9 +1,12 @@
 package com.groupware.mapper;
 
 import java.time.LocalDate;
-import com.groupware.dto.AttendanceDTO;
+import java.util.List;
+
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+
+import com.groupware.dto.AttendanceDTO;
 
 @Mapper
 public interface AttendanceMapper {
@@ -18,7 +21,14 @@ public interface AttendanceMapper {
                        @Param("status") String status);
     
     // 퇴근 시간 업데이트 - 수정해야됨
-    void updateCheckOut(@Param("employeeId") int employeeId, 
-                        @Param("today") LocalDate today, 
+    void updateCheckOut(@Param("employeeId") int employeeId,
+                        @Param("today") LocalDate today,
                         @Param("checkOutTime") String checkOutTime);
+    
+    // 관리자 : 출결 관리
+    List<AttendanceDTO> selectAttendanceByDate(@Param("data") LocalDate date);
+
+    // 전자결재(연차휴가신청서) 최종 승인 시 휴가 기간 하루치를 LEAVE로 반영.
+    // 그 날짜에 이미 출결 기록이 있으면 LEAVE로 덮어씀 (2026-07-20 김우주 협의 완료)
+    void insertLeaveRecord(@Param("employeeId") int employeeId, @Param("workDate") LocalDate workDate);
 }

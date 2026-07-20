@@ -146,3 +146,12 @@ INSERT INTO REPOSITORY (REPO_NAME, DEPT_ID) VALUES
   ('개발팀 자료실', 1),
   ('인사팀 자료실', 2),
   ('영업팀 자료실', 3);
+
+-- ------------------------------------
+-- 6. APPROVAL_FORM_TYPE (결재 서식) - 연차휴가신청서만 1단계(팀장 전결), 나머지는 2단계
+-- (ERD_설계서.md 2-10: "연차=팀장 전결 1단계, 나머지=팀장+부서장 2단계")
+-- ------------------------------------
+INSERT INTO APPROVAL_FORM_TYPE (FORM_TYPE_NAME, APPROVAL_STEP_COUNT) VALUES
+  ('연차휴가신청서', 1),
+  ('지출결의서', 2),
+  ('프로젝트품의서', 2);

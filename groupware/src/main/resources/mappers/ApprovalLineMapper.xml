@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupware.mapper.ApprovalLineMapper">
+
+	<!-- LINE_STATUS/DECIDED_AT은 스키마 DEFAULT('WAIT')/NULL을 그대로 사용 -->
+	<insert id="insertLine">
+	    INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID)
+	    VALUES (#{approvalId}, #{stepNo}, #{approverId})
+	</insert>
+
+	<!-- 결재 상세 모달의 스테퍼용 - 이 문서의 결재선 전체(승인자 이름/직급 조인), STEP_NO 순 -->
+	<select id="findLinesByApprovalId" resultType="com.groupware.dto.ApprovalLineDTO">
+	    SELECT al.*, e.EMPLOYEE_NAME AS approverName, p.POSITION_NAME AS approverPositionName
+	    FROM APPROVAL_LINE al
+	        JOIN EMPLOYEE e ON al.APPROVER_ID = e.EMPLOYEE_ID
+	        LEFT JOIN `POSITION` p ON e.POSITION_ID = p.POSITION_ID
+	    WHERE al.APPROVAL_ID = #{approvalId}
+	    ORDER BY al.STEP_NO
+	</select>
+
+	<update id="updateLineDecision">
+	    UPDATE APPROVAL_LINE
+	    SET LINE_STATUS = #{lineStatus},
+	        LINE_COMMENT = #{lineComment},
+	        DECIDED_AT = NOW()
+	    WHERE LINE_ID = #{lineId}
+	</update>
+
+	<select id="countWaitingLines" resultType="int">
+	    SELECT COUNT(*)
+	    FROM APPROVAL_LINE
+	    WHERE APPROVAL_ID = #{approvalId} AND LINE_STATUS = 'WAIT'
+	</select>
+
+</mapper>

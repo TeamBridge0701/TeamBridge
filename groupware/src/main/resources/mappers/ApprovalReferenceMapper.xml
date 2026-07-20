@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupware.mapper.ApprovalReferenceMapper">
+
+	<insert id="insertReference">
+	    INSERT INTO APPROVAL_REFERENCE (APPROVAL_ID, DEPT_ID, EMPLOYEE_ID)
+	    VALUES (#{approvalId}, #{deptId}, #{employeeId})
+	</insert>
+
+	<select id="findByApprovalId" resultType="com.groupware.dto.ApprovalReferenceDTO">
+	    SELECT REF_ID, APPROVAL_ID, DEPT_ID, EMPLOYEE_ID
+	    FROM APPROVAL_REFERENCE
+	    WHERE APPROVAL_ID = #{approvalId}
+	</select>
+
+</mapper>

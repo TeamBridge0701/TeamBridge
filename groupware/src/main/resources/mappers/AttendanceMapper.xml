@@ -31,4 +31,12 @@
 		WHERE EMPLOYEE_ID = #{employeeId} AND WORK_DATE = #{today}
 	</update>
 
+	<!-- 4. 전자결재 최종 승인 시 휴가 반영 - 그 날짜에 이미 기록이 있으면 LEAVE로 덮어씀
+	     (UNIQUE(EMPLOYEE_ID, WORK_DATE) 제약과 충돌 시 값만 갱신) -->
+	<insert id="insertLeaveRecord">
+		INSERT INTO ATTENDANCE (EMPLOYEE_ID, WORK_DATE, ATTENDANCE_STATUS)
+		VALUES (#{employeeId}, #{workDate}, 'LEAVE')
+		ON DUPLICATE KEY UPDATE ATTENDANCE_STATUS = 'LEAVE'
+	</insert>
+
 </mapper>
