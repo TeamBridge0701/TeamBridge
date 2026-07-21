@@ -50,3 +50,35 @@ function showToast(message, type = 'primary') {
     });
   }, 3000);
 }
+
+// 모든 화면의 공통 헤더·사이드바에 로그인 사용자의 안 읽은 채팅 수를 표시한다.
+async function refreshGlobalChatUnreadBadges() {
+  try {
+    const response = await fetch('/chat/unread-count');
+
+    if (!response.ok) {
+      return;
+    }
+
+    const result = await response.json();
+    const unreadCount = Number(result.unreadCount || 0);
+    const displayCount = unreadCount > 99 ? '99+' : String(unreadCount);
+
+    [
+      document.getElementById('headerChatBadge'),
+      document.getElementById('sidebarChatBadge')
+    ].forEach(badge => {
+      if (!badge) {
+        return;
+      }
+
+      badge.textContent = displayCount;
+      badge.style.display = unreadCount > 0 ? 'inline-flex' : 'none';
+    });
+  } catch (error) {
+    // 배지 조회 실패가 공통 화면 기능을 막지 않게 한다.
+  }
+}
+
+// 공통 레이아웃이 완성된 뒤 한 번 조회한다.
+document.addEventListener('DOMContentLoaded', refreshGlobalChatUnreadBadges);

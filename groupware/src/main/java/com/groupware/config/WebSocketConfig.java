@@ -116,38 +116,77 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     }
 
     /*
-     * 메시지 발신은 ChatService에서 검사하지만, 구독은 simple broker로 바로 가므로
-     * 이 단계에서 막지 않으면 다른 직원이 방 번호를 추측해 내용을 받을 수 있다.
+     * 메시지 발신은 ChatService에서 채팅방 참여자인지 검사한다.
+     *
+     * 하지만 WebSocket 구독은 simple broker로 바로 전달될 수 있다.
+     * 그래서 이 검사가 없으면 다른 직원이 /topic/room/3 같은 주소를 추측해
+     * 자신이 참여하지 않은 채팅방의 메시지를 받을 위험이 있다.
      */
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        registration.interceptors(new ChannelInterceptor() {
-            @Override
-            public Message<?> preSend(Message<?> message, MessageChannel channel) {
-                StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
+        // 클라이언트에서 서버로 들어오는 WebSocket 메시지 채널에
+        // 인터셉터(중간 검사기)를 등록한다.
+        registration.interceptors(new ChannelInterceptor() {
+
+            @Override
+            public Message<?> preSend(
+                    Message<?> message,
+                    MessageChannel channel) {
+
+                // 들어온 WebSocket 메시지를 STOMP 형식으로 해석할 수 있게 감싸는 코드.
+                // STOMP 명령, 목적지 주소, 로그인 사용자 등을 가져올 수 있다.
+                StompHeaderAccessor accessor =
+                        StompHeaderAccessor.wrap(message);
+
+                // 현재 메시지가 특ㅈ정주소를 구독한다는 요청인지 확인한다.
+                // SEND, CONNECT 등의 다른 WebSocket 요청은 여기서 검사하지 않고 통과시킨다.
                 if (!StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
                     return message;
                 }
 
+                // 사용자가 구독하려는 WebSocket 목적지 주소를 가져온다.
+                // 예: /topic/room/3
+                // 예: /topic/room/3/read
                 String destination = accessor.getDestination();
+
+                // ROOM_TOPIC_PATTERN 정규표현식으로
+                // 현재 주소가 채팅방 topic 주소 형식인지 확인한다.
+                //
+                // destination이 null이면 빈 문자열을 넣어 Matcher 오류를 막는다.
                 Matcher matcher = ROOM_TOPIC_PATTERN.matcher(
                         destination == null ? "" : destination);
 
+                // 채팅방 topic 형식이 아닌 주소라면 이 보안 검사 대상이 아니므로 통과시킨다.
+                // 예: /user/queue/chat-rooms 같은 개인 큐 주소
                 if (!matcher.matches()) {
                     return message;
                 }
 
+                // WebSocket에 연결한 현재 로그인 사용자를 가져온다.
                 Principal principal = accessor.getUser();
 
+                // 로그인 사용자 정보가 없으면 구독을 막는다.
                 if (principal == null) {
                     throw new AccessDeniedException("로그인 정보가 없습니다.");
                 }
 
+                // Principal에 들어 있는 로그인 사번으로 실제 직원 정보를 DB에서 찾는다.
+                // 브라우저가 임의의 직원 ID를 보내는 것이 아니라,
+                // 서버가 가진 로그인 정보를 기준으로 확인한다.
                 EmployeeDTO employee =
                         employeeMapper.findByEmployeeNo(principal.getName());
+
+                // 정규표현식에서 추출한 채팅방 번호를 숫자로 변환한다.
+                //
+                // 예: /topic/room/3
+                // matcher.group(1) = "3"
+                // roomId = 3
                 int roomId = Integer.parseInt(matcher.group(1));
 
+                // 다음 경우 채팅방 구독을 거부한다.
+                // 1. DB에서 로그인 직원을 찾지 못함
+                // 2. 해당 직원이 roomId 채팅방의 참여자가 아님
                 if (employee == null
                         || !chatService.isRoomMember(
                                 roomId,
@@ -155,15 +194,17 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     throw new AccessDeniedException("채팅방 참여자가 아닙니다.");
                 }
 
+                // 참여자가 맞으면 원래 WebSocket 구독 요청을 그대로 다음 단계로 넘긴다.
+                // 이후 사용자는 해당 채팅방 topic을 정상적으로 구독할 수 있다.
                 return message;
             }
         });
     }
     
-    // 흐름 정리 
-    
+    // 흐름 ====> 
     // /app/chat/방 번호 -> ChatMessageController -> ChatService + CHAT_MESSAGE INSERT
     // -> savedMessage 객체 -> /topic/room/방 번호 -> 방번호 방 구독자 화면들
+    
     
     
     
