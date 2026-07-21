@@ -1,5 +1,6 @@
 package com.groupware.controller;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
@@ -11,9 +12,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import com.groupware.dto.AttendanceDTO;
 import com.groupware.dto.DepartmentDTO;
 import com.groupware.dto.EmployeeDTO;
 import com.groupware.dto.PositionDTO;
+import com.groupware.service.AttendanceService;
 import com.groupware.service.EmployeeService;
 
 import lombok.RequiredArgsConstructor;
@@ -25,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 public class AdminController {
 
 	private final EmployeeService employeeService;
+	private final AttendanceService attendanceService;
 
 	// 관리자 화면(계정·인사정보 관리) 진입. 표 데이터는 화면 로드 후 JS가
 	// GET /admin/member를 호출해서 채운다 (검색어 입력 시 재호출하는 구조라 SSR 대신 AJAX로 감).
@@ -96,5 +100,35 @@ public class AdminController {
 	public ResponseEntity<String> resetPassword(@PathVariable("employeeId") int employeeId) {
 		employeeService.resetPassword(employeeId);
 		return ResponseEntity.ok("비밀번호가 초기화되었습니다.");
+	}
+
+	// 관리자 - 직원 출결 관리 화면 진입
+	@GetMapping("/admin/attendance")
+	public String adminAttendance() {
+		return "admin/admin-attendance";
+	}
+
+	// 특정 날짜의 전 직원 출결 목록 조회 - date 없으면 오늘 날짜 기본값
+	@GetMapping("/admin/attendance/list")
+	@ResponseBody
+	public List<AttendanceDTO> getAdminAttendanceList(@RequestParam(value = "date", required = false) String date) {
+		String targetDate = (date != null && !date.isBlank()) ? date : LocalDate.now().toString();
+		return attendanceService.getAttendanceByDate(targetDate);
+	}
+
+	// 관리자가 특정 직우너의 특정 날짜 출결을 직접 등록/수정
+	@PostMapping("/admin/attendance/{employeeId}")
+	@ResponseBody
+	public ResponseEntity<String> saveAdminAttendance(@PathVariable("employeeId") int employeeId,
+			@RequestParam("workDate") String workDate,
+			@RequestParam(value = "checkInTime", required = false) String checkInTime,
+			@RequestParam(value = "checkOutTime", required = false) String checkOutTime,
+			@RequestParam("status") String status) {
+		try {
+			attendanceService.saveAttendanceByAdmin(employeeId, workDate, checkInTime, checkOutTime, status);
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(e.getMessage());
+		}
+		return ResponseEntity.ok("저장되었습니다.");
 	}
 }
