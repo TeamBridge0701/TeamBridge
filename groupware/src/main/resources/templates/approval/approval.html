@@ -167,9 +167,16 @@
           <div style="margin-bottom: 0.5rem;"><strong>기안자:</strong> <span id="mAppDrafter"></span></div>
           <div style="margin-bottom: 0.5rem;"><strong>기안 제목:</strong> <span id="mAppTitle"></span></div>
           <div style="margin-bottom: 0.5rem;"><strong>기안 일자:</strong> <span id="mAppDate"></span></div>
+          <!-- 금액 - 지출결의서만 값이 있으므로 평소엔 숨겨둠 -->
+          <div id="mAppAmountRow" style="display:none; margin-bottom: 0.5rem;"><strong>금액:</strong> <span id="mAppAmount"></span></div>
           <div style="border-top:1px solid var(--border-color); margin-top: 0.75rem; padding-top: 0.75rem;">
             <strong>기안 내용:</strong>
             <div id="mAppContent" style="white-space: pre-wrap; margin-top: 0.5rem; color: var(--text-secondary);"></div>
+          </div>
+          <!-- 첨부파일 - 지출결의서/프로젝트품의서만 있을 수 있어 목록이 비면 이 블록 자체를 숨김 -->
+          <div id="mAppFileSection" style="display:none; border-top:1px solid var(--border-color); margin-top: 0.75rem; padding-top: 0.75rem;">
+            <strong>첨부파일:</strong>
+            <div id="mAppFileList" style="margin-top: 0.5rem;"></div>
           </div>
         </div>
 

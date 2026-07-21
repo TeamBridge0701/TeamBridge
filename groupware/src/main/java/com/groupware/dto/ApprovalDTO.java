@@ -14,6 +14,8 @@ public class ApprovalDTO {
 	// 휴가 신청서가 아니면 NULL -> Integer가 아니라 String이라 그대로 null 담을 수 있음
 	private String leaveStartDate;
 	private String leaveEndDate;
+	// 지출결의서 전용 (원 단위) - 그 외 서식은 NULL. long(기본형)은 null을 못 담아서 Long 사용
+	private Long amount;
 	private String approvalStatus;
 	private String createdAt;
 
@@ -29,6 +31,9 @@ public class ApprovalDTO {
 
 	// 상세 조회(JSON) 응답에만 채워짐 - 목록 조회에서는 항상 null
 	private List<ApprovalLineDTO> lines;
+
+	// 상세 조회(JSON) 응답에만 채워짐 - 지출결의서/프로젝트품의서만 값이 있을 수 있음
+	private List<ApprovalFileDTO> files;
 
 	// 상세 조회(JSON) 응답에만 채워짐 - 승인/반려 버튼 노출 여부(ApprovalController가
 	// canDecideApproval 결과를 그대로 채워줌). 실제 승인/반려 요청은 서버가 다시 검증하므로

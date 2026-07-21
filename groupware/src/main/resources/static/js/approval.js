@@ -2,7 +2,7 @@
 
 let activeApprovalId = null;  // 지금 상세 모달에 열려 있는 결재 문서 id
 let activeApprovalTab = 'write'; // 승인/반려 처리 후 어느 탭을 다시 그릴지 기억
-let draftSelectedFiles = []; // 기안 폼의 첨부파일 시안 UI에서 선택해 둔 File 객체 (실제 전송 안 함)
+let draftSelectedFiles = []; // 기안 폼에서 선택해 둔 File 객체 목록 (등록 시 FormData로 그대로 전송)
 
 function formatFileSize(bytes) {
   return bytes < 1024 * 1024
@@ -10,8 +10,8 @@ function formatFileSize(bytes) {
     : (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
-// 기안 폼 첨부파일 시안 UI - 파일을 골라도 목록에 보여주기만 하고 실제 전송/저장은 하지 않는다
-// (DB에 저장할 곳이 아직 없어서 - 팀 논의 후 실제로 만들 때 archive.js의 파일 로직을 재사용하면 됨)
+// 기안 폼 첨부파일 선택 - File 객체를 배열에 담아만 두고, 실제 업로드는 등록(submit) 시점에 한다
+// (자료실 archive.js의 handleArchiveFileSelect와 동일한 패턴)
 function handleDraftFileSelect(input) {
   Array.from(input.files || []).forEach(file => draftSelectedFiles.push(file));
   input.value = '';
@@ -236,6 +236,29 @@ function viewApprovalDetail(id) {
       document.getElementById('mAppDate').innerText = a.createdAt ? a.createdAt.substring(0, 10) : '';
       document.getElementById('mAppContent').innerText = a.approvalContent;
 
+      // 금액 - 지출결의서만 값이 있음
+      const amountRow = document.getElementById('mAppAmountRow');
+      if (a.amount != null) {
+        amountRow.style.display = 'block';
+        document.getElementById('mAppAmount').innerText = Number(a.amount).toLocaleString() + '원';
+      } else {
+        amountRow.style.display = 'none';
+      }
+
+      // 첨부파일 - 있을 때만 섹션을 보여준다
+      const fileSection = document.getElementById('mAppFileSection');
+      const files = a.files || [];
+      if (files.length) {
+        fileSection.style.display = 'block';
+        document.getElementById('mAppFileList').innerHTML = files.map(f => `
+          <button type="button" class="btn btn-secondary btn-sm" style="margin: 0.25rem 0.5rem 0 0;" onclick="downloadApprovalFile(${f.fileId})">
+            <i class="fa-solid fa-download"></i> ${f.fileName} (${formatFileSize(f.fileSize)})
+          </button>
+        `).join('');
+      } else {
+        fileSection.style.display = 'none';
+      }
+
       let stepperHtml = `
         <div class="flow-step active"><i class="fa-solid fa-circle-check" style="color:var(--color-success)"></i> 기안: ${drafterLabel(a)}</div>
         <div class="flow-arrow"><i class="fa-solid fa-chevron-right"></i></div>
@@ -292,6 +315,11 @@ function viewApprovalDetail(id) {
     .catch(err => showToast(err.message, 'danger'));
 }
 
+// 다운로드 - 자료실과 동일하게 URL로 바로 이동시키면 Content-Disposition 헤더로 브라우저가 알아서 받는다
+function downloadApprovalFile(fileId) {
+  window.location.href = `/approval/download/${fileId}`;
+}
+
 // 상세 모달의 "승인하기"/"반려하기" 버튼에 연결 (approved: true=승인, false=반려).
 // 반려는 사유 입력이 필수(서버도 다시 검증하지만, 여기서 먼저 확인해 왕복을 줄인다).
 function doApprovalDecision(approved) {
@@ -342,19 +370,18 @@ function initApprovalForm(formTypeId, cardEl, stepCount) {
     </div>
   ` : '';
 
-  // ⚠️ 시안(mockup)용 UI - 팀 논의를 위해 화면에만 미리 넣어둔 것으로, DB 컬럼이 없어
-  // 실제로 등록해도 저장되지 않는다(submitDraft에서 이 값들은 전송하지 않음).
   const isExpenseForm = formTypeName === '지출결의서';
   const amountHtml = isExpenseForm ? `
     <div class="form-group">
-      <label class="form-label" for="draftAmount">금액 <span style="color:var(--text-muted); font-weight:400;">(시안 - 아직 저장 안 됨)</span></label>
-      <input type="number" id="draftAmount" class="form-control" placeholder="예: 120000">
+      <label class="form-label" for="draftAmount">금액</label>
+      <input type="number" id="draftAmount" class="form-control" required placeholder="예: 120000">
     </div>
   ` : '';
 
-  const fileAttachHtml = `
+  // 휴가 신청서는 증빙 서류 개념이 없어서 첨부파일 UI 자체를 안 보여준다 (지출결의서/프로젝트품의서만)
+  const fileAttachHtml = !isLeaveForm ? `
     <div class="form-group">
-      <label class="form-label">첨부파일 <span style="color:var(--text-muted); font-weight:400;">(시안 - 아직 저장 안 됨)</span></label>
+      <label class="form-label">첨부파일 (선택 안 해도 됨)</label>
       <div style="border: 2px dashed var(--border-color); border-radius: 8px; padding: 1.25rem; text-align: center; cursor: pointer; color: var(--text-secondary);" onclick="document.getElementById('draftFileInput').click()">
         <i class="fa-solid fa-cloud-arrow-up" style="font-size: 1.3rem; color: var(--color-primary); margin-bottom: 0.4rem;"></i>
         <div style="font-size:0.85rem;">클릭해서 파일 선택 (영수증/증빙 등)</div>
@@ -362,7 +389,7 @@ function initApprovalForm(formTypeId, cardEl, stepCount) {
       </div>
       <div id="draftSelectedFileList" style="margin-top: 0.5rem; display:flex; flex-direction:column; gap:0.35rem;"></div>
     </div>
-  `;
+  ` : '';
 
   const signer1Options = teamLeadCandidates
     .map(c => `<option value="${c.employeeId}">${c.employeeName} 팀장 (${c.deptName || ''})</option>`).join('');
@@ -421,27 +448,32 @@ function initApprovalForm(formTypeId, cardEl, stepCount) {
   `;
 }
 
-// 기안 폼의 "결재 상신" 버튼(submit)에 연결. POST /approval/write로 전송한다.
+// 기안 폼의 "결재 상신" 버튼(submit)에 연결. 첨부파일이 있을 수 있어 FormData(multipart)로
+// POST /approval/write에 전송한다 (자료실 submitArchivePost와 동일한 방식).
 function submitDraft(event, formTypeId, stepCount) {
   event.preventDefault();
 
-  const params = new URLSearchParams();
-  params.append('formTypeId', formTypeId);
-  params.append('approvalTitle', document.getElementById('draftTitle').value.trim());
-  params.append('approvalContent', document.getElementById('draftContent').value.trim());
-  params.append('signer1Id', document.getElementById('draftSigner1').value);
+  const formData = new FormData();
+  formData.append('formTypeId', formTypeId);
+  formData.append('approvalTitle', document.getElementById('draftTitle').value.trim());
+  formData.append('approvalContent', document.getElementById('draftContent').value.trim());
+  formData.append('signer1Id', document.getElementById('draftSigner1').value);
 
   if (document.getElementById('draftLeaveStart')) {
-    params.append('leaveStartDate', document.getElementById('draftLeaveStart').value);
-    params.append('leaveEndDate', document.getElementById('draftLeaveEnd').value);
+    formData.append('leaveStartDate', document.getElementById('draftLeaveStart').value);
+    formData.append('leaveEndDate', document.getElementById('draftLeaveEnd').value);
+  }
+  if (document.getElementById('draftAmount')) {
+    formData.append('amount', document.getElementById('draftAmount').value);
   }
   if (stepCount === 2) {
-    params.append('signer2Id', document.getElementById('draftSigner2').value);
+    formData.append('signer2Id', document.getElementById('draftSigner2').value);
   }
-  refSelectedDepts.forEach((name, deptId) => params.append('refDeptIds', deptId));
-  refSelectedEmployees.forEach((name, employeeId) => params.append('refEmployeeIds', employeeId));
+  refSelectedDepts.forEach((name, deptId) => formData.append('refDeptIds', deptId));
+  refSelectedEmployees.forEach((name, employeeId) => formData.append('refEmployeeIds', employeeId));
+  draftSelectedFiles.forEach(file => formData.append('files', file));
 
-  fetch('/approval/write', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
+  fetch('/approval/write', { method: 'POST', body: formData })
     .then(res => res.text().then(text => {
       if (!res.ok) throw new Error(text);
       return text;

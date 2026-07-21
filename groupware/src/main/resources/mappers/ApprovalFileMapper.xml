@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupware.mapper.ApprovalFileMapper">
+
+	<insert id="insertApprovalFile">
+	    INSERT INTO APPROVAL_FILE (APPROVAL_ID, FILE_NAME, FILE_PATH, FILE_SIZE)
+	    VALUES (#{approvalId}, #{fileName}, #{filePath}, #{fileSize})
+	</insert>
+
+	<select id="findFilesByApprovalId" resultType="com.groupware.dto.ApprovalFileDTO">
+	    SELECT FILE_ID, APPROVAL_ID, FILE_NAME, FILE_PATH, FILE_SIZE, UPLOADED_AT
+	    FROM APPROVAL_FILE
+	    WHERE APPROVAL_ID = #{approvalId}
+	    ORDER BY FILE_ID
+	</select>
+
+	<select id="findFileById" resultType="com.groupware.dto.ApprovalFileDTO">
+	    SELECT FILE_ID, APPROVAL_ID, FILE_NAME, FILE_PATH, FILE_SIZE, UPLOADED_AT
+	    FROM APPROVAL_FILE
+	    WHERE FILE_ID = #{fileId}
+	</select>
+
+</mapper>

@@ -1,17 +1,26 @@
 package com.groupware.service;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.groupware.dto.ApprovalDTO;
+import com.groupware.dto.ApprovalFileDTO;
 import com.groupware.dto.ApprovalFormTypeDTO;
 import com.groupware.dto.ApprovalLineDTO;
 import com.groupware.dto.ApprovalReferenceDTO;
 import com.groupware.dto.DepartmentDTO;
 import com.groupware.dto.EmployeeDTO;
+import com.groupware.mapper.ApprovalFileMapper;
 import com.groupware.mapper.ApprovalFormTypeMapper;
 import com.groupware.mapper.ApprovalLineMapper;
 import com.groupware.mapper.ApprovalMapper;
@@ -32,12 +41,20 @@ public class ApprovalService {
 	// 휴가 기간을 받는 서식은 연차휴가신청서뿐 (ERD 2-11 - LEAVE_START/END_DATE는 이 서식 전용)
 	private static final String LEAVE_FORM_NAME = "연차휴가신청서";
 
+	// 금액을 받는 서식은 지출결의서뿐 (AMOUNT는 이 서식 전용)
+	private static final String EXPENSE_FORM_NAME = "지출결의서";
+
 	private final ApprovalFormTypeMapper approvalFormTypeMapper;
 	private final ApprovalMapper approvalMapper;
 	private final ApprovalLineMapper approvalLineMapper;
 	private final ApprovalReferenceMapper approvalReferenceMapper;
+	private final ApprovalFileMapper approvalFileMapper;
 	private final EmployeeMapper employeeMapper;
 	private final AttendanceMapper attendanceMapper;
+
+	// 실제 파일이 저장될 폴더 (프로젝트 실행 위치 기준 상대경로 - application.properties 참고)
+	@Value("${groupware.approval.upload-dir}")
+	private String uploadDir;
 
 	// 기안 작성 화면의 서식 카드(연차휴가신청서/지출결의서/프로젝트품의서)
 	public List<ApprovalFormTypeDTO> getFormTypes() {
@@ -77,14 +94,20 @@ public class ApprovalService {
 		return approvalMapper.findReferenceBox(employee.getEmployeeId(), employee.getDeptId());
 	}
 
-	// 결재 상세 - 문서 정보 + 결재선 전체(스테퍼용)를 함께 채워서 반환
+	// 결재 상세 - 문서 정보 + 결재선(스테퍼용) + 첨부파일 목록을 함께 채워서 반환
 	public ApprovalDTO getApprovalDetail(int approvalId) {
 		ApprovalDTO approval = approvalMapper.findDetail(approvalId);
 		if (approval == null) {
 			return null;
 		}
 		approval.setLines(approvalLineMapper.findLinesByApprovalId(approvalId));
+		approval.setFiles(approvalFileMapper.findFilesByApprovalId(approvalId));
 		return approval;
+	}
+
+	// 다운로드 - 파일 하나만 조회 (열람 권한 재검증은 Controller에서 getApprovalDetail로 확인)
+	public ApprovalFileDTO getApprovalFile(int fileId) {
+		return approvalFileMapper.findFileById(fileId);
 	}
 
 	// 상세 조회 권한 - 기안자 본인 / 결재선에 있는 사람(과거·현재·미래 단계 모두) /
@@ -165,18 +188,23 @@ public class ApprovalService {
 	}
 
 	// 기안 등록 - APPROVAL 1건 + 서식의 결재 단계 수만큼 APPROVAL_LINE +
-	// 선택된 참조 대상 수만큼 APPROVAL_REFERENCE를 한 트랜잭션으로 저장한다.
+	// 선택된 참조 대상 수만큼 APPROVAL_REFERENCE + 첨부파일(있으면)까지 한 트랜잭션으로 저장한다.
+	// 첨부파일은 휴가 신청서를 제외한 서식(지출결의서/프로젝트품의서)만 받는다.
 	@Transactional
 	public int writeApproval(int drafterId, int formTypeId, String approvalTitle, String approvalContent,
-			String leaveStartDate, String leaveEndDate, int signer1Id, Integer signer2Id,
-			List<Integer> refDeptIds, List<Integer> refEmployeeIds) {
+			String leaveStartDate, String leaveEndDate, Long amount, int signer1Id, Integer signer2Id,
+			List<Integer> refDeptIds, List<Integer> refEmployeeIds, List<MultipartFile> files) {
 		ApprovalFormTypeDTO formType = approvalFormTypeMapper.findById(formTypeId);
 		if (formType == null) {
 			throw new IllegalArgumentException("존재하지 않는 결재 서식입니다.");
 		}
 		boolean isLeaveForm = LEAVE_FORM_NAME.equals(formType.getFormTypeName());
+		boolean isExpenseForm = EXPENSE_FORM_NAME.equals(formType.getFormTypeName());
 		if (isLeaveForm) {
 			validateLeavePeriod(leaveStartDate, leaveEndDate);
+		}
+		if (isExpenseForm && amount == null) {
+			throw new IllegalArgumentException("지출결의서는 금액을 입력해야 합니다.");
 		}
 
 		ApprovalDTO approval = new ApprovalDTO();
@@ -186,6 +214,7 @@ public class ApprovalService {
 		approval.setApprovalContent(approvalContent);
 		approval.setLeaveStartDate(isLeaveForm ? leaveStartDate : null);
 		approval.setLeaveEndDate(isLeaveForm ? leaveEndDate : null);
+		approval.setAmount(isExpenseForm ? amount : null);
 		approvalMapper.insertApproval(approval); // useGeneratedKeys - approval.approvalId가 채워짐
 
 		insertLine(approval.getApprovalId(), 1, signer1Id);
@@ -198,6 +227,15 @@ public class ApprovalService {
 
 		insertReferences(approval.getApprovalId(), refDeptIds, refEmployeeIds);
 
+		// 휴가 신청서는 증빙 개념이 없어 첨부파일을 받지 않는다 (화면단 UI도 안 보여줌)
+		if (!isLeaveForm && files != null) {
+			for (MultipartFile file : files) {
+				if (!file.isEmpty()) {
+					saveApprovalFile(approval.getApprovalId(), file);
+				}
+			}
+		}
+
 		return approval.getApprovalId();
 	}
 
@@ -209,6 +247,33 @@ public class ApprovalService {
 		if (LocalDate.parse(leaveEndDate).isBefore(LocalDate.parse(leaveStartDate))) {
 			throw new IllegalArgumentException("휴가 종료일은 시작일보다 빠를 수 없습니다.");
 		}
+	}
+
+	// 자료실(ArchiveService.saveArchiveFile)과 동일한 방식 - 실제 저장 파일명은 UUID로 새로
+	// 만들고, 원본 이름은 FILE_NAME 컬럼에만 남긴다(다운로드 시 그 이름으로 내려줌).
+	private void saveApprovalFile(int approvalId, MultipartFile file) {
+		String originalName = file.getOriginalFilename();
+		String ext = "";
+		int dotIndex = originalName == null ? -1 : originalName.lastIndexOf('.');
+		if (dotIndex >= 0) {
+			ext = originalName.substring(dotIndex);
+		}
+		String storedName = UUID.randomUUID() + ext;
+		Path targetPath = Paths.get(uploadDir, storedName);
+
+		try {
+			Files.createDirectories(targetPath.getParent());
+			file.transferTo(targetPath);
+		} catch (IOException e) {
+			throw new RuntimeException("파일 저장에 실패했습니다: " + originalName, e);
+		}
+
+		ApprovalFileDTO fileDto = new ApprovalFileDTO();
+		fileDto.setApprovalId(approvalId);
+		fileDto.setFileName(originalName);
+		fileDto.setFilePath(targetPath.toString());
+		fileDto.setFileSize(file.getSize());
+		approvalFileMapper.insertApprovalFile(fileDto);
 	}
 
 	private void insertLine(int approvalId, int stepNo, int approverId) {

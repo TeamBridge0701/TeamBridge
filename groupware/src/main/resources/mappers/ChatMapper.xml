@@ -5,8 +5,11 @@
 
 <mapper namespace="com.groupware.mapper.ChatMapper">
 
-    <!-- TEXT/FILE 메시지를 같은 DTO로 읽고, FILE일 때만 attachment를 채운다. -->
+    <!-- TEXT/FILE 메시지를 같은 DTO로 읽고, FILE일 때만 attachment를 채운다. 
+    	 메시지와 첨부파일을 따로 조회 결과로 받는 대신, 화면에서는 하나의 message 객체 안에서 함께 사용할 수 있게 만든 구조
+    -->
     <resultMap id="chatMessageResult" type="com.groupware.dto.ChatMessageDTO">
+    <!-- SQL의 MESSAGE_ID 컬럼 값을 DTO의 messageId 필드에 넣는다. -->
         <id property="messageId" column="MESSAGE_ID" />
         <result property="roomId" column="ROOM_ID" />
         <result property="senderId" column="SENDER_ID" />
@@ -230,12 +233,14 @@
                cm.CONTENT,
                cm.SENT_AT,
 			   DATE_FORMAT(cm.SENT_AT, '%Y-%m-%d') AS SENT_DATE_KEY,
+			   <!-- CONCAT은 여러 문자열을 이어 붙이는 MySQL 함수. -->
 			   CONCAT(
 			       DATE_FORMAT(cm.SENT_AT, '%Y년 %c월 %e일 '),
 			       ELT(DAYOFWEEK(cm.SENT_AT), '일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일')
 			   ) AS DISPLAY_SENT_DATE,
 			   CONCAT(
 			       CASE WHEN HOUR(cm.SENT_AT) &lt; 12 THEN '오전 ' ELSE '오후 ' END,
+			       <!-- &lt는 <를 뜻 -->
 			       DATE_FORMAT(cm.SENT_AT, '%h:%i')
 			   ) AS DISPLAY_SENT_TIME,
                (
@@ -254,7 +259,7 @@
                ca.FILE_PATH,
                ca.FILE_SIZE
         FROM CHAT_MESSAGE cm
-        LEFT JOIN EMPLOYEE e
+        LEFT JOIN EMPLOYEE e <!-- 시스템 메시지도 채팅 목록에서 보여줘야 하기 때문에 left join 사용 -->
         <!-- 시스템 메시지는 SENDER_ID가 null일 수 있으므로 EMPLOYEE는 LEFT JOIN한다. -->
           ON e.EMPLOYEE_ID = cm.SENDER_ID
         LEFT JOIN CHAT_ATTACHMENT ca

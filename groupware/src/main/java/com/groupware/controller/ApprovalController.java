@@ -1,8 +1,17 @@
 package com.groupware.controller;
 
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -12,8 +21,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.groupware.dto.ApprovalDTO;
+import com.groupware.dto.ApprovalFileDTO;
 import com.groupware.dto.DepartmentDTO;
 import com.groupware.dto.EmployeeDTO;
 import com.groupware.service.ApprovalService;
@@ -50,7 +61,8 @@ public class ApprovalController {
 		return approvalService.getRefEmployees(deptId);
 	}
 
-	// 기안 등록 - 작성 자체는 전 직원에게 열려있음(기획서 3.8 "결재 작성·상신 | 직원")
+	// 기안 등록 - 작성 자체는 전 직원에게 열려있음(기획서 3.8 "결재 작성·상신 | 직원").
+	// 첨부파일이 있을 수 있어 multipart/form-data로 받는다(자료실 작성과 동일한 방식).
 	@PostMapping("/approval/write")
 	@ResponseBody
 	public ResponseEntity<String> writeApproval(@ModelAttribute("employee") EmployeeDTO employee,
@@ -58,13 +70,15 @@ public class ApprovalController {
 			@RequestParam("approvalContent") String approvalContent,
 			@RequestParam(value = "leaveStartDate", required = false) String leaveStartDate,
 			@RequestParam(value = "leaveEndDate", required = false) String leaveEndDate,
+			@RequestParam(value = "amount", required = false) Long amount,
 			@RequestParam("signer1Id") int signer1Id,
 			@RequestParam(value = "signer2Id", required = false) Integer signer2Id,
 			@RequestParam(value = "refDeptIds", required = false) List<Integer> refDeptIds,
-			@RequestParam(value = "refEmployeeIds", required = false) List<Integer> refEmployeeIds) {
+			@RequestParam(value = "refEmployeeIds", required = false) List<Integer> refEmployeeIds,
+			@RequestParam(value = "files", required = false) List<MultipartFile> files) {
 		try {
 			approvalService.writeApproval(employee.getEmployeeId(), formTypeId, approvalTitle, approvalContent,
-					leaveStartDate, leaveEndDate, signer1Id, signer2Id, refDeptIds, refEmployeeIds);
+					leaveStartDate, leaveEndDate, amount, signer1Id, signer2Id, refDeptIds, refEmployeeIds, files);
 		} catch (IllegalArgumentException e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
 		}
@@ -140,5 +154,32 @@ public class ApprovalController {
 		}
 		approvalService.decideApproval(approval, false, comment);
 		return ResponseEntity.ok("반려 처리했습니다.");
+	}
+
+	// 다운로드 - 파일이 속한 결재 문서의 열람 권한(canViewApproval)으로 재검증한다
+	// (자료실 다운로드와 동일한 패턴 - 파일 하나만 보고 바로 안 내려줌).
+	@GetMapping("/approval/download/{fileId}")
+	public ResponseEntity<Resource> downloadFile(@ModelAttribute("employee") EmployeeDTO employee,
+			@PathVariable("fileId") int fileId) throws IOException {
+		ApprovalFileDTO file = approvalService.getApprovalFile(fileId);
+		if (file == null) {
+			return ResponseEntity.notFound().build();
+		}
+		ApprovalDTO approval = approvalService.getApprovalDetail(file.getApprovalId());
+		if (approval == null || !approvalService.canViewApproval(employee, approval)) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+		}
+
+		Path path = Paths.get(file.getFilePath());
+		Resource resource = new FileSystemResource(path);
+		if (!resource.exists()) {
+			return ResponseEntity.notFound().build();
+		}
+
+		String encodedName = URLEncoder.encode(file.getFileName(), StandardCharsets.UTF_8).replace("+", "%20");
+		return ResponseEntity.ok()
+				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedName)
+				.contentType(MediaType.APPLICATION_OCTET_STREAM)
+				.body(resource);
 	}
 }

@@ -90,6 +90,45 @@
 	ORDER BY p.POSITION_RANK, e.EMPLOYEE_NAME
 	
 	</select>
+
+	<!--
+	  [조직도 직원 표 + 오늘 근태]
+	  EMPLOYEE_STATUS='ACTIVE'는 조직도에 보여 줄 재직자 여부다.
+	  WORK_STATUS는 오늘 ATTENDANCE 기록으로 계산한 별도 화면 표시값이다.
+	  기존 findActiveEmployeesByDepartment는 채팅·결재에서도 사용하므로 수정하지 않는다.
+	-->
+	<select id="findActiveEmployeesWithTodayAttendanceByDepartment"
+			resultType="com.groupware.dto.EmployeeDTO">
+		SELECT e.EMPLOYEE_ID,
+			   e.EMPLOYEE_NO,
+			   e.EMPLOYEE_NAME,
+			   e.EMPLOYEE_ROLE,
+			   e.EMPLOYEE_PHONE,
+			   e.EMPLOYEE_EMAIL,
+			   e.PROFILE_IMG,
+			   e.EMPLOYEE_STATUS,
+			   d.DEPT_NAME,
+			   p.POSITION_NAME,
+			   CASE
+			       WHEN a.ATTENDANCE_STATUS = 'LEAVE' THEN 'LEAVE'
+			       WHEN a.ATTENDANCE_ID IS NULL THEN 'NONE'
+			       WHEN a.CHECK_OUT_TIME IS NOT NULL THEN 'DONE'
+			       ELSE 'WORKING'
+			   END AS WORK_STATUS
+		FROM EMPLOYEE e
+		LEFT JOIN DEPARTMENT d
+		  ON d.DEPT_ID = e.DEPT_ID
+		LEFT JOIN `POSITION` p
+		  ON p.POSITION_ID = e.POSITION_ID
+		LEFT JOIN ATTENDANCE a
+		  ON a.EMPLOYEE_ID = e.EMPLOYEE_ID
+		 AND a.WORK_DATE = CURDATE()
+		WHERE e.EMPLOYEE_STATUS = 'ACTIVE'
+		<if test="deptId != null">
+			AND e.DEPT_ID = #{deptId}
+		</if>
+		ORDER BY p.POSITION_RANK, e.EMPLOYEE_NAME
+	</select>
 	
 	<!-- 직원 상세 모달 - 클릭한 직원의 정보를 조회 -->
 	<select id="findActiveEmployeeById" resultType="com.groupware.dto.EmployeeDTO">
@@ -200,4 +239,3 @@
 	    WHERE EMPLOYEE_NO LIKE CONCAT(#{year}, '___')
 	</select>
 </mapper>
-

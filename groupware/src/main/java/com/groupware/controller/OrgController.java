@@ -55,8 +55,10 @@ public class OrgController {
         // 방금 DB에서 가져온 부서 목록을 Thymeleaf에 전달한다.
         
         
-        model.addAttribute("employees", employeeMapper.findActiveEmployeesByDepartment(deptId));
-        // 전체보기라면 null
+        model.addAttribute(
+                "employees",
+                employeeMapper.findActiveEmployeesWithTodayAttendanceByDepartment(deptId));
+        // 전체보기라면 null이고, 재직자 목록마다 오늘 근태 표시값도 함께 조회한다.
         model.addAttribute("selectedDeptId", deptId);
         model.addAttribute("selectedDeptName", departments.stream()
         		// stream()은 List, Set 같은 컬렉션이나 배열 데이터를 

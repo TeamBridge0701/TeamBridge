@@ -31,4 +31,6 @@ public class EmployeeDTO {
 	private String positionName;	// 직급명
 	private int positionRank;		// 서열 (팀장/부서장 여부 판단용)
 	private String roleText;		// 화면 표시용 (관리자/부서장/팀장/일반 임직원)
+	// 조직도에서만 쓰는 오늘 근태 표시값 (WORKING / LEAVE / DONE / NONE)
+	private String workStatus;
 }
