@@ -91,43 +91,66 @@ public class ChatMessageController {
         notifyRoomListMembers("MESSAGE", roomId, savedMessage);
     }
 
-    // 화면에 방이 열려 있는 사용자가 어디까지 읽었는지 서버에 알린다.
+ // 화면에 채팅방을 열어 둔 사용자가 "여기까지 읽었다"고 WebSocket으로 알릴 때 실행된다.
     @MessageMapping("/chat/{roomId}/read")
     public void readMessage(
+
+            // WebSocket 주소의 {roomId} 값을 숫자로 받는다
             @DestinationVariable("roomId") int roomId,
+
+            // 현재 WebSocket에 연결된 로그인 사용자 정보다.
             Principal principal) {
 
+        // Principal에 저장된 로그인 사번을 사용해 DB에서 실제 직원 정보를 조회한다.
+        // 브라우저가 보낸 직원 ID를 믿지 않기 위해 서버에서 다시 확인한다.
         EmployeeDTO loginEmployee =
                 employeeMapper.findByEmployeeNo(principal.getName());
 
+        // 로그인 사용자가 없거나, 재직 상태가 ACTIVE가 아니면 읽음 처리하지 않는다.
         if (loginEmployee == null
                 || !"ACTIVE".equals(loginEmployee.getEmployeeStatus())) {
             throw new IllegalArgumentException("로그인 사용자 정보를 찾을 수 없습니다.");
         }
 
+        // 해당 직원이 roomId 채팅방에서 최신 메시지까지 읽은 것으로 DB를 갱신한다.
+        // 반환값에는 이전 읽음 위치와 새 읽음 위치가 들어 있다.
         Map<String, Integer> readEvent = chatService.markRoomAsRead(
                 roomId,
                 loginEmployee.getEmployeeId());
 
+        // 메시지가 없거나 이미 최신 메시지까지 읽은 상태면 DB 변경이 없으므로
+        // 다른 참여자에게 읽음 이벤트를 보낼 필요가 없다.
         if (readEvent == null) {
             return;
         }
 
+        // 같은 채팅방을 구독 중인 참여자에게 읽음 이벤트를 방송한다.
         messagingTemplate.convertAndSend(
                 "/topic/room/" + roomId + "/read",
+
+                // readEvent Map을 WebSocket JSON 데이터로 전송한다.
                 (Object) readEvent);
     }
+
 
     // 입력 내용 자체는 저장하지 않고, 현재 입력 중이라는 상태만 같은 방에 잠시 알린다.
     @MessageMapping("/chat/{roomId}/typing")
     public void typingMessage(
+
             @DestinationVariable("roomId") int roomId,
+
+            // 브라우저가 보낸 JSON 데이터를 Map으로 받는다.
             @Payload Map<String, Object> requestTyping,
+
             Principal principal) {
 
         EmployeeDTO loginEmployee =
                 employeeMapper.findByEmployeeNo(principal.getName());
 
+        // 다음 경우 입력 중 이벤트를 처리하지 않는다.
+        // 1. 로그인 사용자를 찾지 못함
+        // 2. 재직 상태가 ACTIVE가 아님
+        // 3. 현재 사용자가 해당 채팅방 참여자가 아님
         if (loginEmployee == null
                 || !"ACTIVE".equals(loginEmployee.getEmployeeStatus())
                 || !chatService.isRoomMember(
@@ -136,32 +159,67 @@ public class ChatMessageController {
             throw new IllegalArgumentException("채팅방 참여자가 아닙니다.");
         }
 
-        // senderId와 senderName은 브라우저 값이 아니라 로그인 정보에서만 만든다.
+        // 같은 방 참여자에게 보낼 입력 중 이벤트 데이터를 만든다.
+        // DB DTO가 아니라 WebSocket 전송용 Map이다.
         Map<String, Object> typingEvent = new HashMap<>();
+
+        // 어느 채팅방에서 입력 중인지 저장한다.
         typingEvent.put("roomId", roomId);
+
+        // 누가 입력 중인지 저장한다.
+        // 브라우저가 보낸 값이 아니라 서버 로그인 정보의 직원 ID를 사용한다.
         typingEvent.put("senderId", loginEmployee.getEmployeeId());
+
+        // 화면에 "김철수님이 입력 중"처럼 표시하기 위한 직원 이름을 저장한다.
         typingEvent.put("senderName", loginEmployee.getEmployeeName());
+
+        // 브라우저가 보낸 typing 값이 Boolean.TRUE일 때만 true로 저장한다.
+        // 값이 없거나 false라면 false가 저장된다.
         typingEvent.put(
                 "typing",
                 Boolean.TRUE.equals(requestTyping.get("typing")));
 
+        // 같은 채팅방을 구독 중인 참여자에게 입력 중 이벤트를 방송한다.
+        // 예: roomId가 3이면 /topic/room/3/typing 주소로 전송된다.
         messagingTemplate.convertAndSend(
                 "/topic/room/" + roomId + "/typing",
+
+                // typingEvent Map을 WebSocket JSON 데이터로 전송한다.
                 (Object) typingEvent);
     }
 
-    // 각 참여자는 자신의 /user/queue/chat-rooms만 구독하므로 다른 직원 목록은 받지 않는다.
+
+    // 새 메시지, 새 방 생성, 방 이름 변경 시 참여자 각자의 채팅방 목록을 갱신하라고 알린다.
+    // 각 참여자는 자신의 /user/queue/chat-rooms만 구독하므로 다른 직원의 이벤트는 받지 않는다.
     private void notifyRoomListMembers(
+
+            // 이벤트 종류
             String eventType,
+
+            // 변경이 발생한 채팅방 번호
             int roomId,
+
+            // 새 메시지 이벤트면 메시지 정보가 들어간다.
+            // 새 방 생성·이름 변경 이벤트면 메시지가 없으므로 null일 수 있다.
             ChatMessageDTO message) {
 
+        // 브라우저에 보낼 채팅방 목록 이벤트 데이터를 만든다.
         Map<String, Object> roomEvent = new HashMap<>();
+
+        // 이벤트 종류를 저장한다.
         roomEvent.put("eventType", eventType);
+
+        // 어떤 채팅방의 이벤트인지 저장한다.
         roomEvent.put("roomId", roomId);
+
+        // 새 메시지 정보 또는 null을 저장한다.
         roomEvent.put("message", message);
 
+        // 해당 채팅방 참여자들의 사번 목록을 조회한다.
         for (String employeeNo : chatService.getRoomMemberEmployeeNos(roomId)) {
+
+            // 각 참여자의 개인 WebSocket 주소로 이벤트를 전송한다.
+            // /user/queue/chat-rooms를 구독한 해당 직원만 이 이벤트를 받는다.
             messagingTemplate.convertAndSendToUser(
                     employeeNo,
                     "/queue/chat-rooms",

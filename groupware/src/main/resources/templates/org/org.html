@@ -95,7 +95,18 @@
                     <td><strong th:text="${employee.employeeName}">홍길동</strong></td>
                     <td th:text="${employee.deptName ?: '관리자'}">개발팀</td>
                     <td><span class="badge badge-primary" th:text="${employee.positionName ?: employee.employeeRole}">사원</span></td>
-                    <td><span class="badge badge-success">재직 중</span></td>
+                    <!--
+                      직원이 조직도에 보이는지는 SQL의 EMPLOYEE_STATUS='ACTIVE'가 결정한다.
+                      아래 값은 재직 여부가 아니라 오늘 ATTENDANCE 기록으로 계산한 근태 상태다.
+                    -->
+                    <td>
+                      <th:block th:switch="${employee.workStatus}">
+                        <span th:case="'WORKING'" class="badge badge-success">출근 (근무중)</span>
+                        <span th:case="'LEAVE'" class="badge badge-primary">휴가</span>
+                        <span th:case="'DONE'" class="badge badge-muted">퇴근</span>
+                        <span th:case="*" class="badge badge-warning">미출근</span>
+                      </th:block>
+                    </td>
                   </tr>
                   <!-- th:if는 해당 부서에 재직 직원이 없을 때만 안내 행을 보여준다. -->
                   <tr th:if="${#lists.isEmpty(employees)}">
@@ -135,6 +146,8 @@
   </div>
 
   <div id="toast-container" class="toast-container"></div>
+  <!-- 공통 헤더·사이드바의 안 읽은 채팅 배지와 모달 유틸리티를 먼저 불러온다. -->
+  <script th:src="@{/js/common.js}" src="/js/common.js"></script>
   <!-- th:src는 Spring Boot 정적 리소스 경로에서 org.js를 불러와 직원 상세 모달과 헤더를 동작시킨다. -->
   <script th:src="@{/js/org.js}" src="js/org.js"></script>
 </body>
