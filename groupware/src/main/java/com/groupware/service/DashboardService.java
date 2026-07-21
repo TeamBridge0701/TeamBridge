@@ -1,33 +1,52 @@
 package com.groupware.service;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.groupware.dto.ApprovalDTO;
+import com.groupware.dto.CalendarEventDTO;
+import com.groupware.dto.EmployeeDTO;
 import com.groupware.dto.NoticeDTO;
 import com.groupware.mapper.DashboardMapper;
 
 @Service
 public class DashboardService {
 
-    // 대시보드 "최신 공지 3건"에 보여줄 개수 - 공지사항 목록 페이지(NoticeService)의
-    // 페이지 크기(10건)와는 다른 대시보드 전용 값이라 여기 따로 둠
+    // 대시보드 표에 "미리보기로" 몇 건까지만 보여줄지(전체 개수가 아니라 화면에 그리는 줄 수 제한).
+    // 공지 목록/결재함 각각의 실제 목록 페이지 크기와는 다른, 대시보드 전용 값이라 여기 따로 둠
     private static final int DASHBOARD_NOTICE_COUNT = 3;
+    private static final int DASHBOARD_APPROVAL_COUNT = 3;
 
     private final DashboardMapper dashboardMapper;
     private final NoticeService noticeService;
+    // 전자결재 위젯도 새 SQL 없이 ApprovalService의 기존 조회(받은/보낸 결재함)를
+    // 그대로 재사용한다 (공지 위젯과 같은 방식)
+    private final ApprovalService approvalService;
+    // 오늘 일정 위젯도 새 SQL 없이 캘린더 페이지가 쓰는 조회를 그대로 재사용한다.
+    // 이 조회는 개인/팀/회사 권한 필터링(CalendarService.getEventsByYearAndMonth)까지
+    // 이미 포함돼 있어서, 대시보드에서 따로 권한을 다시 신경 쓸 필요가 없다는 장점이 있음
+    private final CalendarService calendarService;
 
-    public DashboardService(DashboardMapper dashboardMapper, NoticeService noticeService) {
+    public DashboardService(DashboardMapper dashboardMapper, NoticeService noticeService,
+            ApprovalService approvalService, CalendarService calendarService) {
         this.dashboardMapper = dashboardMapper;
         this.noticeService = noticeService;
+        this.approvalService = approvalService;
+        this.calendarService = calendarService;
     }
 
-    // 대시보드 화면에 필요한 데이터 모음
+    // 대시보드 화면에 필요한 데이터 모음. employeeId만으로는 부서(deptId) 등을 알 수 없어서
+    // 캘린더 조회(팀 일정 권한 판단에 deptId 필요)까지 재사용하려면 EmployeeDTO 전체가 필요함
     @Transactional(readOnly = true)
-    public Map<String, Object> getMainDashboardData(int employeeId) {
+    public Map<String, Object> getMainDashboardData(EmployeeDTO employee) {
+        int employeeId = employee.getEmployeeId();
         Map<String, Object> resultMap = new HashMap<>();
 
         resultMap.put("employee", null);
@@ -35,13 +54,77 @@ public class DashboardService {
         // 공지 목록 1페이지(고정글 우선 + 최신순, 최대 10건)를 그대로 재사용해서
         // 앞의 3건만 잘라 씀 - 대시보드 전용 쿼리를 새로 만들 필요가 없음
         List<NoticeDTO> latestNotices = noticeService.getNoticeList(null, 1);
+        // subList(0, N) = 리스트 맨 앞부터 N개만 잘라낸 부분 리스트. 실제 건수(latestNotices.size())가
+        // N보다 적을 수도 있으니 Math.min으로 "더 작은 쪽"을 잘라내는 기준으로 삼아
+        // ArrayIndexOutOfBounds(범위 초과 에러)가 안 나게 방어함
         resultMap.put("notices", latestNotices.subList(0, Math.min(DASHBOARD_NOTICE_COUNT, latestNotices.size())));
-        resultMap.put("waitCount", 0);
-        resultMap.put("progressCount", 0);
-        resultMap.put("approvals", new java.util.ArrayList<>());
-        resultMap.put("todayEvents", new java.util.ArrayList<>());
-        resultMap.put("miniCalendarEvents", new java.util.ArrayList<>());
+
+        // 받은 결재함 = 지금 내가 승인해야 할 차례인 문서들. "결재 대기 문서" 숫자(전체 건수)와
+        // 표 미리보기(앞 3건만)를 이 하나의 조회 결과에서 같이 만들어 쓴다
+        List<ApprovalDTO> inbox = approvalService.getInbox(employeeId);
+        resultMap.put("waitCount", inbox.size()); // 표에는 3건만 보여도, 숫자는 잘라내기 전 "전체" 건수
+        resultMap.put("approvals", inbox.subList(0, Math.min(DASHBOARD_APPROVAL_COUNT, inbox.size())));
+
+        // 보낸 기안함(내가 기안한 문서 전체) 중, 아직 승인도 반려도 안 되고 "진행중(PROGRESS)"인
+        // 것만 골라서 개수를 센다.
+        // .stream() : 리스트를 하나씩 순회하며 조건 검사/변환을 할 수 있게 바꿔주는 자바 문법
+        // .filter(조건) : 조건에 맞는 것만 통과시키고 나머지는 버림(여기선 상태값이 PROGRESS인 것만)
+        // .count() : 걸러지고 남은 것들의 개수를 센다(for문 돌면서 if로 개수 세는 것과 결과는 같음)
+        long progressCount = approvalService.getOutbox(employeeId).stream()
+                .filter(a -> "PROGRESS".equals(a.getApprovalStatus()))
+                .count();
+        resultMap.put("progressCount", (int) progressCount); // count()는 long을 반환해서 int로 형변환
+
+        // 오늘 일정 = 이번 달 전체 일정(캘린더 페이지와 완전히 동일한 조회, 권한 필터링 포함)을
+        // 가져온 뒤, 그중 오늘 날짜가 시작일~종료일 사이에 포함되는 것만 추림
+        LocalDate today = LocalDate.now();
+        String todayStr = today.toString(); // LocalDate.toString()은 "YYYY-MM-DD" 형식이라 DB 문자열과 그대로 비교 가능
+        List<CalendarEventDTO> monthEvents = calendarService.getEventsByYearAndMonth(
+                today.getYear(), today.getMonthValue(), employee);
+        List<CalendarEventDTO> todayEvents = monthEvents.stream()
+                .filter(e -> e.getStartDate().compareTo(todayStr) <= 0 && e.getEndDate().compareTo(todayStr) >= 0)
+                .collect(Collectors.toList());
+        resultMap.put("todayEvents", todayEvents);
+
+        // 미니 캘린더 - 오늘 일정 위젯에서 이미 조회한 이번 달 전체 일정(monthEvents)을 그대로
+        // 재사용해서, 42칸(또는 35칸) 각각에 그 날 일정이 있는지만 계산해서 넘겨준다.
+        // Thymeleaf에서 요일 맞춰 칸을 만드는 계산을 하기가 번거로워서, 자바 쪽에서 미리
+        // "그릴 준비가 끝난" 리스트로 만들어 화면은 th:each로 뿌리기만 하면 되게 함
+        resultMap.put("miniCalendarDays", buildMiniCalendarDays(today, monthEvents));
+        resultMap.put("currentYear", today.getYear());
+        resultMap.put("currentMonth", today.getMonthValue());
 
         return resultMap;
+    }
+
+    // 미니 캘린더 그리드용 날짜 칸 목록 계산 - calendar.js의 buildCalendarWeeks()와 같은
+    // 원리(요일 맞추려고 앞뒤로 이전/다음 달 날짜 포함)를 자바에서 그대로 재현한 것
+    private List<Map<String, Object>> buildMiniCalendarDays(LocalDate today, List<CalendarEventDTO> monthEvents) {
+        LocalDate first = today.withDayOfMonth(1);
+        // DayOfWeek.getValue()는 월=1 ~ 일=7이라, 일요일을 0으로 만들려고 7로 나눈 나머지를 씀
+        int startDay = first.getDayOfWeek().getValue() % 7;
+        LocalDate gridStart = first.minusDays(startDay);
+        int totalCells = (int) (Math.ceil((startDay + today.lengthOfMonth()) / 7.0) * 7);
+
+        List<Map<String, Object>> days = new ArrayList<>();
+        for (int i = 0; i < totalCells; i++) {
+            LocalDate cellDate = gridStart.plusDays(i);
+            String cellDateStr = cellDate.toString();
+
+            // 그 날짜에 걸쳐있는 일정 제목들을 모아서, 클릭했을 때 토스트로 보여줄 문구를 미리 만들어둠
+            List<String> titlesOnThisDay = monthEvents.stream()
+                    .filter(e -> e.getStartDate().compareTo(cellDateStr) <= 0 && e.getEndDate().compareTo(cellDateStr) >= 0)
+                    .map(CalendarEventDTO::getEventTitle)
+                    .collect(Collectors.toList());
+
+            Map<String, Object> day = new HashMap<>();
+            day.put("day", cellDate.getDayOfMonth());
+            day.put("otherMonth", cellDate.getMonthValue() != today.getMonthValue());
+            day.put("isToday", cellDate.isEqual(today));
+            day.put("hasEvent", !titlesOnThisDay.isEmpty());
+            day.put("eventSummary", String.join(", ", titlesOnThisDay));
+            days.add(day);
+        }
+        return days;
     }
 }
