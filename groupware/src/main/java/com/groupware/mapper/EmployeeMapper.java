@@ -30,6 +30,11 @@ public interface EmployeeMapper {
 	// 부서 필터에 맞는 ACTIVE 직원만 조직도 표에 표시한다. deptId가 null 이면 전체다.
 	List<EmployeeDTO> findActiveEmployeesByDepartment(@Param("deptId") Integer deptId);
 
+	// 조직도 표 전용: 재직자 목록에 오늘 근태 상태까지 함께 조회한다.
+	// 기존 직원 조회는 채팅·결재에서도 쓰므로 변경하지 않고 별도 메서드로 둔다.
+	List<EmployeeDTO> findActiveEmployeesWithTodayAttendanceByDepartment(
+			@Param("deptId") Integer deptId);
+
 	// 상세 모달에서 사용할 ACTIVE 직원 한 명을 조회한다. */
 	EmployeeDTO findActiveEmployeeById(int employeeId);
 
