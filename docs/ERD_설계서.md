@@ -1,7 +1,18 @@
+<<<<<<< HEAD
+> 작성일: 2026-07-05 · 버전: v0.6 (메일함 기능 제거로 MAIL/MAIL_RECIPIENT/MAIL_ATTACHMENT 3테이블 삭제, 조직도 상세는 채팅 연결로 대체) · ERD 다이어그램은 아래 테이블 설계를 바탕으로 직접 작성 예정 (`docs/ERD.mermaid`에 있던 초기 스케치는 현재 실제로 구현된 화면 기준으로 이 문서에서 다시 정리함)
+>
+> v0.6 변경(2026-07-21, 김우주 담당 캘린더 백엔드 작업 중 결정, 팀장과 협의 후 반영):
+> **캘린더 TEAM(팀) 일정을 "등록자와 같은 부서만 CRUD 가능"하도록 스코프를 걸기로
+> 하면서 `CALENDAR_EVENT`에 `DEPT_ID` 컬럼 추가.** PERSONAL/COMPANY 일정은 NULL.
+> 등록 시점 부서로 고정 저장(`REPOSITORY.DEPT_ID`와 동일 원칙 — 등록자가 나중에
+> 부서를 옮겨도 이미 등록된 일정의 노출 범위는 안 바뀌게). 2-6, 3장 관계표, 5장
+> SQL에 반영.
+=======
 > 작성일: 2026-07-05 · 버전: v0.5 (메일함 기능 제거로 MAIL/MAIL_RECIPIENT/MAIL_ATTACHMENT 3테이블 삭제, 조직도 상세는 채팅 연결로 대체) · ERD 다이어그램은 아래 테이블 설계를 바탕으로 직접 작성 예정 (`docs/ERD.mermaid`에 있던 초기 스케치는 현재 실제로 구현된 화면 기준으로 이 문서에서 다시 정리함)
 > v0.6 변경(2026-07-20, 정진국 담당 전자결재 백엔드 작업 중 결정): 지출결의서에 금액을 담을
 > 컬럼이 없던 걸 뒤늦게 발견해 `APPROVAL.AMOUNT` 추가, 지출결의서·프로젝트품의서 첨부파일용
 > `APPROVAL_FILE` 테이블 신설(2-11, 2-13-1 참고).
+>>>>>>> main
 >
 
 # ERD 설계서
@@ -208,6 +219,15 @@ mock 데이터는 처음에 날짜를 "6월 며칠"이라는 정수 하나(EVENT
 실제 구현에서는 연·월이 바뀌어도 동작해야 하므로 완전한 DATE 타입으로 저장합니다.
 캘린더 화면에서 "이 날짜에 표시할 일정"은
 `WHERE :day BETWEEN START_DATE AND END_DATE`로 조회합니다.
+
+DEPT_ID는 EVENT_CATEGORY='TEAM'인 일정에만 값이 채워집니다(PERSONAL/COMPANY는 NULL).
+REPOSITORY.DEPT_ID와 같은 이유로, 조회할 때마다 EMPLOYEE 테이블을 조인해서
+"등록자의 지금 부서"를 계산하지 않고, 등록 시점의 부서를 이 컬럼에 고정
+저장합니다 — 안 그러면 등록자가 나중에 부서를 옮겼을 때 이미 등록된 팀
+일정의 노출 범위가 조용히 따라 바뀌는 문제가 생기기 때문입니다. 팀 일정의
+조회·수정·삭제 권한은 이 DEPT_ID가 로그인한 사람의 DEPT_ID와 같은지로
+판단하며(관리자는 DEPT_ID가 없으므로 팀 일정을 만들거나 건드릴 수 없음),
+회사 일정은 관리자만, 개인 일정은 작성자 본인만 CRUD 가능합니다.
 ```
 
 | 컬럼명 | 타입 | 제약조건 | 설명 |
@@ -218,6 +238,7 @@ mock 데이터는 처음에 날짜를 "6월 며칠"이라는 정수 하나(EVENT
 | START_DATE | DATE | NOT NULL | 일정 시작일 |
 | END_DATE | DATE | NOT NULL | 일정 종료일 (하루짜리 일정은 START_DATE와 동일) |
 | EVENT_CATEGORY | VARCHAR(10) | NOT NULL | 구분 (PERSONAL 개인 / TEAM 팀 / COMPANY 회사) |
+| DEPT_ID | INT | FK(DEPARTMENT), NULLABLE | TEAM 일정의 소속 부서(등록 시점 값으로 고정, PERSONAL/COMPANY는 NULL) |
 | CREATED_AT | DATETIME | NOT NULL, DEFAULT NOW() | 등록일시 |
 | — | — | CHECK (END_DATE >= START_DATE) | 종료일이 시작일보다 빠를 수 없음 |
 
@@ -515,6 +536,7 @@ GROUP N행).
 | EMPLOYEE : ATTENDANCE | 1 : N | 한 직원이 여러 날짜의 근태 기록을 가짐 |
 | EMPLOYEE : NOTICE | 1 : N | 한 직원(관리자)이 여러 공지를 작성 |
 | EMPLOYEE : CALENDAR_EVENT | 1 : N | 한 직원이 여러 일정을 등록 |
+| DEPARTMENT : CALENDAR_EVENT | 1 : N | TEAM 카테고리 일정만 소속 부서가 있음(등록 시점 값으로 고정, PERSONAL/COMPANY는 DEPT_ID NULL) |
 | DEPARTMENT : REPOSITORY | 1 : N | 한 부서 제한 자료실은 한 부서에만 속함 (전사 공용은 DEPT_ID NULL) |
 | REPOSITORY : ARCHIVE | 1 : N | 한 자료실에 여러 게시글이 등록됨 |
 | EMPLOYEE : ARCHIVE | 1 : N | 한 직원이 여러 게시글을 작성 |
@@ -802,6 +824,13 @@ CREATE TABLE CHAT_ATTACHMENT (
                                      REFERENCES  CHAT_MESSAGE(MESSAGE_ID),
     CONSTRAINT UQ_CHATATTACH_MESSAGE UNIQUE      (MESSAGE_ID)
 );
+
+-- CALENDAR_EVENT는 처음엔 DEPT_ID 없이 만들었다가, TEAM 일정을 "같은 부서만
+-- CRUD 가능"하게 스코프를 걸기로 하면서 뒤늦게 컬럼을 추가했다(김우주,
+-- 팀장과 협의 후 반영). PERSONAL/COMPANY 일정은 NULL로 둔다.
+ALTER TABLE CALENDAR_EVENT
+    ADD COLUMN DEPT_ID INT NULL,
+    ADD CONSTRAINT FK_EVENT_DEPT FOREIGN KEY (DEPT_ID) REFERENCES DEPARTMENT(DEPT_ID);
 ```
 
 ---

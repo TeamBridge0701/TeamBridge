@@ -734,16 +734,25 @@
       align-items: center;
       justify-content: center;
     }
+    /* 캘린더(calendar.js)가 .cal-event-layer 안에 grid-column/grid-row를 인라인
+       스타일로 지정해서 배치하는 일정 막대 - <button> 기본 테두리/배경 초기화 필요 */
     .cal-event-bar {
+      border: none;
+      background: none;
+      font: inherit;
       font-size: 0.7rem;
       padding: 0.15rem 0.30rem;
       border-radius: 3px;
       color: #fff;
+      text-align: left;
       white-space: nowrap;
       text-overflow: ellipsis;
       overflow: hidden;
       font-weight: 600;
     }
+    .cal-event-bar.personal { background-color: var(--color-secondary); }
+    .cal-event-bar.team { background-color: var(--color-success); }
+    .cal-event-bar.company { background-color: var(--color-danger); }
 
     /* 여러 날짜에 걸친 일정을 하루씩 끊지 않고 하나의 막대로 이어 붙이는
        월간 캘린더 전용 레이아웃(js/calendar.js의 renderCalendarGrid 참고).

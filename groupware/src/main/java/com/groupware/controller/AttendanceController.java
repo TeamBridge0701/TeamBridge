@@ -79,11 +79,9 @@ public class AttendanceController {
 
 		Map<String, Object> response = new HashMap<>();
 
-		// 상태값 정의 -DTO 자체가 없으면(null) 참: NONE (오늘 출근 안 함) - 있으면 checkouttime이 null이면
-		// (dto.getCheckOutTime() == null): 출근 기록은 있는데 퇴근 시간이 없니? -> working상태(일중)
-		// (dto.getCheckOutTime() != null : 그 외 나머지: 출근도 했고 퇴근 시간도 들어있니? 참: DONE (오늘 업무
-		// 종료)
-		String status = (dto == null) ? "NONE" : (dto.getCheckOutTime() == null ? "WORKING" : "DONE");
+		// "지금 출근했는지" 상태(NONE/WORKING/DONE) 계산은 AttendanceService로 옮김 - 대시보드도
+		// 같은 기준을 재사용하기 때문(AttendanceService.getCommuteStatus 참고)
+		String status = attendanceService.getCommuteStatus(dto);
 
 		response.put("success", true);
 		response.put("nextStatus", status);

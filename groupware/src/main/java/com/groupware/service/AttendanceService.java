@@ -3,7 +3,9 @@ package com.groupware.service;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
@@ -24,6 +26,27 @@ public class AttendanceService {
 	// 출근 정보 조회
 	public AttendanceDTO getTodayAttendance(int employeeId, String today) {
 		return attendanceMapper.selectTodayAttendance(employeeId, today);
+	}
+
+	// "지금 출근했는지 여부"(NONE 미출근/WORKING 근무중/DONE 퇴근완료) - 그날 지각/정상/연차인지
+	// (ATTENDANCE_STATUS: NORMAL/LATE/LEAVE)와는 다른 개념이라 헷갈리지 않게 별도 메서드로 분리.
+	// AttendanceController가 원래 인라인으로 계산하던 걸 여기로 옮겨서, 대시보드(MainController)도
+	// 같은 기준으로 재사용할 수 있게 함(2026-07-21 김우주 확인 - main.html이 attendanceStatus를
+	// 그대로 보여주던 걸 이걸로 교체)
+	public String getCommuteStatus(AttendanceDTO todayAttendance) {
+		if (todayAttendance == null) {
+			return "NONE";
+		}
+		return todayAttendance.getCheckOutTime() == null ? "WORKING" : "DONE";
+	}
+
+	// 위 상태 코드를 화면에 보여줄 한글 라벨로 변환(대시보드 "상태" 표시용)
+	public String getCommuteStatusLabel(AttendanceDTO todayAttendance) {
+		switch (getCommuteStatus(todayAttendance)) {
+			case "WORKING": return "근무중";
+			case "DONE": return "퇴근완료";
+			default: return "미출근";
+		}
 	}
 
 	// 출근 처리 - 9시 넘으면 지각 처리
@@ -70,6 +93,22 @@ public class AttendanceService {
 				.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
 		return attendanceMapper.selectAttendanceByPeriod(employeeId, startDate, endDate);
+	}
+
+	// 월간 근태 상태별 건수 집계 - 출결 현황 페이지(attendance.js의 loadAttendanceData())가
+	// 클라이언트에서 이미 하고 있는 정상/지각/연차 카운팅과 똑같은 로직을 서버에도 둔 것.
+	// 화면(JS)이 없는 곳(대시보드 등 SSR 화면)에서도 같은 집계를 재사용하려고 추가함.
+	// "조퇴"는 여기 안 넣음 - ATTENDANCE_STATUS 컬럼 자체가 NORMAL/LATE/LEAVE 셋만 허용해서
+	// (ERD_설계서.md 2-4 확정 사항) 애초에 셀 수 있는 데이터가 없음(2026-07-21 김우주 확인).
+	public Map<String, Long> getMonthlySummary(int employeeId, int year, int month) {
+		List<AttendanceDTO> records = getMonthlyAttendance(employeeId, year, month);
+
+		Map<String, Long> summary = new HashMap<>();
+		// .filter()로 그 상태인 것만 걸러내고 .count()로 몇 개인지 센다
+		summary.put("normal", records.stream().filter(a -> "NORMAL".equals(a.getAttendanceStatus())).count());
+		summary.put("late", records.stream().filter(a -> "LATE".equals(a.getAttendanceStatus())).count());
+		summary.put("leave", records.stream().filter(a -> "LEAVE".equals(a.getAttendanceStatus())).count());
+		return summary;
 	}
 	
 	// 관리자 : 특정 날짜의 전 직원 출결 조회
