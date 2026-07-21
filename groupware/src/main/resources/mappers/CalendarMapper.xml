@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.groupware.mapper.CalendarMapper">
+
+    <!-- 특정 연도/월 일정 조회 (시작일이나 종료일이 해당 월에 포함되거나 걸쳐있는 일정 조회 쿼리 예시) -->
+    <select id="selectEventsByYearAndMonth" resultType="com.groupware.dto.CalendarEventDTO">
+        SELECT event_id AS eventId,
+               employee_id AS employeeId,
+               event_title AS eventTitle,
+               start_date AS startDate,
+               end_date AS endDate,
+               event_category AS eventCategory,
+               created_at AS createdAt
+        FROM calendar_event
+        WHERE (SUBSTR(start_date, 1, 7) = CONCAT(#{year}, '-', LPAD(#{month}, 2, '0'))
+           OR SUBSTR(end_date, 1, 7) = CONCAT(#{year}, '-', LPAD(#{month}, 2, '0')))
+    </select>
+
+    <!-- 새 일정 등록 -->
+    <insert id="insertEvent" parameterType="com.groupware.dto.CalendarEventDTO" useGeneratedKeys="true" keyProperty="eventId">
+        INSERT INTO calendar_event (employee_id, event_title, start_date, end_date, event_category, created_at)
+        VALUES (#{employeeId}, #{eventTitle}, #{startDate}, #{endDate}, #{eventCategory}, NOW())
+    </insert>
+
+    <!-- 일정 수정 -->
+    <update id="updateEvent" parameterType="com.groupware.dto.CalendarEventDTO">
+        UPDATE calendar_event
+        SET event_title = #{eventTitle},
+            start_date = #{startDate},
+            end_date = #{endDate},
+            event_category = #{eventCategory}
+        WHERE event_id = #{eventId}
+    </update>
+
+    <!-- 일정 삭제 -->
+    <delete id="deleteEvent" parameterType="int">
+        DELETE FROM calendar_event
+        WHERE event_id = #{eventId}
+    </delete>
+
+</mapper>

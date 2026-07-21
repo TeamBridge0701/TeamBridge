@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const response = await fetch('/attendance/status');
         const data = await response.json();
         updateButtonUI(data.nextStatus);
-		updateAttendanceDisplay(data);
+        updateAttendanceDisplay(data);
     } catch (e) {
         console.error("상태 조회 실패", e);
     }
@@ -15,50 +15,105 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btn) {
         btn.addEventListener('click', commute);
     }
+
     // 3. [근태 페이지 전용] 캘린더 그리드 및 출결 데이터 연동
     if (document.getElementById('fullCalendarGrid')) {
-        const currentYear = new Date().getFullYear();
-        const currentMonth = new Date().getMonth() + 1;
+        // 클로저 형태로 현재 연도/월 상태를 안전하게 관리
+        let pageYear = new Date().getFullYear();
+        let pageMonth = new Date().getMonth() + 1;
 
-        try {
-            // 백엔드에서 이번 달 출결 리스트 가져오기
-            const res = await fetch(`/attendance/monthly?year=${currentYear}&month=${currentMonth}`);
-            const monthlyAttendanceList = await res.json();
+        // 최초 진입 시 데이터 로드 실행
+        loadAttendanceData(pageYear, pageMonth);
 
-            // calendar.js에 분리해 둔 공용 폼 생성 함수(generateCalendarGridHtml)를 호출하여 
-            // 뼈대를 빌려오고, 날짜별 출결 데이터(뱃지 및 시간)를 매핑해서 렌더링!
-            if (typeof generateCalendarGridHtml === 'function') {
-                if (document.querySelector('.calendar-controls h2')) {
-                    document.querySelector('.calendar-controls h2').textContent = `이번 달 출결 현황 (${currentYear}년 ${currentMonth}월)`;
+        // 이전 달 / 다음 달 버튼 이벤트 연결
+        const prevBtn = document.getElementById('prevMonthBtn');
+        const nextBtn = document.getElementById('nextMonthBtn');
+        
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                pageMonth--;
+                if (pageMonth < 1) {
+                    pageMonth = 12;
+                    pageYear--;
                 }
-
-                document.getElementById('fullCalendarGrid').innerHTML = generateCalendarGridHtml(currentYear, currentMonth, (cellDate) => {
-                    const matchData = monthlyAttendanceList.find(item => item.workDate === cellDate);
-                    if (!matchData) return '';
-
-                    let badgeClass = 'badge-success';
-                    // 2. 서버에서 넘어오는 상태값('LATE', 'WORK', 'ABSENT' 등)에 맞게 매핑
-                    if (matchData.attendanceStatus === 'LATE') badgeClass = 'badge-warning';
-                    else if (matchData.attendanceStatus === 'EARLY_LEAVE' || matchData.attendanceStatus === 'VACATION') badgeClass = 'badge-primary';
-                    else if (matchData.attendanceStatus === 'ABSENT') badgeClass = 'badge-danger';
-
-                    const checkIn = matchData.checkInTime ? matchData.checkInTime.substring(0, 5) : '-';
-                    const checkOut = matchData.checkOutTime ? matchData.checkOutTime.substring(0, 5) : '-';
-
-                    return `
-	                        <div style="font-size:0.65rem; line-height:1.5; margin-top:4px;">
-	                            <span class="badge ${badgeClass}" style="font-size:0.6rem;">${matchData.attendanceStatus}</span>
-	                            <div>출근 ${checkIn}</div>
-	                            <div>퇴근 ${checkOut}</div>
-	                        </div>
-	                    `;
-                });
-            }
-        } catch (err) {
-            console.error("출결 캘린더 데이터 로드 실패", err);
+                loadAttendanceData(pageYear, pageMonth);
+            });
+        }
+        
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                pageMonth++;
+                if (pageMonth > 12) {
+                    pageMonth = 1;
+                    pageYear++;
+                }
+                loadAttendanceData(pageYear, pageMonth);
+            });
         }
     }
 });
+
+// 데이터를 불러와서 그려주는 공용 함수
+async function loadAttendanceData(year, month) {
+    try {
+        // 백엔드에서 해당 월 출결 리스트 가져오기
+        const res = await fetch(`/attendance/monthly?year=${year}&month=${month}`);
+        const monthlyAttendanceList = await res.json();
+
+        // status별 카운트 및 총 출근일수 계산 (정상+지각+휴가 합산)
+        let normalCount = 0;
+        let lateCount = 0;
+        let leaveCount = 0;
+
+        monthlyAttendanceList.forEach(item => {
+            const status = item.attendanceStatus;
+            if (status === 'NORMAL') normalCount++;
+            else if (status === 'LATE') lateCount++;
+            else if (status === 'LEAVE') leaveCount++;
+        });
+
+        const totalPresentDays = normalCount + lateCount + leaveCount;
+
+        const presentEl = document.getElementById('attPresentDays');
+        const lateEl = document.getElementById('attLateDays');
+        const leaveEl = document.getElementById('attLeaveDays');
+
+        if (presentEl) presentEl.textContent = totalPresentDays;
+        if (lateEl) lateEl.textContent = lateCount;
+        if (leaveEl) leaveEl.textContent = leaveCount;
+
+        // calendar.js에 분리해 둔 공용 폼 생성 함수(generateCalendarGridHtml) 호출
+        if (typeof generateCalendarGridHtml === 'function') {
+            const yearEl = document.getElementById('calendarYear');
+            const monthEl = document.getElementById('calendarMonth');
+            if (yearEl) yearEl.textContent = year;
+            if (monthEl) monthEl.textContent = month;
+
+            document.getElementById('fullCalendarGrid').innerHTML = generateCalendarGridHtml(year, month, (cellDate) => {
+                const matchData = monthlyAttendanceList.find(item => item.workDate === cellDate);
+                if (!matchData) return '';
+
+                let badgeClass = 'badge-success';
+                if (matchData.attendanceStatus === 'LATE') badgeClass = 'badge-warning';
+                else if (matchData.attendanceStatus === 'EARLY_LEAVE' || matchData.attendanceStatus === 'VACATION') badgeClass = 'badge-primary';
+                else if (matchData.attendanceStatus === 'ABSENT') badgeClass = 'badge-danger';
+
+                const checkIn = matchData.checkInTime ? matchData.checkInTime.substring(0, 5) : '-';
+                const checkOut = matchData.checkOutTime ? matchData.checkOutTime.substring(0, 5) : '-';
+
+                return `
+                    <div style="font-size:0.65rem; line-height:1.5; margin-top:4px;">
+                        <span class="badge ${badgeClass}" style="font-size:0.6rem;">${matchData.attendanceStatus}</span>
+                        <div>출근 ${checkIn}</div>
+                        <div>퇴근 ${checkOut}</div>
+                    </div>
+                `;
+            });
+        }
+    } catch (err) {
+        console.error("출결 캘린더 데이터 로드 실패", err);
+    }
+}
 
 async function commute() {
     const btn = document.getElementById('btnCommute');
@@ -74,7 +129,6 @@ async function commute() {
     }
 
     try {
-        // 주소에 /api/를 포함해야 합니다!
         const response = await fetch(`/attendance/${action}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
@@ -83,11 +137,10 @@ async function commute() {
         const result = await response.json();
 
         if (result.success) {
-            // 성공 시 서버가 준 nextStatus로 버튼 UI 갱신
             updateButtonUI(result.nextStatus);
-         updateAttendanceDisplay(result);
-		 const message=action === 'checkIn' ? '출근처리되었습니다':'퇴근처리되었습니다.';
-           showToast(message, 'success'); // 기존 토스트 함수 유지
+            updateAttendanceDisplay(result);
+            const message = action === 'checkIn' ? '출근처리되었습니다.' : '퇴근처리되었습니다.';
+            showToast(message, 'success');
         }
     } catch (error) {
         console.error('통신 오류:', error);
@@ -99,7 +152,6 @@ function updateButtonUI(status) {
     const btn = document.getElementById('btnCommute');
     if (!btn) return;
 
-    // 기존 클래스 제거
     btn.classList.remove('btn-primary', 'btn-danger', 'btn-secondary');
 
     if (status === 'NONE') {

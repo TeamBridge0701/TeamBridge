@@ -55,30 +55,30 @@
 					<div class="calendar-wrapper">
 						<div class="calendar-controls">
 							<div style="display: flex; align-items: center; gap: 1rem;">
-								<h2>2026년 6월</h2>
+								<h2>
+									<span id="calendarYear">2026</span>년 <span id="calendarMonth">6</span>월
+								</h2>
 								<div style="display: flex; gap: 0.25rem;">
 									<!-- 프로토타입이라 이전/다음 달 이동은 실제로 동작하지 않고 안내 토스트만 띄운다 -->
-									<button class="btn btn-secondary btn-sm"
-										onclick="showToast('이전 달 일정은 프로토타입 범위 외입니다.', 'warning')"><i
-											class="fa-solid fa-chevron-left"></i></button>
-									<button class="btn btn-secondary btn-sm"
-										onclick="showToast('다음 달 일정은 프로토타입 범위 외입니다.', 'warning')"><i
-											class="fa-solid fa-chevron-right"></i></button>
+									<button class="btn btn-secondary btn-sm" id="calendarPrevBtn">
+										<i class="fa-solid fa-chevron-left"></i>
+									</button>
+									<button class="btn btn-secondary btn-sm" id="calendarNextBtn">
+										<i class="fa-solid fa-chevron-right"></i>
+									</button>
 								</div>
 							</div>
-							<button class="btn btn-primary" onclick="openCreateEventModal()"><i
-									class="fa-solid fa-plus"></i> 일정 추가</button>
+							<button class="btn btn-primary" onclick="openScheduleModal()">
+								<i class="fa-solid fa-plus"></i> 일정 추가
+							</button>
 						</div>
 
 						<!-- 캘린더 그리드 - js/calendar.js의 renderCalendarGrid()가 그린다.
                  여러 날짜에 걸친 일정은 하루씩 끊지 않고, 같은 주(週) 안에서는
                  하나로 이어진 막대(.cal-event-bar)로, 주가 바뀌면 다음 줄에서
                  새 막대로 이어서 그린다. -->
-						<div class="cal-month" id="fullCalendarGrid">
-							
+						<div class="cal-month" id="fullCalendarGrid"></div>
 					</div>
-				</div>
-
 			</main>
 		</div>
 	</div>
