@@ -41,6 +41,10 @@ public interface ChatMapper {
             @Param("roomId") int roomId,
             @Param("employeeId") int employeeId);
 
+    int deleteChatRoomMember(
+            @Param("roomId") int roomId,
+            @Param("employeeId") int employeeId);
+
     
     // ========================= 0719에 추가함 =======================
     

@@ -315,6 +315,31 @@ public class ChatController {
         }
     }
 
+    @PostMapping("/chat/room/{roomId}/leave")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> leaveChatRoom(
+            @PathVariable("roomId") int roomId,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+
+        try {
+            ChatMessageDTO systemMessage = chatService.leaveRoom(
+                    roomId,
+                    principal.getEmployeeDTO().getEmployeeId());
+
+            if (systemMessage != null) {
+                messagingTemplate.convertAndSend(
+                        "/topic/room/" + roomId,
+                        systemMessage);
+                notifyRoomListMembers("MESSAGE", roomId, systemMessage);
+            }
+
+            return ResponseEntity.ok(Map.of("redirectUrl", "/chat"));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().body(
+                    Map.<String, Object>of("message", exception.getMessage()));
+        }
+    }
+
     // 파일 본문은 HTTP multipart로 받고, 저장 성공 후에는 STOMP로 방 구독자에게 방송한다.
     @PostMapping(
             path = "/chat/room/{roomId}/file",

@@ -1019,6 +1019,35 @@ async function confirmInviteChat() {
   }
 }
 
+async function leaveChatRoom() {
+  if (!currentRoomId) {
+    return;
+  }
+
+  const confirmed = window.confirm(
+    "채팅방을 나가시겠습니까? 다시 참여하면 이전 대화 내용은 볼 수 없습니다."
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/chat/room/${currentRoomId}/leave`, {
+      method: "POST"
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || "채팅방을 나갈 수 없습니다.");
+    }
+
+    window.location.href = result.redirectUrl || "/chat";
+  } catch (error) {
+    showToast(error.message, "danger");
+  }
+}
+
 // GROUP 방에서만 이름 변경 모달을 연다. 버튼 자체도 GROUP일 때만 HTML에 출력된다.
 function openRenameChatModal() {
   const roomNameInput = document.getElementById("chatRoomNameInput");

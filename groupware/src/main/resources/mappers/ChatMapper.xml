@@ -333,6 +333,12 @@
         )
     </insert>
 
+    <delete id="deleteChatRoomMember">
+        DELETE FROM CHAT_ROOM_MEMBER
+        WHERE ROOM_ID = #{roomId}
+          AND EMPLOYEE_ID = #{employeeId}
+    </delete>
+
     <!-- 기존 방 참여자는 그대로 두고, 초대 시 새 그룹방에 넣을 인원만 조회한다. -->
     <select id="findRoomMemberIds" resultType="int">
         SELECT EMPLOYEE_ID

@@ -407,6 +407,41 @@ import lombok.RequiredArgsConstructor;
                 chatMapper.updateGroupRoomName(roomId, trimmedRoomName);
                 // 검증을 모두 통과한 경우에만 Mapper SQL로 DB 이름을 변경.
             }
+
+            @Transactional
+            public ChatMessageDTO leaveRoom(int roomId, int employeeId) {
+                ChatRoomDTO room = chatMapper.findRoomByIdAndMember(roomId, employeeId);
+
+                if (room == null) {
+                    throw new IllegalArgumentException("채팅방 참여자가 아닙니다.");
+                }
+
+                EmployeeDTO employee = employeeMapper.findActiveEmployeeById(employeeId);
+
+                if (employee == null) {
+                    throw new IllegalArgumentException("로그인 사용자 정보를 찾을 수 없습니다.");
+                }
+
+                if (chatMapper.deleteChatRoomMember(roomId, employeeId) != 1) {
+                    throw new IllegalArgumentException("채팅방 나가기에 실패했습니다.");
+                }
+
+                // 마지막 참여자가 나가면 이 방을 볼 사람이 없으므로 시스템 메시지는 남기지 않는다.
+                if (chatMapper.findRoomMemberIds(roomId).isEmpty()) {
+                    return null;
+                }
+
+                ChatMessageDTO systemMessage = new ChatMessageDTO();
+                systemMessage.setRoomId(roomId);
+                systemMessage.setSenderId(null);
+                systemMessage.setMessageType("SYSTEM");
+                systemMessage.setContent(employee.getEmployeeName() + "님이 나갔습니다.");
+
+                chatMapper.insertChatMessage(systemMessage);
+
+                return prepareMessageForDisplay(
+                        chatMapper.findMessageById(systemMessage.getMessageId()));
+            }
 	    
 	    
 	    
