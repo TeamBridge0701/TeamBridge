@@ -47,5 +47,26 @@
 		VALUES (#{employeeId}, #{workDate}, 'LEAVE')
 		ON DUPLICATE KEY UPDATE ATTENDANCE_STATUS = 'LEAVE'
 	</insert>
-
+	
+	<!-- 관리자 : 특정 날짜의 전 직원 출결 현황 조회. 그 날짜에 출근 기록이 없는 직원도
+		"미출근" 상태로 표시해야 하므로 ATTENDANCE를 기준이 아니라 EMPLOYEE를 기준으로
+		LEFT JOIN한다(재직중인 직원 전원이 항상 표에 나와야 함) -->
+		<select id="selectAttendanceByDate" resultType="com.groupware.dto.AttendanceDTO">
+			SELECT a.ATTENDANCE_ID,
+				a.EMPLOYEE_ID,
+				a.WORK_DATE,
+				a.CHECK_IN_TIME,
+				a.CHECK_OUT_TIME,
+				a.ATTENDANCE_STATUS,
+				e.EMPLOYEE_NO,
+				e.EMPLOYEE_NAME,
+				d.DEPT_NAME, 
+				p.POSITION_NAME
+			FROM EMPLOYEE e
+				LEFT JOIN ATTENDANCE a ON a.EMPLOYEE_ID = e.EMPLOYEE_ID AND a.WORK_DATE = #{data}
+				LEFT JOIN DEPARTMENT d ON d.DEPT_ID = e.DEPT_ID
+				LEFT JOIN `POSITION` p ON p.POSITION_ID = e.POSITION_ID
+			WHERE e.EMPLOYEE_STATUS = 'ACTIVE'
+			ORDER BY p.POSITION_RANK, e.EMPLOYEE_NAME
+		</select>
 </mapper>
