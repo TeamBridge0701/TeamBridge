@@ -535,27 +535,17 @@ function applyTypingEvent(typingEvent) {
   );
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-// 로그인 사용자에게만 온 목록 이벤트로 마지막 메시지·시간·정렬을 갱신한다.
+// WebSocket으로 받은 채팅방 목록 이벤트를 보고, 어떻게 화면을 갱신할지 결정하는 시작 부분
 function updateChatRoomList(roomEvent) {
-  if (roomEvent.eventType !== "MESSAGE" || !roomEvent.message) {
-    // 새 방 생성·이름 변경은 방 이름이나 목록 항목 자체가 달라질 수 있어 서버 화면을 다시 받는다.
+  if (roomEvent.eventType !== "MESSAGE" || !roomEvent.message) { // 또는 메시지 데이터가 없는지 확인
+    // 현재 페이지 새로고침
     window.location.reload();
     return;
   }
 
+  // WebSocket 이벤트 안에 들어 있는 새 메시지 정보를 message 변수에 저장
   const message = roomEvent.message;
+  // 새 메시지가 도착한 채팅방의 목록 항목을 화면에서 찾음
   const roomItem = document.querySelector(
     `.chat-room-item[data-room-id="${roomEvent.roomId}"]`
   );
@@ -566,55 +556,74 @@ function updateChatRoomList(roomEvent) {
     return;
   }
 
+  // 찾은 채팅방 항목 안에서 마지막 메시지 미리보기 영역을 찾는다 
   const preview = roomItem.querySelector(".chat-room-preview");
+  // 채팅방 항목 안에서 메시지 시간을 보여주는 영역을 찾음 
   const time = roomItem.querySelector(".chat-room-time");
 
+  // 메시지 미리보기 영역을 정상적으로 찾았을 때만 안쪽 코드를 실행
   if (preview) {
     preview.textContent = message.messageType === "FILE"
+	// 미리보기 영역의 글자를 새 메시지 내용으로 바꾼다 
+	// 새 메시지가 파일 메시지인지 확인.
       ? `[파일] ${message.attachment?.fileName || "파일"}`
+	  // 파일 메시지라면 미리보기를 회의자료.pdf 이런 식으로 만든다
+	  // 첨부파일 정보와 파일명이 있을 때 파일명을 가져옴.
+	  // ?.는 첨부파일 정보가 없어도 오류가 나지 않게 해.
+	  // 파일명이 없으면 기본 글자인 파일을 사용
       : message.content;
+	  // 파일 메세지가 아니라면 일반 텍스트 메세지 내용을 그대로 미리보기에 표시
   }
 
+  // 채팅방 목록에서 시간 표시 영역을 찾았을 때만 실행
   if (time) {
-    // ||는 왼쪽 값이 비어 있으면 오른쪽 값을 대신 쓰는 OR 연산자다.
+    // ||는 왼쪽 값이 비어 있으면 오른쪽 값을 대신 쓰는 OR 연산자.
     // 서버가 만든 displaySentTime이 우선이고, 없을 때만 원본 시간 또는 빈 문자열을 사용한다.
+	// 마지막 메시지 시간을 화면에 표시.
     time.textContent = message.displaySentTime || message.sentAt || "";
   }
 
   // 현재 열지 않은 방에서 상대가 보낸 메시지일 때만 목록 뱃지를 하나 올린다.
-  if (Number(roomEvent.roomId) !== currentRoomId
-      && Number(message.senderId) !== currentEmployeeId) {
+  if (Number(roomEvent.roomId) !== currentRoomId // 새 메시지가 온 방이 현재 내가 보고 있는 방이 아닌지 확인
+      && Number(message.senderId) !== currentEmployeeId) { // 내가 아닌지 확인 - 내가 보낸거라면 안 읽은거로 세면 안되니 배지를 올리지 않음.
+		// 현재 채팅방 목록 항목 안에서 안 읽은 숫자 배지를 찾아.
     let unread = roomItem.querySelector(".chat-room-unread");
 
+	// 아직 안 읽은 메시지 배지가 화면에 없으면 실행.
     if (!unread) {
-      unread = document.createElement("span");
-      unread.className = "chat-room-unread";
+      unread = document.createElement("span"); // 스판 태그 만든다 
+      unread.className = "chat-room-unread"; // 안 읽은 메시지 배지 스타일을 적용할 CSS 클래스 이름을 넣는다
       roomItem.querySelector(".chat-room-preview-row")?.appendChild(unread);
+	  // 채팅방 목록에서 마지막 메시지 미리보기 영역을 찾아서, 방금 만든 배지를 그 안에 추가.
     }
 
     unread.textContent = String(Number(unread.textContent || 0) + 1);
+	// 현재 배지 숫자에 1을 더함
   }
-
+	// 새 메시지가 온 채팅방 항목을 채팅방 목록의 맨 위로 이동시킴
   document.getElementById("chatRoomList")?.prepend(roomItem);
+  //   prepend() - 요소를 부모 영역의 맨 앞에 넣는 함수야.
 }
 
-// 서버가 /topic/room/{roomId}로 방송한 메시지 한 건을 화면에 추가한다.
+// WebSocket으로 받은 메시지 한 건을 현재 대화창에 추가하는 함수야.
 function appendMessage(message) {
+	// HTML에서 실제 메시지들이 표시되는 영역을 찾아 messageList에 저장.
   const messageList = document.getElementById("chatMessageList");
 
+  // 메시지 목록 영역을 찾지 못하면 오류를 막기 위해 함수를 끝냄
   if (!messageList) {
     return;
   }
 
-  // 새 방 안내 문구가 있으면 첫 메시지가 도착할 때 제거한다.
+// 메시지 목록 안에 비어 있을 때 보여주는 안내 문구가 있으면 삭제.
   messageList.querySelector(".empty-state")?.remove();
 
-  // 날짜가 달라진 첫 메시지 앞에는 날짜 구분선을 한 번만 추가한다.
+// 새 메시지 날짜가 이전 메시지 날짜와 다르면 날짜 구분선을 추가하는 함수
   appendDateDividerIfNeeded(messageList, message);
 
   // SYSTEM은 사용자 말풍선·아바타 없이 날짜 구분선과 같은 중앙 위치에 출력한다.
   if (message.messageType === "SYSTEM") {
-    const systemRow = document.createElement("div");
+    const systemRow = document.createElement("div"); // 시스템 메시지를 담을 새 <div> 태그를 만든다
     systemRow.className = "chat-row chat-system-message";
     systemRow.dataset.messageId = message.messageId;
     systemRow.dataset.sentAt = message.sentAt;
@@ -632,15 +641,28 @@ function appendMessage(message) {
     return;
   }
 
+  // 현재 메시지를 보낸 사람이 나인지 확인.
   const isMine = Number(message.senderId) === currentEmployeeId;
+  				// 문자열일 수 있는 보낸 사람 ID를 숫자로 바꾼다.
 
   const row = document.createElement("div");
   row.className = `chat-row ${isMine ? "out" : "in"}`;
+  // isMine이 true
+  //  → chat-row out
+  //  → 내 메시지, 보통 오른쪽 표시
+
+  // isMine이 false
+  // → chat-row in
+  // → 상대방 메시지, 보통 왼쪽 표시
+  
   row.dataset.messageId = message.messageId;
   row.dataset.sentAt = message.sentAt;
   // 서버 SQL이 만든 YYYY-MM-DD 값을 DOM 행에 보관한다.
   row.dataset.sentDateKey = message.sentDateKey || "";
+  // 날짜 비교용 값을 data-sent-date-key 속성에 저장.
+  // 이 값은 다음 메시지가 도착했을 때 날짜가 바뀌었는지 확인하고 날짜 구분선을 표시하는 데 사용.
   row.dataset.unreadMemberCount = message.unreadMemberCount || 0;
+  // 현재 메시지를 아직 읽지 않은 참여자 수를 HTML 속성에 저장.
 
   // 상대방 메시지일 때만 왼쪽 아바타를 만든다.
   if (!isMine) {
@@ -648,9 +670,9 @@ function appendMessage(message) {
     avatar.className = "chat-room-avatar";
     avatar.textContent = message.senderName
       ? message.senderName.charAt(0)
-      : "시";
+      : "시"; // 이름이 없으면 기본 글자인 "시"를 표시.
 
-    row.appendChild(avatar);
+    row.appendChild(avatar); // 만든 아바타를 메시지 행에 추가
   }
 
   const bubbleColumn = document.createElement("div");
@@ -878,10 +900,12 @@ function openInviteChatModal() {
 
 // 선택한 초대 대상만 서버에 보내고, 서버가 만든 새 GROUP 방으로 이동한다.
 async function confirmInviteChat() {
+  // 초대는 현재 열려 있는 방을 기준으로 하므로 방 번호가 없으면 요청할 수 없다.
   if (!currentRoomId) {
     return;
   }
 
+  // :checked 선택자는 체크된 checkbox만 찾고, ...은 NodeList를 일반 배열로 펼친다.
   const checkedMembers = [
     ...document.querySelectorAll(".invite-chat-member-checkbox:checked")
   ];
@@ -891,13 +915,16 @@ async function confirmInviteChat() {
     return;
   }
 
+  // URLSearchParams는 employeeIds=3&employeeIds=8 같은 form 전송 본문을 만든다.
   const requestBody = new URLSearchParams();
 
   checkedMembers.forEach(checkbox => {
+    // 같은 키를 여러 번 append하면 Spring의 List<Integer> @RequestParam으로 받을 수 있다.
     requestBody.append("employeeIds", checkbox.value);
   });
 
   try {
+    // await는 fetch 응답이 올 때까지 이 async 함수 안에서 다음 줄 실행을 기다린다.
     const response = await fetch(`/chat/room/${currentRoomId}/invite`, {
       method: "POST",
       headers: {
@@ -905,6 +932,7 @@ async function confirmInviteChat() {
       },
       body: requestBody.toString()
     });
+    // Controller가 반환한 JSON의 roomId 또는 오류 message를 JavaScript 객체로 읽는다.
     const result = await response.json();
 
     if (!response.ok) {
@@ -912,6 +940,7 @@ async function confirmInviteChat() {
     }
 
     closeModal();
+    // 초대는 기존 방을 수정하지 않고 새 GROUP 방을 만들므로 반환된 방 번호로 이동한다.
     window.location.href = `/chat/room/${result.roomId}`;
   } catch (error) {
     showToast(error.message, "danger");
@@ -927,6 +956,7 @@ function openRenameChatModal() {
     return;
   }
 
+  // 삼항 연산자 ? : 로 현재 제목이 있으면 공백을 제거해 input의 초기값으로 넣는다.
   roomNameInput.value = title ? title.textContent.trim() : "";
   openModal("modal-rename-chat");
   roomNameInput.focus();
@@ -934,6 +964,7 @@ function openRenameChatModal() {
 
 // 방 이름은 서버에서도 GROUP 여부와 참여 권한을 다시 확인한 뒤 저장한다.
 async function renameChatRoom(event) {
+  // form submit의 기본 새로고침을 막고 fetch 방식으로 처리한다.
   event.preventDefault();
 
   if (!currentRoomId) {
@@ -949,6 +980,7 @@ async function renameChatRoom(event) {
     return;
   }
 
+  // 서버 @RequestParam("roomName")과 같은 키로 전송할 form 본문이다.
   const requestBody = new URLSearchParams();
   requestBody.append("roomName", roomName);
 
@@ -967,6 +999,7 @@ async function renameChatRoom(event) {
     }
 
     closeModal();
+    // 서버가 공백을 제거해 저장한 실제 이름으로 현재 헤더 글자도 즉시 갱신한다.
     document.getElementById("chatThreadName").textContent = result.roomName;
     showToast("대화방 이름을 변경했습니다.", "success");
   } catch (error) {
@@ -976,6 +1009,7 @@ async function renameChatRoom(event) {
 
 // 선택한 직원 번호들을 POST /chat/room으로 보낸다.
 async function confirmNewChat() {
+  // 새 대화 모달에서 체크한 상대 직원 checkbox만 배열로 만든다.
   const checkedMembers = [
     ...document.querySelectorAll(
       ".new-chat-member-checkbox:checked"
@@ -987,6 +1021,7 @@ async function confirmNewChat() {
     return;
   }
 
+  // 여러 employeeIds 값을 보낼 수 있는 application/x-www-form-urlencoded 본문이다.
   const requestBody = new URLSearchParams();
 
   checkedMembers.forEach(checkbox => {
@@ -995,6 +1030,7 @@ async function confirmNewChat() {
   });
 
   try {
+    // 상대가 한 명이면 DM을 재사용/생성하고, 둘 이상이면 GROUP 방을 생성하는 Controller 요청이다.
     const response = await fetch("/chat/room", {
       method: "POST",
       headers: {
@@ -1024,16 +1060,20 @@ async function confirmNewChat() {
 
 // 방 이름 검색과 DM/GROUP 탭을 함께 반영해 목록을 다시 그린다.
 function renderChatRoomList() {
+  // 이미 Thymeleaf가 출력한 모든 방 항목을 찾아 검색어와 탭 필터만 적용한다.
   const roomItems = document.querySelectorAll(".chat-room-item");
 
   roomItems.forEach(roomItem => {
+    // data-room-type은 HTML의 data-room-type 속성 값(DM 또는 GROUP)을 읽는다.
     const roomType = roomItem.dataset.roomType;
+    // textContent 전체를 소문자로 바꿔 이름·미리보기 모두에서 대소문자 구분 없이 검색한다.
     const roomText = roomItem.textContent.toLowerCase();
 
     const matchesKeyword = roomText.includes(
       roomFilterState.keyword
     );
 
+    // 전체 탭이거나 현재 방 유형과 선택 탭 유형이 같을 때만 true다.
     const matchesType =
       roomFilterState.type === "all"
       || roomType === roomFilterState.type;
@@ -1046,23 +1086,27 @@ function renderChatRoomList() {
 
 // 검색 입력창의 onkeyup과 연결된다.
 function searchChatRooms(keyword) {
+  // trim()은 앞뒤 공백을 제거하고 toLowerCase()는 대소문자 차이를 없앤다.
   roomFilterState.keyword = keyword.trim().toLowerCase();
   renderChatRoomList();
 }
 
 // 개인/그룹/전체 탭 클릭과 연결된다.
 function switchChatFilter(type) {
+  // 화면에서 쓰는 all/dm/group 값을 DB 방 유형 all/DM/GROUP 값으로 변환한다.
   roomFilterState.type = type === "dm"
     ? "DM"
     : type === "group"
       ? "GROUP"
       : "all";
 
+  // 기존 탭의 active 표시를 전부 지운 뒤, 방금 누른 탭 하나에만 붙인다.
   document.querySelectorAll(".chat-filter-tab")
     .forEach(tab => {
       tab.classList.remove("active");
     });
 
+  // ?.는 해당 탭 요소가 없을 때 오류 없이 호출을 건너뛰는 optional chaining 문법이다.
   document.getElementById(`chatFilter-${type}`)
     ?.classList.add("active");
 
