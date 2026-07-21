@@ -1088,6 +1088,51 @@
       align-items: center;
       gap: 0.45rem;
     }
+    .chat-thread-menu {
+      position: relative;
+    }
+    .chat-thread-menu-panel {
+      position: absolute;
+      top: calc(100% + 0.5rem);
+      right: 0;
+      z-index: 20;
+      display: none;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.15rem;
+      min-width: 132px;
+      padding: 0.35rem;
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-shadow: var(--shadow-md);
+    }
+    .chat-thread-menu-panel.open {
+      display: flex;
+    }
+    .chat-thread-menu-item {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      background: none;
+      border: 0;
+      border-radius: 5px;
+      color: var(--text-secondary);
+      font: inherit;
+      font-size: 0.85rem;
+      text-align: left;
+      cursor: pointer;
+    }
+    .chat-thread-menu-item:hover {
+      background-color: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+    .chat-thread-leave-btn {
+      color: var(--color-danger);
+    }
+    .chat-thread-leave-btn:hover {
+      color: var(--color-danger);
+      background-color: rgba(248, 113, 113, 0.08);
+    }
     .chat-thread-status {
       font-size: 0.75rem;
       color: var(--text-muted);

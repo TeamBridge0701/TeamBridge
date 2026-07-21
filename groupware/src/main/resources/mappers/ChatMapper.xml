@@ -347,6 +347,25 @@
         ORDER BY MEMBER_ROW_ID ASC
     </select>
 
+    <!-- 현재 방 참여자 목록 모달에 필요한 직원 정보를 한 번에 조회한다. -->
+    <select id="findRoomMembers" resultType="com.groupware.dto.EmployeeDTO">
+        SELECT e.EMPLOYEE_ID,
+               e.EMPLOYEE_NAME,
+               e.PROFILE_IMG,
+               e.EMPLOYEE_STATUS,
+               d.DEPT_NAME,
+               p.POSITION_NAME
+        FROM CHAT_ROOM_MEMBER member
+        JOIN EMPLOYEE e
+          ON e.EMPLOYEE_ID = member.EMPLOYEE_ID
+        LEFT JOIN DEPARTMENT d
+          ON d.DEPT_ID = e.DEPT_ID
+        LEFT JOIN `POSITION` p
+          ON p.POSITION_ID = e.POSITION_ID
+        WHERE member.ROOM_ID = #{roomId}
+        ORDER BY member.MEMBER_ROW_ID ASC
+    </select>
+
     <!-- /user/queue/chat-rooms 개인 알림을 보낼 때 Spring Security 사용자명(사번)을 사용한다. -->
     <select id="findRoomMemberEmployeeNos" resultType="string">
         SELECT e.EMPLOYEE_NO

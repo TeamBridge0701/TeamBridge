@@ -29,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.groupware.dto.ChatAttachmentDTO;
 import com.groupware.dto.ChatMessageDTO;
 import com.groupware.dto.ChatRoomDTO;
+import com.groupware.dto.EmployeeDTO;
 import com.groupware.mapper.EmployeeMapper;
 import com.groupware.security.CustomUserDetails;
 import com.groupware.service.ChatService;
@@ -237,6 +238,22 @@ public class ChatController {
 
         return ResponseEntity.ok(messages);
         // 참여자가 맞으면 해당 방의 메시지를 조회해서 JSON으로 반환.
+    }
+
+    // 목록 버튼을 누를 때마다 현재 방의 참여자를 다시 조회한다.
+    @GetMapping("/chat/room/{roomId}/members")
+    @ResponseBody
+    public ResponseEntity<List<EmployeeDTO>> getRoomMembers(
+            @PathVariable("roomId") int roomId,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+
+        try {
+            return ResponseEntity.ok(chatService.getRoomMembers(
+                    roomId,
+                    principal.getEmployeeDTO().getEmployeeId()));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
     }
 
     // 공통 헤더·사이드바가 로그인 사용자의 전체 안 읽은 메시지 수를 가져오는 채팅 전용 API다.

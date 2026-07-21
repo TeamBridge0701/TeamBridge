@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Param;
 import com.groupware.dto.ChatAttachmentDTO;
 import com.groupware.dto.ChatMessageDTO;
 import com.groupware.dto.ChatRoomDTO;
+import com.groupware.dto.EmployeeDTO;
 
 @Mapper
 public interface ChatMapper {
@@ -55,6 +56,10 @@ public interface ChatMapper {
     // 직원 아이디가 여러개여서 list로 반환 
     List<Integer> findRoomMemberIds(@Param("roomId") int roomId);
     								// XML에서 이 값을 #{roomId}라는 이름으로 사용하기 위한 설정이다
+
+    // 참여자 목록 모달에 표시할 이름, 부서, 직급, 프로필을 함께 조회한다.
+    List<EmployeeDTO> findRoomMembers(@Param("roomId") int roomId);
+
     // 특정 채팅방 참여자들의 사번 목록을 조회한다.
     List<String> findRoomMemberEmployeeNos(@Param("roomId") int roomId);
 

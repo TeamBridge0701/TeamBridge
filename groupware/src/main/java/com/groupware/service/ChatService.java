@@ -71,6 +71,15 @@ import lombok.RequiredArgsConstructor;
                 return chatMapper.findRoomMemberIds(roomId);
             }
 
+            // 참여자가 맞는 경우에만 현재 방의 참여자 상세 목록을 반환한다.
+            public List<EmployeeDTO> getRoomMembers(int roomId, int employeeId) {
+                if (!isRoomMember(roomId, employeeId)) {
+                    throw new IllegalArgumentException("채팅방 참여자가 아닙니다.");
+                }
+
+                return chatMapper.findRoomMembers(roomId);
+            }
+
             public List<String> getRoomMemberEmployeeNos(int roomId) {
                 return chatMapper.findRoomMemberEmployeeNos(roomId);
             }

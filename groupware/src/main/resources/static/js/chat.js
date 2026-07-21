@@ -137,6 +137,13 @@ document.addEventListener("DOMContentLoaded", () => {
   setupMemberPicker("newChatDeptTree", "newChatMemberTableBody");
   setupMemberPicker("inviteChatDeptTree", "inviteChatMemberTableBody");
   setupTypingInput();
+
+  // 메뉴 밖을 클릭하면 펼쳐진 채팅방 메뉴를 닫는다.
+  document.addEventListener("click", event => {
+    if (!event.target.closest(".chat-thread-menu")) {
+      closeChatThreadMenu();
+    }
+  });
 });
 
 // SockJS로 서버의 /ws-stomp에 연결하고 현재 방을 구독한다. 
@@ -970,6 +977,132 @@ function openInviteChatModal() {
   openModal("modal-invite-chat");
 }
 
+
+
+
+
+
+
+function toggleChatThreadMenu(event) {
+  event.stopPropagation();
+
+  const menu = document.getElementById("chatThreadMenu");
+  const button = document.getElementById("chatThreadMenuButton");
+
+  if (!menu || !button) {
+    return;
+  }
+
+  const isOpen = menu.classList.toggle("open");
+  button.setAttribute("aria-expanded", String(isOpen));
+  menu.setAttribute("aria-hidden", String(!isOpen));
+}
+
+function closeChatThreadMenu() {
+  const menu = document.getElementById("chatThreadMenu");
+  const button = document.getElementById("chatThreadMenuButton");
+
+  if (!menu || !button) {
+    return;
+  }
+
+  menu.classList.remove("open");
+  button.setAttribute("aria-expanded", "false");
+  menu.setAttribute("aria-hidden", "true");
+}
+
+// 버튼을 누른 시점의 참여자를 다시 받아 목록 모달에 표시한다.
+async function openRoomMemberModal() {
+  if (!currentRoomId) {
+    return;
+  }
+
+  const tableBody = document.getElementById("roomMemberTableBody");
+
+  if (!tableBody) {
+    return;
+  }
+
+  tableBody.replaceChildren();
+  const loadingRow = document.createElement("tr");
+  const loadingCell = document.createElement("td");
+  loadingCell.colSpan = 4;
+  loadingCell.textContent = "참여자를 불러오는 중입니다.";
+  loadingCell.style.textAlign = "center";
+  loadingRow.appendChild(loadingCell);
+  tableBody.appendChild(loadingRow);
+  openModal("modal-room-members");
+
+  try {
+    const response = await fetch(`/chat/room/${currentRoomId}/members`);
+
+    if (!response.ok) {
+      throw new Error("참여자 목록을 불러올 수 없습니다.");
+    }
+
+    const members = await response.json();
+    tableBody.replaceChildren();
+
+    members.forEach(member => {
+      const row = document.createElement("tr");
+      const nameCell = document.createElement("td");
+      const name = document.createElement("strong");
+      name.textContent = member.employeeName || "이름 없음";
+      nameCell.appendChild(name);
+
+      const departmentCell = document.createElement("td");
+      departmentCell.textContent = member.deptName || "관리자";
+
+      const positionCell = document.createElement("td");
+      const positionBadge = document.createElement("span");
+      positionBadge.className = "badge badge-primary";
+      positionBadge.textContent = member.positionName || "-";
+      positionCell.appendChild(positionBadge);
+
+      const statusCell = document.createElement("td");
+      const statusBadge = document.createElement("span");
+      statusBadge.className = member.employeeStatus === "ACTIVE"
+        ? "badge badge-success"
+        : "badge badge-warning";
+      statusBadge.textContent = member.employeeStatus === "ACTIVE" ? "재직" : "비활성";
+      statusCell.appendChild(statusBadge);
+
+      row.appendChild(nameCell);
+      row.appendChild(departmentCell);
+      row.appendChild(positionCell);
+      row.appendChild(statusCell);
+      tableBody.appendChild(row);
+    });
+
+    if (members.length === 0) {
+      const emptyRow = document.createElement("tr");
+      const emptyCell = document.createElement("td");
+      emptyCell.colSpan = 4;
+      emptyCell.textContent = "현재 참여자가 없습니다.";
+      emptyCell.style.textAlign = "center";
+      emptyRow.appendChild(emptyCell);
+      tableBody.appendChild(emptyRow);
+    }
+  } catch (error) {
+    tableBody.replaceChildren();
+    const errorRow = document.createElement("tr");
+    const errorCell = document.createElement("td");
+    errorCell.colSpan = 4;
+    errorCell.textContent = error.message;
+    errorCell.style.textAlign = "center";
+    errorRow.appendChild(errorCell);
+    tableBody.appendChild(errorRow);
+  }
+}
+
+
+
+
+
+
+
+
+
 // 선택한 초대 대상만 서버에 보내고, 서버가 만든 새 GROUP 방으로 이동한다.
 async function confirmInviteChat() {
   // 초대는 현재 열려 있는 방을 기준으로 하므로 방 번호가 없으면 요청할 수 없다.
@@ -1018,6 +1151,12 @@ async function confirmInviteChat() {
     showToast(error.message, "danger");
   }
 }
+
+
+
+
+
+
 
 async function leaveChatRoom() {
   if (!currentRoomId) {
@@ -1107,6 +1246,14 @@ async function renameChatRoom(event) {
     showToast(error.message, "danger");
   }
 }
+
+
+
+
+
+
+
+
 
 // 선택한 직원 번호들을 POST /chat/room으로 보낸다.
 async function confirmNewChat() {

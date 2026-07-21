@@ -161,24 +161,40 @@
 				      </div>
 				    </div>
 
-				    <div class="chat-thread-actions">
-			      <!-- 그룹방 이름 변경은 왼쪽 프로필·이름 영역을 눌러 열고, 이곳에는 참여자 초대만 둔다. -->
+			    <div class="chat-thread-actions">
+			      <div class="chat-thread-menu">
+			        <button class="icon-btn"
+			                id="chatThreadMenuButton"
+			                type="button"
+			                onclick="toggleChatThreadMenu(event)"
+			                title="채팅방 메뉴"
+			                aria-label="채팅방 메뉴"
+			                aria-expanded="false">
+			          <i class="fa-solid fa-bars"></i>
+			        </button>
 
-				      <!-- 개인방에서도 초대하면 기존 방은 유지하고 새 그룹방을 만든다. -->
-				      <button class="icon-btn"
-				              onclick="openInviteChatModal()"
-				              title="대화 초대">
-				        <i class="fa-solid fa-user-plus"></i>
-				      </button>
+			        <div class="chat-thread-menu-panel" id="chatThreadMenu" aria-hidden="true">
+			          <button class="chat-thread-menu-item"
+			                  type="button"
+			                  onclick="openRoomMemberModal(); closeChatThreadMenu()">
+			            참여자 목록
+			          </button>
 
-				      <button class="icon-btn"
-				              onclick="leaveChatRoom()"
-				              title="채팅방 나가기"
-				              style="color: var(--color-danger); border-color: rgba(248,113,113,0.2);">
-				        <i class="fa-solid fa-right-from-bracket"></i>
-				      </button>
-				    </div>
-				  </div>
+			          <button class="chat-thread-menu-item"
+			                  type="button"
+			                  onclick="openInviteChatModal(); closeChatThreadMenu()">
+			            참여자 추가
+			          </button>
+
+			          <button class="chat-thread-menu-item chat-thread-leave-btn"
+			                  type="button"
+			                  onclick="leaveChatRoom(); closeChatThreadMenu()">
+			            나가기
+			          </button>
+			        </div>
+			      </div>
+			    </div>
+			  </div>
 
 				  <!-- 선택한 방이 없을 때 출력하는 초기 안내 화면 -->
 				  <div class="empty-state chat-empty-main"
@@ -468,6 +484,32 @@
           <button type="submit" class="btn btn-primary">저장</button>
         </div>
       </form>
+    </div>
+
+    <!-- 현재 방의 참여자를 버튼 클릭 시 API로 다시 조회해 표시한다. -->
+    <div class="modal-content" id="modal-room-members" style="display:none; max-width: 560px;">
+      <div class="modal-header">
+        <h3>참여자 목록</h3>
+        <button class="icon-btn" onclick="closeModal()" title="닫기"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="table-container">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>이름</th>
+                <th>부서</th>
+                <th>직급</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody id="roomMemberTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">닫기</button>
+      </div>
     </div>
 
     <!-- Invite Chat Modal - 기존 방은 그대로 두고 선택한 인원까지 포함한 새 GROUP 방을 만든다. -->
