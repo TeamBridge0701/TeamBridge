@@ -155,3 +155,117 @@ INSERT INTO APPROVAL_FORM_TYPE (FORM_TYPE_NAME, APPROVAL_STEP_COUNT) VALUES
   ('연차휴가신청서', 1),
   ('지출결의서', 2),
   ('프로젝트품의서', 2);
+
+-- ------------------------------------
+-- 7. ARCHIVE (자료실 게시글 테스트 데이터)
+-- REPO_ID: 1=전사공용, 2=개발팀, 3=인사팀, 4=영업팀 (REPOSITORY INSERT 순서 기준)
+-- WRITER_ID는 자료 작성이 전 직원에게 열려있어(기획서 3.7) 여러 직원으로 분산
+-- 전사공용에 12건을 넣어 페이지네이션(10건/페이지, 2페이지) 확인용,
+-- 부서 제한 자료실은 "다른 부서 계정으로 로그인하면 안 보이는지" 확인용으로 소량만
+-- ------------------------------------
+INSERT INTO ARCHIVE (REPO_ID, WRITER_ID, ARCHIVE_TITLE, ARCHIVE_CONTENT, CREATED_AT) VALUES
+  (1, 1, '2026년 사내 복지제도 가이드북 안내', '2026년 개정된 사내 복지제도 전체 가이드북을 공유합니다.\n경조사비, 자기계발비 지원 항목이 새로 추가되었습니다.', '2026-06-15 09:00:00'),
+  (1, 2, 'Spring Boot + MyBatis 개발표준 규격서 공유', '개발팀 신규 프로젝트 착수 전 공통 개발표준 규격서를 공유합니다.\n패키지 구조, 네이밍 규칙, 예외 처리 방식을 통일합니다.', '2026-06-18 10:30:00'),
+  (1, 3, '정보보안 교육 이수 안내문 배포', '전 직원 대상 정보보안 교육 이수 안내문입니다.\n첨부된 체크리스트를 참고해 이수 여부를 확인해 주세요.', '2026-06-20 11:00:00'),
+  (1, 1, '2분기 실적공유회 발표자료 공유', '2분기 실적공유회에서 발표된 부서별 자료를 공유합니다.\n참고용으로 자유롭게 열람 가능합니다.', '2026-06-22 14:20:00'),
+  (1, 2, '하계 휴가비 지급 기준 안내', '하계 휴가비 지급 기준 및 신청 절차 안내 문서입니다.\n재직 6개월 이상 전 직원이 대상입니다.', '2026-06-25 09:15:00'),
+  (1, 4, '신규 입사자 온보딩 체크리스트', '신규 입사자 인수인계 시 참고할 온보딩 체크리스트입니다.\n현업 부서 멘토는 필독 바랍니다.', '2026-06-28 13:40:00'),
+  (1, 1, '사내 주차장 이용규정 개정안 공지', '주차 공간 부족 문제 개선을 위한 이용규정 개정안입니다.\n등록 차량은 1인 1대로 제한됩니다.', '2026-06-29 10:05:00'),
+  (1, 3, '개인정보보호 정책 변경 안내서 배포', '개인정보보호법 개정에 따른 사내 정책 변경 안내서입니다.\n담당 업무에 개인정보가 포함된 경우 필독 바랍니다.', '2026-07-01 08:50:00'),
+  (1, 2, '3분기 워크숍 장소 후보 안내', '3분기 부서별 워크숍 장소 후보지 목록을 공유합니다.\n부서별 선호 장소를 취합 중입니다.', '2026-07-03 15:10:00'),
+  (1, 1, '사내 도서 대여 목록 업데이트', '사내 도서관 신규 입고 도서 목록을 업데이트했습니다.\n대여 신청은 총무팀으로 문의해 주세요.', '2026-07-06 11:30:00'),
+  (1, 4, '개발 환경 세팅 가이드 (신규 입사자용)', '신규 입사 개발자를 위한 개발 환경 세팅 가이드입니다.\nJDK, IDE, 사내 VPN 설정 순서대로 정리했습니다.', '2026-07-09 09:40:00'),
+  (1, 3, '하반기 건강검진 예약 안내문', '하반기 건강검진 예약 방법 및 일정 안내문입니다.\n검진 예약은 인사팀을 통해 개별 안내됩니다.', '2026-07-13 10:00:00'),
+  (2, 2, '개발팀 코드 리뷰 가이드라인', '개발팀 내부 코드 리뷰 진행 방식과 체크리스트입니다.\nPR 생성 전 반드시 한 번 확인해 주세요.', '2026-07-05 09:00:00'),
+  (2, 3, '개발팀 신규 서버 접속 정보', '신규 스테이징 서버 접속 정보 및 배포 절차입니다.\n외부 반출 금지 문서입니다.', '2026-07-10 14:00:00'),
+  (2, 4, '개발팀 2분기 회고 자료', '개발팀 2분기 스프린트 회고 정리 자료입니다.\n다음 분기 개선 항목을 포함합니다.', '2026-07-16 16:20:00'),
+  (3, 5, '인사팀 채용 프로세스 매뉴얼', '인사팀 내부 채용 프로세스 매뉴얼입니다.\n면접 평가표 양식이 포함되어 있습니다.', '2026-07-08 10:00:00'),
+  (3, 5, '인사팀 급여 정산 체크리스트', '월별 급여 정산 시 확인해야 할 체크리스트입니다.\n정산 전 반드시 대조 확인 바랍니다.', '2026-07-14 11:00:00');
+
+-- ------------------------------------
+-- 9. APPROVAL (전자결재 테스트 데이터) - 진행중/승인/반려, 1단계/2단계 서식을 골고루 섞음
+-- EMPLOYEE_ID: 2=김부장(부서장), 3=이팀장(팀장), 4=박사원(사원) - 위 EMPLOYEE INSERT 순서 기준
+-- FORM_TYPE_ID/APPROVAL_ID를 하드코딩하지 않고 이름/제목으로 찾아서 넣음
+-- (이미 전자결재 테스트를 해봐서 ID가 1부터 시작하지 않는 로컬 DB에서도 안전하게 실행됨)
+-- ------------------------------------
+
+-- D1. 연차휴가신청서 - 진행중(1차 승인 대기) : 이팀장 로그인 시 "받은 결재함"에 떠야 함
+INSERT INTO APPROVAL (DRAFTER_ID, FORM_TYPE_ID, APPROVAL_TITLE, APPROVAL_CONTENT, LEAVE_START_DATE, LEAVE_END_DATE)
+SELECT 4, FORM_TYPE_ID, '연차휴가신청서 상신 - 여름휴가 사용의 건',
+       '하반기 개인 휴가 연차 사용을 기안합니다.\n사유: 여름 휴가\n업무 대행자: 이팀장',
+       '2026-08-03', '2026-08-05'
+FROM APPROVAL_FORM_TYPE WHERE FORM_TYPE_NAME = '연차휴가신청서';
+
+INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID)
+SELECT APPROVAL_ID, 1, 3 FROM APPROVAL WHERE APPROVAL_TITLE = '연차휴가신청서 상신 - 여름휴가 사용의 건' LIMIT 1;
+
+-- D2. 지출결의서 - 1차(팀장) 승인 완료, 2차(부서장) 대기 : 김부장 로그인 시 "받은 결재함"에 떠야 함
+INSERT INTO APPROVAL (DRAFTER_ID, FORM_TYPE_ID, APPROVAL_TITLE, APPROVAL_CONTENT, AMOUNT)
+SELECT 4, FORM_TYPE_ID, '지출결의서 상신 - 사무용품 구매 비용 정산',
+       '팀 공용 사무용품(프린터 토너, A4용지 등) 구매 비용 정산 요청입니다.\n첨부: 결제 영수증',
+       85000
+FROM APPROVAL_FORM_TYPE WHERE FORM_TYPE_NAME = '지출결의서';
+
+INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID, LINE_STATUS, LINE_COMMENT, DECIDED_AT)
+SELECT APPROVAL_ID, 1, 3, 'APPROVED', '승인합니다.', '2026-07-18 10:00:00'
+FROM APPROVAL WHERE APPROVAL_TITLE = '지출결의서 상신 - 사무용품 구매 비용 정산' LIMIT 1;
+INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID)
+SELECT APPROVAL_ID, 2, 2 FROM APPROVAL WHERE APPROVAL_TITLE = '지출결의서 상신 - 사무용품 구매 비용 정산' LIMIT 1;
+
+-- D3. 프로젝트품의서 - 최종 승인 완료 (박사원의 "보낸 기안함"에서 승인완료 배지 확인용)
+INSERT INTO APPROVAL (DRAFTER_ID, FORM_TYPE_ID, APPROVAL_TITLE, APPROVAL_CONTENT, APPROVAL_STATUS)
+SELECT 4, FORM_TYPE_ID, '프로젝트품의서 상신 - 사내 알림 시스템 고도화',
+       '제목: 사내 알림 시스템 고도화\n구체 사양:\n- 웹 푸시 알림 도입\n- 결재/채팅 알림 통합\n소요 월 예산: 200,000원 상당',
+       'APPROVED'
+FROM APPROVAL_FORM_TYPE WHERE FORM_TYPE_NAME = '프로젝트품의서';
+
+INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID, LINE_STATUS, LINE_COMMENT, DECIDED_AT)
+SELECT APPROVAL_ID, 1, 3, 'APPROVED', '내용 확인했습니다.', '2026-07-11 09:30:00'
+FROM APPROVAL WHERE APPROVAL_TITLE = '프로젝트품의서 상신 - 사내 알림 시스템 고도화' LIMIT 1;
+INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID, LINE_STATUS, LINE_COMMENT, DECIDED_AT)
+SELECT APPROVAL_ID, 2, 2, 'APPROVED', '진행하세요.', '2026-07-12 14:00:00'
+FROM APPROVAL WHERE APPROVAL_TITLE = '프로젝트품의서 상신 - 사내 알림 시스템 고도화' LIMIT 1;
+
+-- D4. 지출결의서 - 1차(팀장)에서 반려됨 (반려 사유 화면 확인용)
+INSERT INTO APPROVAL (DRAFTER_ID, FORM_TYPE_ID, APPROVAL_TITLE, APPROVAL_CONTENT, AMOUNT, APPROVAL_STATUS)
+SELECT 4, FORM_TYPE_ID, '지출결의서 상신 - 팀 회식비 정산',
+       '팀 회식비 정산 요청입니다.\n일시: 2026-07-10\n장소: 사내 인근 식당',
+       132000, 'REJECTED'
+FROM APPROVAL_FORM_TYPE WHERE FORM_TYPE_NAME = '지출결의서';
+
+INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID, LINE_STATUS, LINE_COMMENT, DECIDED_AT)
+SELECT APPROVAL_ID, 1, 3, 'REJECTED', '영수증 첨부가 누락되었습니다. 첨부 후 다시 상신 바랍니다.', '2026-07-11 11:00:00'
+FROM APPROVAL WHERE APPROVAL_TITLE = '지출결의서 상신 - 팀 회식비 정산' LIMIT 1;
+INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID)
+SELECT APPROVAL_ID, 2, 2 FROM APPROVAL WHERE APPROVAL_TITLE = '지출결의서 상신 - 팀 회식비 정산' LIMIT 1;
+
+-- D5. 연차휴가신청서 - 이미 최종 승인 완료(휴가 반영 결과가 ATTENDANCE에도 있어야 자연스러움)
+INSERT INTO APPROVAL (DRAFTER_ID, FORM_TYPE_ID, APPROVAL_TITLE, APPROVAL_CONTENT, LEAVE_START_DATE, LEAVE_END_DATE, APPROVAL_STATUS)
+SELECT 2, FORM_TYPE_ID, '연차휴가신청서 상신 - 하계 휴가 사용의 건',
+       '하계 휴가 연차 사용을 기안합니다.\n사유: 여름 휴가\n업무 대행자: 이팀장',
+       '2026-07-27', '2026-07-29', 'APPROVED'
+FROM APPROVAL_FORM_TYPE WHERE FORM_TYPE_NAME = '연차휴가신청서';
+
+INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID, LINE_STATUS, LINE_COMMENT, DECIDED_AT)
+SELECT APPROVAL_ID, 1, 3, 'APPROVED', '승인합니다. 편히 다녀오세요.', '2026-07-20 09:00:00'
+FROM APPROVAL WHERE APPROVAL_TITLE = '연차휴가신청서 상신 - 하계 휴가 사용의 건' LIMIT 1;
+
+-- 위 문서가 실제로 최종 승인됐다면 결재 로직상 ATTENDANCE에도 반영돼야 하므로,
+-- 그 결과를 미리 만들어 둠 (ApprovalService.decideApproval이 실제로 하는 것과 동일한 결과)
+INSERT INTO ATTENDANCE (EMPLOYEE_ID, WORK_DATE, ATTENDANCE_STATUS) VALUES
+  (2, '2026-07-27', 'LEAVE'),
+  (2, '2026-07-28', 'LEAVE'),
+  (2, '2026-07-29', 'LEAVE');
+
+-- D6. 프로젝트품의서 - 진행중 + 참조 대상 지정(admin 개인 참조) : admin 로그인 시 "참조 문서함"에 떠야 함
+INSERT INTO APPROVAL (DRAFTER_ID, FORM_TYPE_ID, APPROVAL_TITLE, APPROVAL_CONTENT)
+SELECT 4, FORM_TYPE_ID, '프로젝트품의서 상신 - 고객사 대응 프로세스 개선안',
+       '제목: 고객사 대응 프로세스 개선안\n구체 사양:\n- 문의 접수 채널 일원화\n- 대응 SLA 수립\n소요 월 예산: 없음'
+FROM APPROVAL_FORM_TYPE WHERE FORM_TYPE_NAME = '프로젝트품의서';
+
+INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID)
+SELECT APPROVAL_ID, 1, 3 FROM APPROVAL WHERE APPROVAL_TITLE = '프로젝트품의서 상신 - 고객사 대응 프로세스 개선안' LIMIT 1;
+INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID)
+SELECT APPROVAL_ID, 2, 2 FROM APPROVAL WHERE APPROVAL_TITLE = '프로젝트품의서 상신 - 고객사 대응 프로세스 개선안' LIMIT 1;
+INSERT INTO APPROVAL_REFERENCE (APPROVAL_ID, EMPLOYEE_ID)
+SELECT APPROVAL_ID, 1 FROM APPROVAL WHERE APPROVAL_TITLE = '프로젝트품의서 상신 - 고객사 대응 프로세스 개선안' LIMIT 1;
