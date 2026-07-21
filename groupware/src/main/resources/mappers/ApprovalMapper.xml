@@ -15,6 +15,9 @@
 	<!--
 		받은 결재함 - "나에게 배정된 단계 AND 그 문서의 지금 차례(WAIT 중 STEP_NO 최소값)"만.
 		뒷 단계라 아직 내 차례가 안 온 문서는 안 나온다 (예: 내가 2차 승인자인데 1차가 아직 WAIT면 제외).
+		ap.APPROVAL_STATUS = 'PROGRESS' 조건이 반드시 필요함 - 앞 단계가 반려되면 문서 전체는
+		끝났는데도 뒷 단계 줄은 결정된 적이 없어 LINE_STATUS가 계속 WAIT로 남기 때문에,
+		이 조건이 없으면 이미 반려된 문서가 뒷 단계 담당자의 받은함에 계속 떠버린다.
 	-->
 	<select id="findInbox" resultType="com.groupware.dto.ApprovalDTO">
 	    SELECT ap.*, ft.FORM_TYPE_NAME,
@@ -30,16 +33,23 @@
 	        LEFT JOIN `POSITION` p ON e.POSITION_ID = p.POSITION_ID
 	    WHERE al.APPROVER_ID = #{employeeId}
 	      AND al.LINE_STATUS = 'WAIT'
+	      AND ap.APPROVAL_STATUS = 'PROGRESS'
 	      AND al.STEP_NO = (
 	          SELECT MIN(STEP_NO) FROM APPROVAL_LINE WHERE APPROVAL_ID = al.APPROVAL_ID AND LINE_STATUS = 'WAIT'
 	      )
 	    ORDER BY ap.CREATED_AT DESC
 	</select>
 
-	<!-- 보낸 기안함 - 내가 기안한 문서 전체(진행중/승인/반려 모두). currentStep이 NULL이면 완료된 문서 -->
+	<!--
+		보낸 기안함 - 내가 기안한 문서 전체(진행중/승인/반려 모두). currentStep은 문서 상태가
+		PROGRESS일 때만 계산하고, 이미 끝난(APPROVED/REJECTED) 문서는 뒷 단계에 WAIT 줄이
+		남아있어도 무조건 NULL로 내려서 "완료"로 취급되게 한다.
+	-->
 	<select id="findOutbox" resultType="com.groupware.dto.ApprovalDTO">
 	    SELECT ap.*, ft.FORM_TYPE_NAME,
-	           (SELECT MIN(STEP_NO) FROM APPROVAL_LINE WHERE APPROVAL_ID = ap.APPROVAL_ID AND LINE_STATUS = 'WAIT') AS currentStep
+	           CASE WHEN ap.APPROVAL_STATUS = 'PROGRESS'
+	                THEN (SELECT MIN(STEP_NO) FROM APPROVAL_LINE WHERE APPROVAL_ID = ap.APPROVAL_ID AND LINE_STATUS = 'WAIT')
+	                ELSE NULL END AS currentStep
 	    FROM APPROVAL ap
 	        JOIN APPROVAL_FORM_TYPE ft ON ap.FORM_TYPE_ID = ft.FORM_TYPE_ID
 	    WHERE ap.DRAFTER_ID = #{drafterId}
@@ -57,7 +67,9 @@
 	           e.EMPLOYEE_NAME AS drafterName,
 	           d.DEPT_NAME AS drafterDeptName,
 	           p.POSITION_NAME AS drafterPositionName,
-	           (SELECT MIN(STEP_NO) FROM APPROVAL_LINE WHERE APPROVAL_ID = ap.APPROVAL_ID AND LINE_STATUS = 'WAIT') AS currentStep
+	           CASE WHEN ap.APPROVAL_STATUS = 'PROGRESS'
+	                THEN (SELECT MIN(STEP_NO) FROM APPROVAL_LINE WHERE APPROVAL_ID = ap.APPROVAL_ID AND LINE_STATUS = 'WAIT')
+	                ELSE NULL END AS currentStep
 	    FROM APPROVAL ap
 	        JOIN APPROVAL_FORM_TYPE ft ON ap.FORM_TYPE_ID = ft.FORM_TYPE_ID
 	        JOIN EMPLOYEE e ON ap.DRAFTER_ID = e.EMPLOYEE_ID
@@ -80,7 +92,9 @@
 	           e.EMPLOYEE_NAME AS drafterName,
 	           d.DEPT_NAME AS drafterDeptName,
 	           p.POSITION_NAME AS drafterPositionName,
-	           (SELECT MIN(STEP_NO) FROM APPROVAL_LINE WHERE APPROVAL_ID = ap.APPROVAL_ID AND LINE_STATUS = 'WAIT') AS currentStep
+	           CASE WHEN ap.APPROVAL_STATUS = 'PROGRESS'
+	                THEN (SELECT MIN(STEP_NO) FROM APPROVAL_LINE WHERE APPROVAL_ID = ap.APPROVAL_ID AND LINE_STATUS = 'WAIT')
+	                ELSE NULL END AS currentStep
 	    FROM APPROVAL ap
 	        JOIN APPROVAL_FORM_TYPE ft ON ap.FORM_TYPE_ID = ft.FORM_TYPE_ID
 	        JOIN EMPLOYEE e ON ap.DRAFTER_ID = e.EMPLOYEE_ID
