@@ -86,9 +86,10 @@
 				              th:text="${room.displayName}">채팅방 이름</span>
 
 				        <!-- 마지막 메시지 시간이 없으면 빈 문자열을 출력한다. -->
-				        <span class="chat-room-time"
-				              th:text="${room.lastSentAt != null ? room.lastSentAt : ''}">
-				        </span>
+						<span class="chat-room-time"
+						      th:attr="data-sent-at=${room.lastSentAt}"
+						      th:text="${room.lastSentAt != null ? room.lastSentAt : ''}">
+						</span>
 				      </div>
 
 				      <div class="chat-room-preview-row">

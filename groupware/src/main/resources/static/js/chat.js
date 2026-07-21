@@ -22,6 +22,69 @@ const roomFilterState = {
   type: "all"
 };
 
+
+// 채팅 목록 시간 변경 
+
+function formatRelativeRoomTime(sentAt) {
+  if (!sentAt) {
+    return "";
+  }
+
+  // MySQL 시간 문자열 "2026-07-21 14:30:00"을
+  // JavaScript가 읽기 쉬운 "2026-07-21T14:30:00"으로 바꾼다.
+  const sentDate = new Date(sentAt.replace(" ", "T"));
+
+  if (Number.isNaN(sentDate.getTime())) {
+    return "";
+  }
+
+  const now = new Date();
+
+  // 시간 차이가 아니라 날짜 차이로 계산.
+  const todayStart = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  );
+
+  const sentDayStart = new Date(
+    sentDate.getFullYear(),
+    sentDate.getMonth(),
+    sentDate.getDate()
+  );
+
+  // 오늘 날짜와 메시지를 보낸 날짜의 일수 차이를 계산하는 코드.
+  const dayDiff = Math.floor( // 소수점이 생겨도 버리고 정수만 남김
+    (todayStart - sentDayStart) / (1000 * 60 * 60 * 24) 
+	// 오늘 날짜와 메시지를 보낸 날짜의 일수 차이를 계산하는 코드
+  );
+
+  // 오늘 보낸 메시지면 시:분만 표시한다.
+  if (dayDiff <= 0) {
+    const hour = String(sentDate.getHours()).padStart(2, "0");
+	// 숫자 9를 문자열 "9"로 바꿈
+	// 문자열 길이가 2보다 짧으면 앞에 "0"을 붙임   --> 09시 14시 이렇게 
+    const minute = String(sentDate.getMinutes()).padStart(2, "0");
+
+    return `${hour}:${minute}`;
+  }
+
+  // 하루 전이면 어제라고 표시한다.
+  if (dayDiff === 1) {
+    return "어제";
+  }
+
+  // 2일 전부터 7일 전까지는 N일전으로 표시한다.
+  if (dayDiff <= 7) {
+    return `${dayDiff}일전`;
+  }
+
+  // 8일 전부터는 N주전으로 표시한다.
+  return `${Math.floor(dayDiff / 7)}주전`;
+}
+
+
+
 // 페이지가 HTML을 모두 읽은 뒤 한 번 실행한다.
 document.addEventListener("DOMContentLoaded", () => {
 	// HTML 문서가 전부 만들어진 뒤에 안쪽 코드를 실행 
@@ -43,6 +106,17 @@ document.addEventListener("DOMContentLoaded", () => {
     );
     currentRoomType = chatMain.dataset.currentRoomType || null;  // 앞의 값 없으면 null 사용
   }
+
+
+  
+  // 채팅방을 열었을 때 채팅방 목록을 상대 시간으로 바꾸는 코드 
+  document.querySelectorAll(".chat-room-time[data-sent-at]")
+    .forEach(timeElement => {
+      timeElement.textContent = formatRelativeRoomTime(
+        timeElement.dataset.sentAt
+      );
+    });
+  
 
   // 읽지 않은 개수 표시하는 뱃지 새로 고침
   refreshUnreadBadges();
@@ -577,10 +651,8 @@ function updateChatRoomList(roomEvent) {
 
   // 채팅방 목록에서 시간 표시 영역을 찾았을 때만 실행
   if (time) {
-    // ||는 왼쪽 값이 비어 있으면 오른쪽 값을 대신 쓰는 OR 연산자.
-    // 서버가 만든 displaySentTime이 우선이고, 없을 때만 원본 시간 또는 빈 문자열을 사용한다.
-	// 마지막 메시지 시간을 화면에 표시.
-    time.textContent = message.displaySentTime || message.sentAt || "";
+    time.dataset.sentAt = message.sentAt || "";
+    time.textContent = formatRelativeRoomTime(message.sentAt);
   }
 
   // 현재 열지 않은 방에서 상대가 보낸 메시지일 때만 목록 뱃지를 하나 올린다.
