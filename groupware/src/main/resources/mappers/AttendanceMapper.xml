@@ -41,7 +41,8 @@
 	</select>
 
 	<!-- 5. 전자결재 최종 승인 시 휴가 반영 - 그 날짜에 이미 기록이 있으면 LEAVE로 덮어씀
-	     (UNIQUE(EMPLOYEE_ID, WORK_DATE) 제약과 충돌 시 값만 갱신) -->
+	     (UNIQUE(EMPLOYEE_ID, WORK_DATE) 제약과 충돌 시 값만 갱신).
+	     ON DUPLICATE KEY UPDATE는 MySQL 전용 문법(표준 SQL 아님) -->
 	<insert id="insertLeaveRecord">
 		INSERT INTO ATTENDANCE (EMPLOYEE_ID, WORK_DATE, ATTENDANCE_STATUS)
 		VALUES (#{employeeId}, #{workDate}, 'LEAVE')
@@ -51,22 +52,33 @@
 	<!-- 관리자 : 특정 날짜의 전 직원 출결 현황 조회. 그 날짜에 출근 기록이 없는 직원도
 		"미출근" 상태로 표시해야 하므로 ATTENDANCE를 기준이 아니라 EMPLOYEE를 기준으로
 		LEFT JOIN한다(재직중인 직원 전원이 항상 표에 나와야 함) -->
-		<select id="selectAttendanceByDate" resultType="com.groupware.dto.AttendanceDTO">
-			SELECT a.ATTENDANCE_ID,
-				a.EMPLOYEE_ID,
-				a.WORK_DATE,
-				a.CHECK_IN_TIME,
-				a.CHECK_OUT_TIME,
-				a.ATTENDANCE_STATUS,
-				e.EMPLOYEE_NO,
-				e.EMPLOYEE_NAME,
-				d.DEPT_NAME, 
-				p.POSITION_NAME
-			FROM EMPLOYEE e
-				LEFT JOIN ATTENDANCE a ON a.EMPLOYEE_ID = e.EMPLOYEE_ID AND a.WORK_DATE = #{data}
-				LEFT JOIN DEPARTMENT d ON d.DEPT_ID = e.DEPT_ID
-				LEFT JOIN `POSITION` p ON p.POSITION_ID = e.POSITION_ID
-			WHERE e.EMPLOYEE_STATUS = 'ACTIVE'
-			ORDER BY p.POSITION_RANK, e.EMPLOYEE_NAME
-		</select>
+	<select id="selectAttendanceByDate" resultType="com.groupware.dto.AttendanceDTO">
+		SELECT COALESCE(a.ATTENDANCE_ID, 0) AS ATTENDANCE_ID,
+			e.EMPLOYEE_ID,
+			a.WORK_DATE,
+			a.CHECK_IN_TIME,
+			a.CHECK_OUT_TIME,
+			a.ATTENDANCE_STATUS,
+			e.EMPLOYEE_NO,
+			e.EMPLOYEE_NAME,
+			d.DEPT_NAME, 
+			p.POSITION_NAME
+		FROM EMPLOYEE e
+			LEFT JOIN ATTENDANCE a ON a.EMPLOYEE_ID = e.EMPLOYEE_ID AND a.WORK_DATE = #{data}
+			LEFT JOIN DEPARTMENT d ON d.DEPT_ID = e.DEPT_ID
+			LEFT JOIN `POSITION` p ON p.POSITION_ID = e.POSITION_ID
+		WHERE e.EMPLOYEE_STATUS = 'ACTIVE'
+		ORDER BY p.POSITION_RANK, e.EMPLOYEE_NAME
+	</select>
+		
+	<!-- 관리자 : 출결 기록 등록/수정 - 있으면 UPDATE, 없으면 INSERT (insertLeaveRecord와 동일한 upsert 패턴).
+		ON DUPLICATE KEY UPDATE는 MySQL 전용 문법(표준 SQL 아님) - UNIQUE(EMPLOYEE_ID, WORK_DATE) 제약과 짝을 이룸 -->
+	<insert id="upsertAttendanceByAdmin">
+		INSERT INTO ATTENDANCE (EMPLOYEE_ID, WORK_DATE, CHECK_IN_TIME, CHECK_OUT_TIME, ATTENDANCE_STATUS)
+		VALUES (#{employeeId}, #{workDate}, #{checkInTime}, #{checkOutTime}, #{status})
+		ON DUPLICATE KEY UPDATE
+			CHECK_IN_TIME = #{checkInTime},
+			CHECK_OUT_TIME = #{checkOutTime},
+			ATTENDANCE_STATUS = #{status}
+	</insert>
 </mapper>
