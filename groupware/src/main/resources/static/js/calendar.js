@@ -1,61 +1,32 @@
 // ===================================================================
 // calendar.js - calendar.html(일정 캘린더) 전용 로직
 //
-// 이 프로토타입은 "2026년 6월" 한 달만 다룬다(이전/다음 달 이동은 아직
-// 미구현). 2026-06-01이 월요일이라서, 달력을 그릴 때 맨 앞에 "지난달
-// 31일" 칸 하나를 끼워 넣어야 요일 위치가 딱 맞아떨어진다.
+// 여러 날짜에 걸친 일정(예: 3일짜리 연차)은 날짜 칸마다 막대를 각각
+// 독립적으로 반복해서 그린다(연속된 하나의 막대로 이어붙이는 방식은
+// 아직 미구현 - renderCalendarGrid 참고).
 //
-// 여러 날짜에 걸친 일정(예: 3일짜리 연차)은 하루 칸마다 막대를 반복해서
-// 그리지 않고, 그 주(週) 안에서는 하나로 이어진 막대 하나로 그린다.
-// 일정이 이번 주를 넘어가면 다음 주 행에서 새 막대가 이어서 시작된다
-// (renderCalendarGrid의 "주 단위로 나눠서 그리기" 로직 참고).
-//
-// ===================================================================
-// 🔧 백엔드 작업 가이드 (순서 6 — docs/기획서.md 8장 6순위: 캘린더, 공휴일 API)
-//   필요 테이블: CALENDAR_EVENT (docs/ERD_설계서.md 2-6)
-//   필요 API:   GET /calendar/events?year=&month=, POST /calendar/event,
-//               POST /calendar/event/update/{id}, POST /calendar/event/delete/{id} (docs/기획서.md 5장)
-//
-// [1] CAL_WEEKS 하드코딩(2026년 6월 고정 배열, 23~29번째 줄) → 삭제 대상.
-//     실제로는 ?year=&month= 파라미터로 받은 달의 1일 요일을 계산해
-//     주(週) 배열을 자바스크립트에서 동적으로 생성해야 한다(이전/다음 달 이동 버튼도
-//     이때 함께 구현). CALENDAR_EVENT 조회도 그 달 범위로 GET /calendar/events?year=&month=.
-//
-// [2] renderCalendarGrid()/renderCalendarWeek() → START_DATE/END_DATE가 이제
-//     "몇 월 며칠"이 아니라 완전한 DATE 타입이므로, 정수 day 비교
-//     (e.startDate <= weekLastDay 등)를 실제 Date 비교로 바꿔야 한다.
-//     겹치는 일정을 레인으로 나눠 쌓는 로직 자체는 그대로 재사용 가능.
-//
-// [3] submitCalendarEvent() → POST /calendar/event(신규) 또는
-//     /calendar/event/update/{id}(수정)로 교체. "본인만 수정 가능"(기획서 3.6)이므로
-//     서버에서 EMPLOYEE_ID(등록자)가 로그인 사용자와 같은지 재검증해야 한다.
-//     newId 클라이언트 계산 부분은 삭제(AUTO_INCREMENT).
-//
-// [4] deleteCalendarEvent() → POST /calendar/event/delete/{id}. 여기도
-//     "작성자 본인만" 권한을 서버에서 다시 확인.
-//
-// [5] 공휴일 표시(기획서 3.6) → **외부 API 연동 없이 관리자가 캘린더에서 직접
-//     일정 등록하는 방식으로 확정**(2026-07-08, 최초 계획이던 특일정보 API
-//     연동은 폐기). 즉 공휴일도 그냥 CALENDAR_EVENT 1건(EVENT_CATEGORY='COMPANY')
-//     이라 테이블·API 추가가 전혀 없다 — submitCalendarEvent()가 그대로
-//     POST /calendar/event 로 바뀌기만 하면 공휴일 등록도 함께 해결된다.
-//     ⚠️ 다만 지금 calendar.html의 "일정 구분" select는 로그인만 하면 누구나
-//     "회사 일정(전사 노출)"을 선택할 수 있게 되어 있는데, 기획서 4장 권한표는
-//     "공휴일·기념일 등록은 관리자만"이라고 못박아 뒀다. 그러므로 서버(POST
-//     /calendar/event)에서 EVENT_CATEGORY='COMPANY'로 등록하려는 요청은
-//     로그인 사용자의 EMPLOYEE_ROLE='ADMIN' 여부를 반드시 재검증해야 한다
-//     (일반 직원은 PERSONAL/TEAM만 등록 가능). 팀 일정 공유는 아직 이
-//     프로토타입에 없음 — CALENDAR_EVENT에 TEAM_ID 등 팀 범위를 식별할
-//     컬럼이 필요한지 추가 논의 필요.
-// ===================================================================
-
-// ===================================================================
-// calendar.js - calendar.html(일정 캘린더) 전용 로직
+// 카테고리(PERSONAL/TEAM/COMPANY)별 등록·수정·삭제 권한, 조회 범위는
+// 서버(CalendarService)가 최종 판단한다 - 여기 있는 canModifyEventClient()
+// 등은 UX용(잠긴 걸 미리 보여주는 용도)이고 실제 차단은 항상 서버가 함.
 // ===================================================================
 let currentYear = new Date().getFullYear(), currentMonth = new Date().getMonth() + 1, currentEvents = [], editingScheduleId = null;
 
 const $ = id => document.getElementById(id);
 const toggleModal = (id, open) => open ? window.openModal?.(id) : window.closeModal?.();
+
+// CalendarService.canModifyEvent()와 동일한 기준으로 삭제 버튼 노출 여부를 판단
+// (calendar.html의 th:data-*로 내려받은 로그인 사용자 정보 사용)
+function canModifyEventClient(event) {
+  const viewer = $('scheduleForm')?.dataset;
+  if (!viewer) return false;
+  const isAdmin = viewer.employeeRole === 'ADMIN';
+  if (event.eventCategory === 'COMPANY') return isAdmin;
+  if (event.eventCategory === 'TEAM') {
+    if (isAdmin) return false;
+    return Number(viewer.deptId) === Number(event.deptId);
+  }
+  return Number(viewer.employeeId) === Number(event.employeeId);
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   // 이벤트 연결 (Optional Chaining으로 깔끔하게 한 줄 처리)
@@ -123,33 +94,128 @@ function generateCalendarGridHtml(year, month, customCellRenderer) {
 async function renderCalendar(year, month) {
   currentYear = year; currentMonth = month;
   try {
-    currentEvents = await apiFetch(`/calendar/events?year=${year}&month=${month}`);
+    const res = await fetch(`/calendar/events?year=${year}&month=${month}`);
+    if (!res.ok) throw new Error('일정을 불러오지 못했습니다.');
+    currentEvents = await res.json();
     renderCalendarGrid(year, month);
   } catch (err) { showToast(err.message, 'error'); }
 }
-//attendance 및 calendar 공통 폼(캘린더 폼)
+// 그 달을 감싸는 주(週) 단위 날짜 배열을 만든다(요일 맞추려고 앞뒤로 낀
+// 이전/다음 달 날짜 포함). attendance.js와 공유하는 generateCalendarGridHtml()은
+// 42개 칸을 평평하게 펼치는 방식이라, "한 주씩 묶어서" 그 위에 이어붙은 막대를
+// 겹쳐 그려야 하는 여기서는 쓸 수 없어서 별도로 계산한다.
+function buildCalendarWeeks(year, month) {
+  const startDay = new Date(year, month - 1, 1).getDay();     // 1일이 무슨 요일인지(0=일)
+  const lastDate = new Date(year, month, 0).getDate();        // 이 달 마지막 날짜
+  const totalCells = Math.ceil((startDay + lastDate) / 7) * 7; // 7의 배수로 맞춘 전체 칸 수
+  const gridFirst = new Date(year, month - 1, 1 - startDay);   // 그리드 맨 첫 칸(이전 달일 수 있음)
+
+  const weeks = [];
+  for (let w = 0; w < totalCells / 7; w++) {
+    const week = [];
+    for (let d = 0; d < 7; d++) {
+      const dt = new Date(gridFirst);
+      dt.setDate(gridFirst.getDate() + w * 7 + d);
+      week.push(dt);
+    }
+    weeks.push(week); // week = [일요일 Date, 월요일 Date, ..., 토요일 Date]
+  }
+  return weeks;
+}
+
+// attendance 페이지와 공유하는 generateCalendarGridHtml() 대신, 여러 날짜짜리
+// 일정을 진짜로 이어붙은 막대 하나로 그리기 위한 캘린더 전용 렌더링.
+// 구조: .cal-month > (.cal-weekday-row 요일 헤더) + 주(週)마다 .cal-week
+//       (날짜 칸 7개 + 그 위에 겹쳐진 .cal-event-layer 막대 레이어)
 function renderCalendarGrid(year, month) {
   const container = $('fullCalendarGrid');
   if (!container) return;
-  if ($('.calendar-controls h2')) $('.calendar-controls h2').textContent = `${year}년 ${month}월`;
+  if ($('calendarYear')) $('calendarYear').textContent = year;
+  if ($('calendarMonth')) $('calendarMonth').textContent = month;
 
-  // 공용 폼 생성 함수를 호출하여 일정 바(버튼)를 각 날짜 칸에 렌더링
-  container.innerHTML = generateCalendarGridHtml(year, month, (cellDate) => {
-    const matchedEvents = currentEvents.filter(e => {
-      // 시작일과 종료일 사이에 속하는 일정인지 체크
-      return cellDate >= e.startDate && cellDate <= e.endDate;
+  const weeks = buildCalendarWeeks(year, month);
+  // 화면에 실제로 그려지는 첫/마지막 날짜(이전·다음 달 여백 칸 포함) - 일정의
+  // 진짜 시작일이 이보다 훨씬 전이어도, 여기 안에서 제목이 한 번은 보이게 하기 위해 필요
+  const gridStart = formatDate(weeks[0][0]);
+  const gridEnd = formatDate(weeks[weeks.length - 1][6]);
+  const todayStr = formatDate(new Date());
+  const categoryLabel = { PERSONAL: '개인', TEAM: '팀', COMPANY: '회사' };
+
+  const headerHtml = ['일', '월', '화', '수', '목', '금', '토']
+    .map(d => `<div class="calendar-day-header" style="text-align:center; font-weight:bold; padding:0.5rem 0;">${d}</div>`)
+    .join('');
+
+  const weeksHtml = weeks.map(week => {
+    const weekDates = week.map(formatDate);
+    const weekStart = weekDates[0], weekEnd = weekDates[6];
+
+    // 이 주(週)와 하루라도 겹치는 일정만 추림
+    const weekEvents = currentEvents.filter(e => e.startDate <= weekEnd && e.endDate >= weekStart);
+
+    // 겹치는 일정끼리 같은 줄에서 부딪히지 않게 레인(줄)을 배정하는 간단한 그리디 알고리즘:
+    // 시작일이 빠른 순으로 보면서, 이미 끝난 일정이 있는 레인이면 그 레인을 재사용하고
+    // 없으면 새 레인을 만든다(레인 = 세로로 몇 번째 줄에 그릴지)
+    const sorted = [...weekEvents].sort((a, b) => a.startDate.localeCompare(b.startDate));
+    const laneLastEnd = []; // 레인별로 마지막에 배정된 일정의 이번 주 안 종료일
+    const placed = sorted.map(e => {
+      const spanStart = e.startDate > weekStart ? e.startDate : weekStart; // 이번 주 기준으로 자른 시작
+      const spanEnd = e.endDate < weekEnd ? e.endDate : weekEnd;           // 이번 주 기준으로 자른 끝
+      let lane = laneLastEnd.findIndex(end => end < spanStart); // 이미 끝난 레인 찾기
+      if (lane === -1) { lane = laneLastEnd.length; laneLastEnd.push(spanEnd); } // 없으면 새 레인
+      else { laneLastEnd[lane] = spanEnd; }
+      return { e, spanStart, spanEnd, lane };
     });
+    const laneCount = laneLastEnd.length;
 
-    return matchedEvents.map(e => `
-      <button type="button" class="event-bar ${String(e.scheduleType || '').toLowerCase()}" 
-              title="${e.title} (${{PERSONAL:'개인', TEAM:'팀', COMPANY:'회사'}[e.scheduleType] || e.scheduleType} 일정)"
-              onclick="event.stopPropagation(); openEditScheduleModal('${e.scheduleId}')">
-        ${e.title}
-      </button>
-    `).join('');
-  });
-  
-  // 날짜 클릭 이벤트 바인딩
+    const eventBarsHtml = placed.map(({ e, spanStart, spanEnd, lane }) => {
+      // 요일 인덱스(0~6)를 grid-column으로 변환 - 끝 컬럼은 exclusive라 +2
+      const colStart = weekDates.indexOf(spanStart) + 1;
+      const colEnd = weekDates.indexOf(spanEnd) + 2;
+      // 화면에 처음 보이는 칸에서만 제목 표시(진짜 시작일이 화면 밖이어도 제목이
+      // 아예 안 보이는 일이 없도록 - 지난달부터 이어지는 일정 케이스)
+      const visibleStart = e.startDate > gridStart ? e.startDate : gridStart;
+      const showTitle = spanStart === visibleStart;
+      // 이번 주(또는 화면) 이전/이후로 계속 이어지는 구간이면 그쪽 모서리를 각지게
+      // 만들어서 "잘려서 계속된다"는 느낌을 줌(style.css의 continues-prev/next)
+      const continuesPrev = spanStart !== e.startDate ? ' continues-prev' : '';
+      const continuesNext = spanEnd !== e.endDate ? ' continues-next' : '';
+      const category = String(e.eventCategory || '').toLowerCase();
+
+      return `
+        <button type="button" class="cal-event-bar ${category}${continuesPrev}${continuesNext}"
+                style="grid-column:${colStart} / ${colEnd}; grid-row:${lane + 1};"
+                title="${e.eventTitle} (${categoryLabel[e.eventCategory] || e.eventCategory} 일정)"
+                onclick="event.stopPropagation(); openEditScheduleModal('${e.eventId}')">
+          ${showTitle ? e.eventTitle : ''}
+        </button>`;
+    }).join('');
+
+    const cellsHtml = week.map(dt => {
+      const dateStr = formatDate(dt);
+      const inMonth = dt.getMonth() === month - 1;
+      const isToday = dateStr === todayStr;
+      return `
+        <div class="calendar-day cal-cell${!inMonth ? ' other-month' : ''}${isToday ? ' today' : ''}" data-date="${dateStr}">
+          <div class="cal-cell-header"><span class="day-number cal-day-num">${dt.getDate()}</span>${isToday ? '<span style="font-size:0.6rem; color:var(--color-primary); font-weight:bold; margin-left:4px;">오늘</span>' : ''}</div>
+        </div>`;
+    }).join('');
+
+    // 일정 레인이 많아질수록 이 주(週)의 높이를 늘려서 막대가 다음 주 칸을 침범하지 않게 함
+    const weekMinHeight = Math.max(100, 30 + laneCount * 23);
+
+    return `
+      <div class="cal-week" style="min-height:${weekMinHeight}px;">
+        ${cellsHtml}
+        <div class="cal-event-layer" style="grid-template-rows:repeat(${Math.max(laneCount, 1)}, 20px);">
+          ${eventBarsHtml}
+        </div>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = `<div class="cal-weekday-row">${headerHtml}</div>${weeksHtml}`;
+
+  // 빈 날짜 칸 클릭 → 새 일정 등록 모달(막대 클릭은 onclick에서 stopPropagation해서
+  // 여기까지 안 올라오고 openEditScheduleModal만 실행됨)
   container.querySelectorAll('.calendar-day').forEach(c => c.addEventListener('click', () => openScheduleModal(c.dataset.date)));
 }
 
@@ -157,13 +223,18 @@ function renderCalendarGrid(year, month) {
 async function submitScheduleForm(event) {
   event.preventDefault();
   const payload = Object.fromEntries(new FormData(event.target));
-  
-  if (!payload.title || !payload.startDate || !payload.endDate) return showToast('필수 항목을 입력하세요.', 'error');
+
+  if (!payload.eventTitle || !payload.startDate || !payload.endDate) return showToast('필수 항목을 입력하세요.', 'error');
   if (payload.endDate < payload.startDate) return showToast('종료일이 시작일보다 빠를 수 없습니다.', 'error');
 
   try {
-    const url = editingScheduleId ? `/api/calendar/events/${editingScheduleId}` : '/api/calendar/events';
-    await apiFetch(url, { method: 'POST', body: JSON.stringify(payload) });
+    const url = editingScheduleId ? `/calendar/events/${editingScheduleId}` : '/calendar/events';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('일정 저장에 실패했습니다.');
     closeScheduleModal(); await renderCalendar(currentYear, currentMonth);
     showToast('일정이 저장되었습니다.', 'success');
   } catch (error) { showToast(error.message, 'error'); }
@@ -173,10 +244,21 @@ async function submitScheduleForm(event) {
 async function deleteCalendarEvent() {
   if (!editingScheduleId) return;
   try {
-    await apiFetch(`/api/calendar/events/${editingScheduleId}`, { method: 'DELETE' });
+    const res = await fetch(`/calendar/events/${editingScheduleId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('일정 삭제에 실패했습니다.');
     closeScheduleModal(); await renderCalendar(currentYear, currentMonth);
     showToast('일정이 삭제되었습니다.', 'success');
   } catch (error) { showToast(error.message, 'error'); }
+}
+
+// 조회는 되지만 수정 권한은 없는 일정(예: 관리자가 아닌 사람이 연 COMPANY 일정)을 열었을 때
+// 입력칸/구분 드롭다운/저장버튼을 통째로 잠가서, "고칠 수 있다"거나 "구분을 팀/개인으로
+// 바꿀 수 있다"는 착각이 안 들게 함(실제 차단은 서버 canModifyEvent가 재검증)
+function setScheduleFormEditable(editable) {
+  ['scheduleStartDate', 'scheduleEndDate', 'scheduleTitle', 'scheduleType'].forEach(id => {
+    if ($(id)) $(id).disabled = !editable;
+  });
+  if ($('cEventSubmitBtn')) $('cEventSubmitBtn').style.display = editable ? '' : 'none';
 }
 
 // 모달창 UI 제어
@@ -186,19 +268,24 @@ function openScheduleModal(date = new Date().toISOString().slice(0, 10)) {
   $('scheduleStartDate').value = $('scheduleEndDate').value = date;
   $('scheduleTitle').value = ''; $('scheduleType').value = 'PERSONAL';
   if ($('cEventDeleteBtn')) $('cEventDeleteBtn').style.display = 'none';
+  setScheduleFormEditable(true); // 새로 등록하는 것이므로 항상 입력 가능하게 초기화
   toggleModal('modal-calendar-write', true);
 }
 
 function closeScheduleModal() { editingScheduleId = null; toggleModal('modal-calendar-write', false); }
 
 function openEditScheduleModal(id) {
-  const e = currentEvents.find(item => Number(item.scheduleId) === Number(id));
+  const e = currentEvents.find(item => Number(item.eventId) === Number(id));
   if (!e) return;
-  editingScheduleId = e.scheduleId;
+  editingScheduleId = e.eventId;
   $('calendarModalTitle').textContent = '일정 수정'; $('cEventSubmitBtn').textContent = '수정';
   $('scheduleStartDate').value = e.startDate; $('scheduleEndDate').value = e.endDate;
-  $('scheduleTitle').value = e.title; $('scheduleType').value = e.scheduleType;
-  if ($('cEventDeleteBtn')) $('cEventDeleteBtn').style.display = '';
+  $('scheduleTitle').value = e.eventTitle; $('scheduleType').value = e.eventCategory;
+  // 삭제 버튼과 같은 기준(canModifyEventClient)으로 폼 전체(입력칸+구분 드롭다운+저장버튼)도
+  // 잠금 - 서버(canModifyEvent)도 동일 기준으로 재검증하므로 이건 UX용, 실제 차단은 서버가 함
+  const canModify = canModifyEventClient(e);
+  if ($('cEventDeleteBtn')) $('cEventDeleteBtn').style.display = canModify ? '' : 'none';
+  setScheduleFormEditable(canModify);
   toggleModal('modal-calendar-write', true);
 }
 

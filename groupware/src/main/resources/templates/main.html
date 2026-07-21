@@ -76,7 +76,7 @@
 								<div class="commute-row">
 									<span>상태</span>
 									<span class="commute-val" id="dashCommuteStatus" style="color: var(--text-muted);"
-										th:text="'[' + ${attendance?.attendanceStatus} + ']'">미출근</span>
+										th:text="|[${commuteStatusLabel}]|">미출근</span>
 								</div>
 								<div class="commute-row">
 									<span>출근 시각</span>
@@ -99,18 +99,18 @@
 								달)
 							</h4>
 							<div
-								style="width: 88px; height: 88px; border-radius: 50%; background: conic-gradient(var(--color-primary) 0% 95%, var(--bg-tertiary) 95% 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+								th:style="'width: 88px; height: 88px; border-radius: 50%; background: conic-gradient(var(--color-primary) 0% ' + ${attendanceRate} + '%, var(--bg-tertiary) ' + ${attendanceRate} + '% 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;'">
 								<div
 									style="width: 66px; height: 66px; border-radius: 50%; background: var(--bg-secondary); display: flex; flex-direction: column; align-items: center; justify-content: center;">
-									<div style="font-size: 1rem; font-weight: 800;">95%</div>
+									<div style="font-size: 1rem; font-weight: 800;" th:text="|${attendanceRate}%|">95%</div>
 									<div style="font-size: 0.6rem; color: var(--text-muted);">출근율</div>
 								</div>
 							</div>
+							<!-- "조퇴"는 ATTENDANCE_STATUS에 그런 값 자체가 없어서(NORMAL/LATE/LEAVE뿐) 항목 자체를 뺌 -->
 							<div class="commute-info-box" style="text-align: left;">
-								<div class="commute-row"><span>출근일수</span><span class="commute-val">20일</span></div>
-								<div class="commute-row"><span>지각</span><span class="commute-val">1회</span></div>
-								<div class="commute-row"><span>조퇴</span><span class="commute-val">0회</span></div>
-								<div class="commute-row"><span>연차 사용</span><span class="commute-val">2일</span></div>
+								<div class="commute-row"><span>출근일수</span><span class="commute-val" th:text="|${presentDays}일|">20일</span></div>
+								<div class="commute-row"><span>지각</span><span class="commute-val" th:text="|${lateCount}회|">1회</span></div>
+								<div class="commute-row"><span>연차 사용</span><span class="commute-val" th:text="|${leaveCount}일|">2일</span></div>
 							</div>
 						</div>
 					</div>
@@ -123,16 +123,21 @@
 							<div class="card-header">
 								<h4 class="card-title"><i class="fa-solid fa-calendar-check"
 										style="color: var(--color-accent);"></i> 오늘 일정</h4>
-								<button class="btn btn-secondary btn-sm" onclick="navigateTo('calendar')">전체 일정
-									보기</button>
+								<a th:href="@{/calendar}" class="btn btn-secondary btn-sm">전체 일정
+									보기</a>
 							</div>
 							<div id="dashTodaySchedule">
-								<!-- Mock 데이터 (JS 렌더링 시 대체됨) -->
-								<div
+								<!-- 캘린더 페이지와 같은 카테고리 색(개인=secondary/팀=success/회사=danger)을
+								     점 색깔로만 재사용해서 한눈에 구분되게 함 -->
+								<div th:each="event : ${todayEvents}"
 									style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px dashed var(--border-color);">
 									<span
-										style="width:8px; height:8px; border-radius:50%; background:var(--color-accent); flex-shrink:0;"></span>
-									<span style="flex:1; font-size:0.85rem;">그룹웨어 화면 검토</span>
+										th:style="'width:8px; height:8px; border-radius:50%; flex-shrink:0; background:' + (${event.eventCategory == 'TEAM'} ? 'var(--color-success)' : (${event.eventCategory == 'COMPANY'} ? 'var(--color-danger)' : 'var(--color-secondary)'))"></span>
+									<span style="flex:1; font-size:0.85rem;" th:text="${event.eventTitle}">일정 제목</span>
+								</div>
+								<div th:if="${#lists.isEmpty(todayEvents)}"
+									style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:0.75rem 0;">
+									오늘 등록된 일정이 없습니다.
 								</div>
 							</div>
 						</div>
@@ -142,41 +147,25 @@
 							<div class="card-header">
 								<h4 class="card-title"><i class="fa-solid fa-bullhorn"
 										style="color: var(--color-primary);"></i> 사내 최신 공지사항</h4>
-								<button class="btn btn-secondary btn-sm" onclick="navigateTo('notice')">목록 보기</button>
+								<a th:href="@{/notice/list}" class="btn btn-secondary btn-sm">목록 보기</a>
 							</div>
 							<div class="table-container">
 								<table class="table">
 									<tbody id="dashNoticeList">
-										<!-- Mock 데이터 (JS 렌더링 시 대체됨) -->
-										<tr class="clickable" onclick="viewNotice(12)">
+										<tr class="clickable" th:each="notice : ${notices}"
+											th:onclick="|viewNotice(${notice.noticeId})|">
 											<td>
 												<div style="display:flex; align-items:center; gap:0.5rem;">
-													<span class="badge badge-muted">일반</span>
-													<span class="notice-link">[필독] 개인정보보호법 개정에 따른 사내 정책 변경 안내</span>
+													<span class="badge badge-muted" th:text="${notice.isPinned} ? '고정' : '일반'">일반</span>
+													<span class="notice-link" th:text="${notice.noticeTitle}">제목</span>
 												</div>
 											</td>
-											<td style="font-size:0.8rem; color:var(--text-muted); text-align:right;">
+											<td style="font-size:0.8rem; color:var(--text-muted); text-align:right;"
+												th:text="${notice.createdAt != null ? #strings.substring(notice.createdAt, 0, 10) : ''}">
 												2026-06-05</td>
 										</tr>
-										<tr class="clickable" onclick="viewNotice(11)">
-											<td>
-												<div style="display:flex; align-items:center; gap:0.5rem;">
-													<span class="badge badge-muted">일반</span>
-													<span class="notice-link">[안내] 사내 카페테리아 여름 메뉴 리뉴얼 공지</span>
-												</div>
-											</td>
-											<td style="font-size:0.8rem; color:var(--text-muted); text-align:right;">
-												2026-06-08</td>
-										</tr>
-										<tr class="clickable" onclick="viewNotice(10)">
-											<td>
-												<div style="display:flex; align-items:center; gap:0.5rem;">
-													<span class="badge badge-muted">일반</span>
-													<span class="notice-link">[채용] 개발팀 경력직 채용 공고 안내 (내부 추천 가능)</span>
-												</div>
-											</td>
-											<td style="font-size:0.8rem; color:var(--text-muted); text-align:right;">
-												2026-06-10</td>
+										<tr th:if="${#lists.isEmpty(notices)}">
+											<td colspan="2" style="text-align:center; color:var(--text-muted); padding:1rem 0;">등록된 공지가 없습니다.</td>
 										</tr>
 									</tbody>
 								</table>
@@ -188,23 +177,23 @@
 							<div class="card-header">
 								<h4 class="card-title"><i class="fa-solid fa-signature"
 										style="color: var(--color-accent);"></i> 전자결재 진행 현황</h4>
-								<button class="btn btn-secondary btn-sm" onclick="navigateTo('approval')">결재 상신</button>
+								<a th:href="@{/approval}" class="btn btn-secondary btn-sm">결재 상신</a>
 							</div>
 
 							<div class="approval-stats-row">
-								<div class="approval-stat-box" onclick="navigateTo('approval')">
+								<a th:href="@{/approval}" class="approval-stat-box">
 									<div
 										style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">
 										결재 대기 문서</div>
-									<div class="approval-stat-count" id="dashWaitCount">0</div>
-								</div>
-								<div class="approval-stat-box" onclick="navigateTo('approval')">
+									<div class="approval-stat-count" id="dashWaitCount" th:text="${waitCount}">0</div>
+								</a>
+								<a th:href="@{/approval}" class="approval-stat-box">
 									<div
 										style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem;">
 										기안 진행 문서</div>
 									<div class="approval-stat-count" style="color: var(--color-success);"
-										id="dashProgressCount">1</div>
-								</div>
+										id="dashProgressCount" th:text="${progressCount}">1</div>
+								</a>
 							</div>
 
 							<div class="table-container">
@@ -218,12 +207,17 @@
 										</tr>
 									</thead>
 									<tbody id="dashApprovalList">
-										<!-- Mock 데이터 (JS 렌더링 시 대체됨) -->
-										<tr class="clickable" onclick="navigateTo('approval')">
-											<td><strong>도서구입 지출결의서 (인쇄출판비)</strong></td>
-											<td>홍길동 사원</td>
-											<td style="font-family:'Fira Code'; font-size:0.8rem;">2026-06-29</td>
+										<!-- 여기 뜨는 문서는 findInbox 조건상 전부 "내가 지금 승인해야 할" 진행중
+										     상태뿐이라 상태 배지는 고정으로 "진행중"만 표시 -->
+										<tr class="clickable" th:each="approval : ${approvals}" th:onclick="|location.href='@{/approval}'|">
+											<td><strong th:text="${approval.approvalTitle}">제목</strong></td>
+											<td th:text="${approval.drafterName}">기안자</td>
+											<td style="font-family:'Fira Code'; font-size:0.8rem;"
+												th:text="${approval.createdAt != null ? #strings.substring(approval.createdAt, 0, 10) : ''}">2026-06-29</td>
 											<td><span class="badge badge-warning">진행중</span></td>
+										</tr>
+										<tr th:if="${#lists.isEmpty(approvals)}">
+											<td colspan="4" style="text-align:center; color:var(--text-muted); padding:1rem 0;">결재 대기 중인 문서가 없습니다.</td>
 										</tr>
 									</tbody>
 								</table>
@@ -240,12 +234,11 @@
 						<!-- 미니 캘린더 -->
 						<div class="card" style="padding: 1.25rem;">
 							<div class="card-header" style="margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
-								<h4 class="card-title" style="font-size: 0.9rem;">2026년 6월</h4>
-								<button class="btn btn-secondary btn-sm" onclick="navigateTo('calendar')"
-									style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">캘린더</button>
+								<h4 class="card-title" style="font-size: 0.9rem;" th:text="|${currentYear}년 ${currentMonth}월|">2026년 6월</h4>
+								<a th:href="@{/calendar}" class="btn btn-secondary btn-sm"
+									style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">캘린더</a>
 							</div>
 							<div id="dashMiniCalendar">
-								<!-- Mock 데이터 (JS 렌더링 시 대체됨) -->
 								<div class="mini-cal-grid">
 									<div class="mini-cal-day-header">일</div>
 									<div class="mini-cal-day-header">월</div>
@@ -255,53 +248,17 @@
 									<div class="mini-cal-day-header">금</div>
 									<div class="mini-cal-day-header">토</div>
 
-									<div class="mini-cal-day other-month">31</div>
-									<div class="mini-cal-day">1</div>
-									<div class="mini-cal-day">2</div>
-									<div class="mini-cal-day has-event"
-										onclick="showToast('3일 일정: 개발팀 주간 정기회의', 'primary')">3</div>
-									<div class="mini-cal-day">4</div>
-									<div class="mini-cal-day">5</div>
-									<div class="mini-cal-day">6</div>
-
-									<div class="mini-cal-day">7</div>
-									<div class="mini-cal-day">8</div>
-									<div class="mini-cal-day">9</div>
-									<div class="mini-cal-day has-event"
-										onclick="showToast('10일 일정: 김철수 대리 연차휴가', 'primary')">10</div>
-									<div class="mini-cal-day has-event"
-										onclick="showToast('11일 일정: 김철수 대리 연차휴가', 'primary')">11</div>
-									<div class="mini-cal-day has-event"
-										onclick="showToast('12일 일정: 김철수 대리 연차휴가', 'primary')">12</div>
-									<div class="mini-cal-day">13</div>
-
-									<div class="mini-cal-day">14</div>
-									<div class="mini-cal-day">15</div>
-									<div class="mini-cal-day">16</div>
-									<div class="mini-cal-day">17</div>
-									<div class="mini-cal-day has-event"
-										onclick="showToast('18일 일정: 프로젝트 마감 워크숍', 'primary')">18</div>
-									<div class="mini-cal-day has-event"
-										onclick="showToast('19일 일정: 프로젝트 마감 워크숍', 'primary')">19</div>
-									<div class="mini-cal-day">20</div>
-
-									<div class="mini-cal-day">21</div>
-									<div class="mini-cal-day">22</div>
-									<div class="mini-cal-day">23</div>
-									<div class="mini-cal-day">24</div>
-									<div class="mini-cal-day has-event"
-										onclick="showToast('25일 일정: 사내 급여일', 'primary')">25</div>
-									<div class="mini-cal-day">26</div>
-									<div class="mini-cal-day">27</div>
-
-									<div class="mini-cal-day">28</div>
-									<div class="mini-cal-day">29</div>
-									<div class="mini-cal-day today has-event"
-										onclick="showToast('30일 일정: 그룹웨어 화면 검토', 'primary')">30</div>
-									<div class="mini-cal-day other-month">1</div>
-									<div class="mini-cal-day other-month">2</div>
-									<div class="mini-cal-day other-month">3</div>
-									<div class="mini-cal-day other-month">4</div>
+									<!-- miniCalendarDays: DashboardService.buildMiniCalendarDays()가 요일 맞춰
+									     미리 계산해둔 42(또는 35)칸. hasEvent인 칸만 클릭 시 그 날 일정 제목을 토스트로 보여줌.
+									     th:onclick엔 문자열을 못 넣어서(Thymeleaf 보안 제한), data-events 속성에
+									     문구를 담아두고 평범한(Thymeleaf 처리 안 받는) onclick이 그 값을 읽어서
+									     common.js의 showToast()를 호출하게 함 -->
+									<div th:each="day : ${miniCalendarDays}"
+										th:class="'mini-cal-day' + (${day.hasEvent} ? ' has-event' : '') + (${day.otherMonth} ? ' other-month' : '') + (${day.isToday} ? ' today' : '')"
+										th:text="${day.day}"
+										th:data-events="${day.hasEvent} ? (${day.day} + '일 일정: ' + ${day.eventSummary}) : null"
+										onclick="if (this.dataset.events) showToast(this.dataset.events, 'primary')">
+									</div>
 								</div>
 							</div>
 						</div>
@@ -352,6 +309,7 @@
        dashboard.js: 이 페이지(대시보드)에서만 쓰는 로직 -->
 	<script src="js/common.js"></script>
 	<script src="js/Attendance.js"></script>
+	<script src="js/dashboard.js"></script>
 </body>
 
 </html>

@@ -45,7 +45,7 @@
 
 			<!-- 좌측 사이드바 - 공통 조각(fragments/layout.html) 재사용 -->
 			<aside th:replace="~{fragments/layout :: sidebar}"></aside>
-			
+
 			<!-- 중앙 동적 화면 콘텐츠 영역 -->
 			<main class="view-content">
 				<!-- ==========================================
@@ -56,7 +56,13 @@
              ========================================== -->
 				<div class="card" style="margin-bottom: 0.25rem;">
 					<div class="card-header">
-						<h2>이번 달 출결 현황<span>(<span th:text="${currentYear}">2026</span>년 <span th:text="${currentMonth}">7</span>월)</span></h2>
+						<h2>이번 달 출결 현황 <span>(<span id="calendarYear">2026</span>년 <span id="calendarMonth">7</span>월)</span></h2>
+					</div>
+					<div>
+						<button type="button" id="prevMonthBtn" class="btn btn-sm btn-outline-secondary">&lt; 이전
+							달</button>
+						<button type="button" id="nextMonthBtn" class="btn btn-sm btn-outline-secondary">다음 달
+							&gt;</button>
 					</div>
 					<div class="grid-3">
 						<div class="approval-stat-box">
