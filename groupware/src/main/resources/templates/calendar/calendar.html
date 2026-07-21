@@ -49,7 +49,7 @@
 			<main class="view-content">
 
 				<!-- ==========================================
-             화면: 일정 캘린더 (2026년 6월 한 달만 지원, 이전/다음 달은 미구현)
+             화면: 일정 캘린더
              ========================================== -->
 				<div class="card">
 					<div class="calendar-wrapper">
@@ -59,7 +59,6 @@
 									<span id="calendarYear">2026</span>년 <span id="calendarMonth">6</span>월
 								</h2>
 								<div style="display: flex; gap: 0.25rem;">
-									<!-- 프로토타입이라 이전/다음 달 이동은 실제로 동작하지 않고 안내 토스트만 띄운다 -->
 									<button class="btn btn-secondary btn-sm" id="calendarPrevBtn">
 										<i class="fa-solid fa-chevron-left"></i>
 									</button>
@@ -68,7 +67,7 @@
 									</button>
 								</div>
 							</div>
-							<button class="btn btn-primary" onclick="openScheduleModal()">
+							<button class="btn btn-primary" id="addScheduleBtn">
 								<i class="fa-solid fa-plus"></i> 일정 추가
 							</button>
 						</div>
@@ -77,8 +76,9 @@
                  여러 날짜에 걸친 일정은 하루씩 끊지 않고, 같은 주(週) 안에서는
                  하나로 이어진 막대(.cal-event-bar)로, 주가 바뀌면 다음 줄에서
                  새 막대로 이어서 그린다. -->
-						<div class="cal-month" id="fullCalendarGrid"></div>
+						<div class="calendar-grid" id="fullCalendarGrid"></div>
 					</div>
+				</div>
 			</main>
 		</div>
 	</div>
@@ -89,52 +89,43 @@
 	<div class="modal-overlay" id="modalOverlay">
 
 		<!-- 캘린더 일정 등록 모달 - "일정 추가" 버튼이나 빈 날짜 칸 클릭
-         (openCreateEventModal/handleCalendarCellClick)으로 열린다 -->
+         (openScheduleModal/openEditScheduleModal)으로 열린다 -->
 		<div class="modal-content" id="modal-calendar-write" style="display:none;">
 			<div class="modal-header">
 				<h3 id="calendarModalTitle">새 일정 등록</h3>
-				<button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+				<button class="icon-btn" id="scheduleModalCloseBtn"><i class="fa-solid fa-xmark"></i></button>
 			</div>
-			<form onsubmit="submitCalendarEvent(event)">
+			<form id="scheduleForm">
 				<div class="modal-body">
 					<div class="grid-2">
 						<div class="form-group">
-							<label class="form-label" for="cEventStartDate">시작일 (6월)</label>
-							<select id="cEventStartDate" class="form-control">
-								<!-- Mock 데이터 (JS 렌더링 시 대체됨) -->
-								<option value="1">6월 1일</option>
-								<option value="30" selected>6월 30일</option>
-							</select>
+							<label class="form-label" for="scheduleStartDate">시작일</label>
+							<input type="date" id="scheduleStartDate" name="startDate" class="form-control" required>
 						</div>
 						<div class="form-group">
-							<label class="form-label" for="cEventEndDate">종료일 (6월)</label>
-							<select id="cEventEndDate" class="form-control">
-								<!-- Mock 데이터 (JS 렌더링 시 대체됨) -->
-								<option value="1">6월 1일</option>
-								<option value="30" selected>6월 30일</option>
-							</select>
+							<label class="form-label" for="scheduleEndDate">종료일</label>
+							<input type="date" id="scheduleEndDate" name="endDate" class="form-control" required>
 						</div>
 					</div>
 					<div class="form-group">
-						<label class="form-label" for="cEventTitle">일정 제목</label>
-						<input type="text" id="cEventTitle" class="form-control" required placeholder="회의 또는 업무 내용 입력">
+						<label class="form-label" for="scheduleTitle">일정 제목</label>
+						<input type="text" id="scheduleTitle" name="eventTitle" class="form-control" required placeholder="회의 또는 업무 내용 입력">
 					</div>
 					<div class="form-group">
-						<label class="form-label" for="cEventCategory">일정 구분</label>
-						<select id="cEventCategory" class="form-control">
-							<option value="personal">개인 일정 (본인 캘린더만 노출)</option>
-							<option value="team">팀 일정 (소속 부서원 연동)</option>
-							<option value="company">회사 일정 (전사 노출)</option>
+						<label class="form-label" for="scheduleType">일정 구분</label>
+						<select id="scheduleType" name="eventCategory" class="form-control">
+							<option value="PERSONAL">개인 일정 (본인 캘린더만 노출)</option>
+							<option value="TEAM">팀 일정 (소속 부서원 연동)</option>
+							<option value="COMPANY">회사 일정 (전사 노출)</option>
 						</select>
 					</div>
 				</div>
 				<div class="modal-footer">
 					<!-- 신규 등록 모드에서는 숨겨져 있다가, 일정 막대를 클릭해 수정
-               모드로 열었을 때만 openEditEventModal()이 보여준다 -->
+             모드로 열었을 때만 openEditScheduleModal()이 보여준다 -->
 					<button type="button" class="btn btn-danger" id="cEventDeleteBtn"
-						style="display:none; margin-right:auto;"
-						onclick="deleteCalendarEvent(editingEventId)">삭제</button>
-					<button type="button" class="btn btn-secondary" onclick="closeModal()">취소</button>
+						style="display:none; margin-right:auto;">삭제</button>
+					<button type="button" class="btn btn-secondary" id="scheduleCancelBtn">취소</button>
 					<button type="submit" class="btn btn-primary" id="cEventSubmitBtn">등록</button>
 				</div>
 			</form>

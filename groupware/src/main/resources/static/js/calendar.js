@@ -123,7 +123,9 @@ function generateCalendarGridHtml(year, month, customCellRenderer) {
 async function renderCalendar(year, month) {
   currentYear = year; currentMonth = month;
   try {
-    currentEvents = await apiFetch(`/calendar/events?year=${year}&month=${month}`);
+    const res = await fetch(`/calendar/events?year=${year}&month=${month}`);
+    if (!res.ok) throw new Error('일정을 불러오지 못했습니다.');
+    currentEvents = await res.json();
     renderCalendarGrid(year, month);
   } catch (err) { showToast(err.message, 'error'); }
 }
@@ -131,7 +133,8 @@ async function renderCalendar(year, month) {
 function renderCalendarGrid(year, month) {
   const container = $('fullCalendarGrid');
   if (!container) return;
-  if ($('.calendar-controls h2')) $('.calendar-controls h2').textContent = `${year}년 ${month}월`;
+  if ($('calendarYear')) $('calendarYear').textContent = year;
+  if ($('calendarMonth')) $('calendarMonth').textContent = month;
 
   // 공용 폼 생성 함수를 호출하여 일정 바(버튼)를 각 날짜 칸에 렌더링
   container.innerHTML = generateCalendarGridHtml(year, month, (cellDate) => {
@@ -141,10 +144,10 @@ function renderCalendarGrid(year, month) {
     });
 
     return matchedEvents.map(e => `
-      <button type="button" class="event-bar ${String(e.scheduleType || '').toLowerCase()}" 
-              title="${e.title} (${{PERSONAL:'개인', TEAM:'팀', COMPANY:'회사'}[e.scheduleType] || e.scheduleType} 일정)"
-              onclick="event.stopPropagation(); openEditScheduleModal('${e.scheduleId}')">
-        ${e.title}
+      <button type="button" class="event-bar ${String(e.eventCategory || '').toLowerCase()}"
+              title="${e.eventTitle} (${{PERSONAL:'개인', TEAM:'팀', COMPANY:'회사'}[e.eventCategory] || e.eventCategory} 일정)"
+              onclick="event.stopPropagation(); openEditScheduleModal('${e.eventId}')">
+        ${e.eventTitle}
       </button>
     `).join('');
   });
@@ -157,13 +160,18 @@ function renderCalendarGrid(year, month) {
 async function submitScheduleForm(event) {
   event.preventDefault();
   const payload = Object.fromEntries(new FormData(event.target));
-  
-  if (!payload.title || !payload.startDate || !payload.endDate) return showToast('필수 항목을 입력하세요.', 'error');
+
+  if (!payload.eventTitle || !payload.startDate || !payload.endDate) return showToast('필수 항목을 입력하세요.', 'error');
   if (payload.endDate < payload.startDate) return showToast('종료일이 시작일보다 빠를 수 없습니다.', 'error');
 
   try {
-    const url = editingScheduleId ? `/api/calendar/events/${editingScheduleId}` : '/api/calendar/events';
-    await apiFetch(url, { method: 'POST', body: JSON.stringify(payload) });
+    const url = editingScheduleId ? `/calendar/events/${editingScheduleId}` : '/calendar/events';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('일정 저장에 실패했습니다.');
     closeScheduleModal(); await renderCalendar(currentYear, currentMonth);
     showToast('일정이 저장되었습니다.', 'success');
   } catch (error) { showToast(error.message, 'error'); }
@@ -173,7 +181,8 @@ async function submitScheduleForm(event) {
 async function deleteCalendarEvent() {
   if (!editingScheduleId) return;
   try {
-    await apiFetch(`/api/calendar/events/${editingScheduleId}`, { method: 'DELETE' });
+    const res = await fetch(`/calendar/events/${editingScheduleId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('일정 삭제에 실패했습니다.');
     closeScheduleModal(); await renderCalendar(currentYear, currentMonth);
     showToast('일정이 삭제되었습니다.', 'success');
   } catch (error) { showToast(error.message, 'error'); }
@@ -192,12 +201,12 @@ function openScheduleModal(date = new Date().toISOString().slice(0, 10)) {
 function closeScheduleModal() { editingScheduleId = null; toggleModal('modal-calendar-write', false); }
 
 function openEditScheduleModal(id) {
-  const e = currentEvents.find(item => Number(item.scheduleId) === Number(id));
+  const e = currentEvents.find(item => Number(item.eventId) === Number(id));
   if (!e) return;
-  editingScheduleId = e.scheduleId;
+  editingScheduleId = e.eventId;
   $('calendarModalTitle').textContent = '일정 수정'; $('cEventSubmitBtn').textContent = '수정';
   $('scheduleStartDate').value = e.startDate; $('scheduleEndDate').value = e.endDate;
-  $('scheduleTitle').value = e.title; $('scheduleType').value = e.scheduleType;
+  $('scheduleTitle').value = e.eventTitle; $('scheduleType').value = e.eventCategory;
   if ($('cEventDeleteBtn')) $('cEventDeleteBtn').style.display = '';
   toggleModal('modal-calendar-write', true);
 }
