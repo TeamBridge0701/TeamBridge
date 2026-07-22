@@ -71,8 +71,30 @@ import lombok.RequiredArgsConstructor;
                 return chatMapper.findRoomMemberIds(roomId);
             }
 
+            // 참여자가 맞는 경우에만 현재 방의 참여자 상세 목록을 반환한다.
+            // Controller가 roomId만 받더라도 여기서 employeeId를 다시 검사해 주소 조작을 막는다.
+            public List<EmployeeDTO> getRoomMembers(int roomId, int employeeId) {
+                // isRoomMember는 CHAT_ROOM_MEMBER에 현재 직원이 실제로 연결되어 있는지 확인한다.
+                if (!isRoomMember(roomId, employeeId)) {
+                    throw new IllegalArgumentException("채팅방 참여자가 아닙니다.");
+                }
+
+                // 권한 검사가 끝난 뒤에만 Mapper의 참여자 목록 SELECT를 실행한다.
+                return chatMapper.findRoomMembers(roomId);
+            }
+
             public List<String> getRoomMemberEmployeeNos(int roomId) {
                 return chatMapper.findRoomMemberEmployeeNos(roomId);
+            }
+
+            // 본인 외에 메시지를 실제로 받을 참여자가 한 명 이상 있어야 전송할 수 있다.
+            public boolean canSendMessage(int roomId, int employeeId) {
+                if (!isRoomMember(roomId, employeeId)) {
+                    return false;
+                }
+
+                return chatMapper.findRoomMemberIds(roomId).stream()
+                        .anyMatch(memberId -> memberId != employeeId);
             }
 	    
             // ==================여기까자=============== 밑에 하나 더 
@@ -407,6 +429,50 @@ import lombok.RequiredArgsConstructor;
                 chatMapper.updateGroupRoomName(roomId, trimmedRoomName);
                 // 검증을 모두 통과한 경우에만 Mapper SQL로 DB 이름을 변경.
             }
+
+            // 나가기와 시스템 메시지 저장은 함께 성공하거나 함께 취소되어야 하므로 하나의 트랜잭션으로 묶는다.
+            @Transactional
+            public ChatMessageDTO leaveRoom(int roomId, int employeeId) {
+                // 방 번호와 직원 번호를 함께 조회한다. 결과가 없으면 방이 없거나 본인이 참여자가 아니다.
+                ChatRoomDTO room = chatMapper.findRoomByIdAndMember(roomId, employeeId);
+
+                if (room == null) {
+                    throw new IllegalArgumentException("채팅방 참여자가 아닙니다.");
+                }
+
+                // 시스템 메시지에 "OO님"을 표시하기 위해 현재 활성 직원 정보를 조회한다.
+                EmployeeDTO employee = employeeMapper.findActiveEmployeeById(employeeId);
+
+                if (employee == null) {
+                    throw new IllegalArgumentException("로그인 사용자 정보를 찾을 수 없습니다.");
+                }
+
+                // delete는 삭제한 행 수를 반환한다. 1이 아니면 이미 나갔거나 DB 변경에 실패한 경우다.
+                if (chatMapper.deleteChatRoomMember(roomId, employeeId) != 1) {
+                    throw new IllegalArgumentException("채팅방 나가기에 실패했습니다.");
+                }
+
+                // 마지막 참여자가 나가면 이 방을 볼 사람이 없으므로 시스템 메시지는 남기지 않는다.
+                if (chatMapper.findRoomMemberIds(roomId).isEmpty()) {
+                    // null은 Controller에게 "방송할 시스템 메시지가 없음"을 알리는 약속이다.
+                    return null;
+                }
+
+                // SENDER_ID가 없는 SYSTEM 메시지를 만들어 남은 참여자 화면 중앙에 표시한다.
+                ChatMessageDTO systemMessage = new ChatMessageDTO();
+                systemMessage.setRoomId(roomId);
+                // 시스템이 보낸 메시지이므로 특정 직원 번호가 없고 null을 저장한다.
+                systemMessage.setSenderId(null);
+                systemMessage.setMessageType("SYSTEM");
+                systemMessage.setContent(employee.getEmployeeName() + "님이 나갔습니다.");
+
+                // DB INSERT 뒤 자동 생성된 MESSAGE_ID가 systemMessage 객체에 채워진다.
+                chatMapper.insertChatMessage(systemMessage);
+
+                // 이름·표시 시간 등 화면에 필요한 값을 포함한 완성된 메시지를 다시 조회해 반환한다.
+                return prepareMessageForDisplay(
+                        chatMapper.findMessageById(systemMessage.getMessageId()));
+            }
 	    
 	    
 	    
@@ -423,11 +489,7 @@ import lombok.RequiredArgsConstructor;
 	            int senderId,
 	            String content) {
 
-	        // WebSocket 주소를 조작해 다른 방에 메시지를 보내는 것을 막는다.
-	        if (!isRoomMember(roomId, senderId)) {
-	        	// 보내는 사람이 해당 채팅방의 참여자인지 확인한다.
-	            throw new IllegalArgumentException("채팅방 참여자가 아닙니다.");
-	        }
+                validateMessageSendAllowed(roomId, senderId);
 
 	        // 빈 메시지와 공백만 있는 메시지는 저장하지 않는다.
 	        if (content == null || content.isBlank()) {
@@ -476,9 +538,7 @@ import lombok.RequiredArgsConstructor;
                     int senderId,
                     MultipartFile file) throws IOException {
 
-                if (!isRoomMember(roomId, senderId)) {
-                    throw new IllegalArgumentException("채팅방 참여자가 아닙니다.");
-                }
+                validateMessageSendAllowed(roomId, senderId);
 
                 if (file == null || file.isEmpty()) {
                     throw new IllegalArgumentException("전송할 파일을 선택해주세요.");
@@ -562,6 +622,17 @@ import lombok.RequiredArgsConstructor;
                 }
 
                 return message;
+            }
+
+            // 텍스트와 파일 모두 같은 전송 조건을 사용해, 화면을 우회한 요청도 서버에서 막는다.
+            private void validateMessageSendAllowed(int roomId, int senderId) {
+                if (!isRoomMember(roomId, senderId)) {
+                    throw new IllegalArgumentException("채팅방 참여자가 아닙니다.");
+                }
+
+                if (!canSendMessage(roomId, senderId)) {
+                    throw new IllegalArgumentException("메시지를 보낼 수 없습니다.");
+                }
             }
 
             private String formatFileSize(long fileSize) {

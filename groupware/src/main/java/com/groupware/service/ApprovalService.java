@@ -17,6 +17,7 @@ import com.groupware.dto.ApprovalDTO;
 import com.groupware.dto.ApprovalFileDTO;
 import com.groupware.dto.ApprovalFormTypeDTO;
 import com.groupware.dto.ApprovalLineDTO;
+import com.groupware.dto.ApprovalPageDTO;
 import com.groupware.dto.ApprovalReferenceDTO;
 import com.groupware.dto.DepartmentDTO;
 import com.groupware.dto.EmployeeDTO;
@@ -43,6 +44,10 @@ public class ApprovalService {
 
 	// 금액을 받는 서식은 지출결의서뿐 (AMOUNT는 이 서식 전용)
 	private static final String EXPENSE_FORM_NAME = "지출결의서";
+
+	// 받은/보낸/참조 문서함 페이지네이션 - ArchiveService와 동일한 값(10건씩, 5페이지 그룹)
+	private static final int PAGE_SIZE = 10;
+	private static final int PAGE_GROUP_SIZE = 5;
 
 	private final ApprovalFormTypeMapper approvalFormTypeMapper;
 	private final ApprovalMapper approvalMapper;
@@ -80,18 +85,51 @@ public class ApprovalService {
 	}
 
 	// 받은 결재함 - 지금 내 차례인 문서만 (ApprovalMapper.findInbox의 WHERE 조건 참고)
-	public List<ApprovalDTO> getInbox(int employeeId) {
-		return approvalMapper.findInbox(employeeId);
+	public ApprovalPageDTO getInbox(int employeeId, int page) {
+		int offset = (page - 1) * PAGE_SIZE;
+		List<ApprovalDTO> content = approvalMapper.findInbox(employeeId, offset, PAGE_SIZE);
+		int totalCount = approvalMapper.countInbox(employeeId);
+		return buildPage(content, page, totalCount);
 	}
 
 	// 보낸 기안함 - 내가 기안한 문서 전체
-	public List<ApprovalDTO> getOutbox(int drafterId) {
-		return approvalMapper.findOutbox(drafterId);
+	public ApprovalPageDTO getOutbox(int drafterId, int page) {
+		int offset = (page - 1) * PAGE_SIZE;
+		List<ApprovalDTO> content = approvalMapper.findOutbox(drafterId, offset, PAGE_SIZE);
+		int totalCount = approvalMapper.countOutbox(drafterId);
+		return buildPage(content, page, totalCount);
 	}
 
 	// 참조 문서함 - 부서 참조/개인 참조/결재선 포함(기안자 제외) 셋 중 하나라도 해당하면 포함
-	public List<ApprovalDTO> getReferenceBox(EmployeeDTO employee) {
-		return approvalMapper.findReferenceBox(employee.getEmployeeId(), employee.getDeptId());
+	public ApprovalPageDTO getReferenceBox(EmployeeDTO employee, int page) {
+		int offset = (page - 1) * PAGE_SIZE;
+		List<ApprovalDTO> content = approvalMapper.findReferenceBox(employee.getEmployeeId(), employee.getDeptId(),
+				offset, PAGE_SIZE);
+		int totalCount = approvalMapper.countReferenceBox(employee.getEmployeeId(), employee.getDeptId());
+		return buildPage(content, page, totalCount);
+	}
+
+	// ArchiveService와 동일한 페이지네이션 계산(‹ [그룹시작..그룹끝] ›)을 JSON 응답 하나로 묶어준다.
+	// 검색 결과가 0건이어도 "1페이지"는 표시돼야 하므로 totalPages 최소값은 1.
+	private ApprovalPageDTO buildPage(List<ApprovalDTO> content, int page, int totalCount) {
+		int totalPages = Math.max(1, (int) Math.ceil(totalCount / (double) PAGE_SIZE));
+		int groupStart = ((page - 1) / PAGE_GROUP_SIZE) * PAGE_GROUP_SIZE + 1;
+		int groupEnd = Math.min(groupStart + PAGE_GROUP_SIZE - 1, totalPages);
+
+		ApprovalPageDTO result = new ApprovalPageDTO();
+		result.setContent(content);
+		result.setCurrentPage(page);
+		result.setTotalPages(totalPages);
+		result.setGroupStart(groupStart);
+		result.setGroupEnd(groupEnd);
+		result.setTotalCount(totalCount);
+		return result;
+	}
+
+	// 대시보드 위젯("기안 진행 문서 N건") 전용 - 보낸 기안함 전체 중 아직 PROGRESS인 것만 센다.
+	// 페이지네이션(getOutbox)은 한 페이지(최대 10건)만 내려주므로 전체 건수 집계에는 못 쓴다.
+	public int getOutboxProgressCount(int drafterId) {
+		return approvalMapper.countOutboxByStatus(drafterId, "PROGRESS");
 	}
 
 	// 결재 상세 - 문서 정보 + 결재선(스테퍼용) + 첨부파일 목록을 함께 채워서 반환

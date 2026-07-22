@@ -281,3 +281,4 @@ ALTER TABLE CALENDAR_EVENT
 -- 직접 입력/수정한다. 그래서 NULL 허용 - 기존 계정과 새로 만든 계정 모두 처음엔 값이 없다.
 ALTER TABLE EMPLOYEE
     ADD COLUMN BIRTH_DATE DATE NULL AFTER HIRE_DATE;
+

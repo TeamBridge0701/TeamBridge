@@ -76,9 +76,7 @@ async function viewOrgMemberDetail(employeeId) {
   document.getElementById('mOrgName').textContent = `${employee.employeeName} ${position}`;
   // HTML에서 id="mOrgName"인 요소를 찾고 직원 이름과 직급을 넣느다.
   
-  document.getElementById('mOrgAvatar').textContent = employee.employeeName.charAt(0);
-  // 직원 이름의 첫 글자를 가져와 프로필 아바타에 넣는다.
-  // charAt(0)에서 0은 첫 번째 글자 의미함.
+  renderOrgAvatar(employee);
   
   document.getElementById('mOrgDept').textContent = `${department} · 사번 ${employee.employeeNo}`;
   document.getElementById('mOrgPhone').textContent = employee.employeePhone || '-';
@@ -119,6 +117,26 @@ async function viewOrgMemberDetail(employeeId) {
   };
 
   openModal('modal-org-member');
+}
+
+// 상세 모달도 조직도 표와 같은 규칙으로 사진 또는 이름 첫 글자를 표시한다.
+function renderOrgAvatar(employee) {
+  const currentAvatar = document.getElementById('mOrgAvatar');
+  const avatar = document.createElement(employee.profileImg ? 'img' : 'div');
+  avatar.id = 'mOrgAvatar';
+  avatar.className = 'profile-avatar-large';
+  avatar.style.cssText = 'width:90px; height:90px; font-size:2rem;';
+
+  if (employee.profileImg) {
+    avatar.classList.add('profile-image');
+    avatar.src = `/uploads/profileImg/${encodeURIComponent(employee.profileImg)}`;
+    avatar.alt = '프로필 사진';
+    avatar.style.objectFit = 'cover';
+  } else {
+    avatar.textContent = employee.employeeName.charAt(0);
+  }
+
+  currentAvatar.replaceWith(avatar);
 }
 
 // 원본 헤더가 사용하던 onclick 이름을 유지하면서 Spring Boot 경로로 이동한다.

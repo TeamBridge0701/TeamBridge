@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.groupware.dto.ApprovalDTO;
+import com.groupware.dto.ApprovalPageDTO;
 import com.groupware.dto.AttendanceDTO;
 import com.groupware.dto.CalendarEventDTO;
 import com.groupware.dto.EmployeeDTO;
@@ -71,20 +72,21 @@ public class DashboardService {
         resultMap.put("notices", latestNotices.subList(0, Math.min(DASHBOARD_NOTICE_COUNT, latestNotices.size())));
 
         // 받은 결재함 = 지금 내가 승인해야 할 차례인 문서들. "결재 대기 문서" 숫자(전체 건수)와
-        // 표 미리보기(앞 3건만)를 이 하나의 조회 결과에서 같이 만들어 쓴다
-        List<ApprovalDTO> inbox = approvalService.getInbox(employeeId);
-        resultMap.put("waitCount", inbox.size()); // 표에는 3건만 보여도, 숫자는 잘라내기 전 "전체" 건수
+        // 표 미리보기(앞 3건만)를 이 하나의 조회 결과에서 같이 만들어 쓴다.
+        // (2026-07-22 정진국 담당 전자결재에 페이지네이션이 추가되며 getInbox/getOutbox가
+        // 페이지 단위 결과(ApprovalPageDTO)를 반환하도록 바뀜 - 대시보드는 "전체 건수"가
+        // 필요해서 content(최대 10건)가 아니라 totalCount를 써야 함. 미리보기 3건은 어차피
+        // PAGE_SIZE(10)보다 작아서 1페이지 content만으로 충분함)
+        ApprovalPageDTO inboxPage = approvalService.getInbox(employeeId, 1);
+        List<ApprovalDTO> inbox = inboxPage.getContent();
+        resultMap.put("waitCount", inboxPage.getTotalCount()); // 표에는 3건만 보여도, 숫자는 "전체" 건수
         resultMap.put("approvals", inbox.subList(0, Math.min(DASHBOARD_APPROVAL_COUNT, inbox.size())));
 
-        // 보낸 기안함(내가 기안한 문서 전체) 중, 아직 승인도 반려도 안 되고 "진행중(PROGRESS)"인
-        // 것만 골라서 개수를 센다.
-        // .stream() : 리스트를 하나씩 순회하며 조건 검사/변환을 할 수 있게 바꿔주는 자바 문법
-        // .filter(조건) : 조건에 맞는 것만 통과시키고 나머지는 버림(여기선 상태값이 PROGRESS인 것만)
-        // .count() : 걸러지고 남은 것들의 개수를 센다(for문 돌면서 if로 개수 세는 것과 결과는 같음)
-        long progressCount = approvalService.getOutbox(employeeId).stream()
-                .filter(a -> "PROGRESS".equals(a.getApprovalStatus()))
-                .count();
-        resultMap.put("progressCount", (int) progressCount); // count()는 long을 반환해서 int로 형변환
+        // 보낸 기안함 중 아직 승인도 반려도 안 되고 "진행중(PROGRESS)"인 것만 센 건수.
+        // 페이지네이션 때문에 getOutbox로는 1페이지(최대 10건)만 볼 수 있어 전체 집계가
+        // 안 되므로, 전용 카운트 쿼리(getOutboxProgressCount)를 따로 쓴다.
+        int progressCount = approvalService.getOutboxProgressCount(employeeId);
+        resultMap.put("progressCount", progressCount);
 
         // 오늘 일정 = 이번 달 전체 일정(캘린더 페이지와 완전히 동일한 조회, 권한 필터링 포함)을
         // 가져온 뒤, 그중 오늘 날짜가 시작일~종료일 사이에 포함되는 것만 추림

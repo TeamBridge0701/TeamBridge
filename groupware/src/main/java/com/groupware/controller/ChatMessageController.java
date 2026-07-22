@@ -25,8 +25,7 @@ public class ChatMessageController {
 	
     private final ChatService chatService;
 
-    // 서버가 특정 /topic 주소를 구독한 WebSocket 브라우저들에게 메시지를 방송할 때 사용한다.
-    // ex) /topic/room/3 같은 주소에 메시지를 방송한다.
+    // 서버가 현재 방 참여자의 개인 WebSocket 주소로 이벤트를 보낼 때 사용한다.
     private final SimpMessagingTemplate messagingTemplate;
 
     /*
@@ -78,15 +77,8 @@ public class ChatMessageController {
                 senderId,
                 requestMessage.getContent());
 
-        /*
-          DB 저장이 성공한 메시지만 해당 방을 구독한 전원에게 방송한다.
-          topic이므로 서버에서 채팅 구독자에게 메세지 전달해줌.
-          예: roomId가 3이면 /topic/room/3으로 방송한다.
-         */
-        messagingTemplate.convertAndSend(
-        		// convertAndSend(주소, 데이터) - 해당 주소를 구독한 모든 브라우저에게 데이터를 전송한다.
-                "/topic/room/" + roomId,
-                savedMessage);
+        // 현재 DB 참여자에게만 개인 큐로 전달한다. 나간 사용자의 예전 구독에는 전달되지 않는다.
+        notifyRoomMembers("/queue/rooms/" + roomId, roomId, savedMessage);
 
         notifyRoomListMembers("MESSAGE", roomId, savedMessage);
     }
@@ -124,12 +116,8 @@ public class ChatMessageController {
             return;
         }
 
-        // 같은 채팅방을 구독 중인 참여자에게 읽음 이벤트를 방송한다.
-        messagingTemplate.convertAndSend(
-                "/topic/room/" + roomId + "/read",
-
-                // readEvent Map을 WebSocket JSON 데이터로 전송한다.
-                (Object) readEvent);
+        // 현재 참여자에게만 읽음 이벤트를 전달한다.
+        notifyRoomMembers("/queue/rooms/" + roomId + "/read", roomId, readEvent);
     }
 
 
@@ -179,13 +167,15 @@ public class ChatMessageController {
                 "typing",
                 Boolean.TRUE.equals(requestTyping.get("typing")));
 
-        // 같은 채팅방을 구독 중인 참여자에게 입력 중 이벤트를 방송한다.
-        // 예: roomId가 3이면 /topic/room/3/typing 주소로 전송된다.
-        messagingTemplate.convertAndSend(
-                "/topic/room/" + roomId + "/typing",
+        // 현재 참여자에게만 입력 중 이벤트를 전달한다.
+        notifyRoomMembers("/queue/rooms/" + roomId + "/typing", roomId, typingEvent);
+    }
 
-                // typingEvent Map을 WebSocket JSON 데이터로 전송한다.
-                (Object) typingEvent);
+    // 방의 현재 참여자에게만 동일한 이벤트를 보낸다.
+    private void notifyRoomMembers(String destination, int roomId, Object payload) {
+        for (String employeeNo : chatService.getRoomMemberEmployeeNos(roomId)) {
+            messagingTemplate.convertAndSendToUser(employeeNo, destination, payload);
+        }
     }
 
 

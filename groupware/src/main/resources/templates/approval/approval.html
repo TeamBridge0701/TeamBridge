@@ -94,6 +94,7 @@
                     <tbody id="inboxTableBody"></tbody>
                   </table>
                 </div>
+                <div id="inboxPagination"></div>
               </div>
             </div>
 
@@ -115,6 +116,7 @@
                     <tbody id="outboxTableBody"></tbody>
                   </table>
                 </div>
+                <div id="outboxPagination"></div>
               </div>
             </div>
 
@@ -137,6 +139,7 @@
                     <tbody id="refTableBody"></tbody>
                   </table>
                 </div>
+                <div id="refPagination"></div>
               </div>
             </div>
 
@@ -167,6 +170,8 @@
           <div style="margin-bottom: 0.5rem;"><strong>기안자:</strong> <span id="mAppDrafter"></span></div>
           <div style="margin-bottom: 0.5rem;"><strong>기안 제목:</strong> <span id="mAppTitle"></span></div>
           <div style="margin-bottom: 0.5rem;"><strong>기안 일자:</strong> <span id="mAppDate"></span></div>
+          <!-- 휴가 기간 - 연차휴가신청서만 값이 있으므로 평소엔 숨겨둠 -->
+          <div id="mAppLeaveRow" style="display:none; margin-bottom: 0.5rem;"><strong>휴가 기간:</strong> <span id="mAppLeavePeriod"></span></div>
           <!-- 금액 - 지출결의서만 값이 있으므로 평소엔 숨겨둠 -->
           <div id="mAppAmountRow" style="display:none; margin-bottom: 0.5rem;"><strong>금액:</strong> <span id="mAppAmount"></span></div>
           <div style="border-top:1px solid var(--border-color); margin-top: 0.75rem; padding-top: 0.75rem;">

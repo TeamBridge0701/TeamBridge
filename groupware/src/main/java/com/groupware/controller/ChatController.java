@@ -29,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.groupware.dto.ChatAttachmentDTO;
 import com.groupware.dto.ChatMessageDTO;
 import com.groupware.dto.ChatRoomDTO;
+import com.groupware.dto.EmployeeDTO;
 import com.groupware.mapper.EmployeeMapper;
 import com.groupware.security.CustomUserDetails;
 import com.groupware.service.ChatService;
@@ -71,6 +72,7 @@ public class ChatController {
         model.addAttribute("currentRoom", null);
         model.addAttribute("messages", List.of());
         model.addAttribute("currentMemberIds", List.of());
+        model.addAttribute("canSendMessage", false);
         
 
         addNewChatModalData(model);
@@ -129,9 +131,14 @@ public class ChatController {
         model.addAttribute("currentRoom", currentRoom);
 
         // 초대 모달에서 이미 이 방에 들어와 있는 직원을 다시 선택하지 않도록 사용한다.
+        List<Integer> currentMemberIds = chatService.getRoomMemberIds(roomId);
+        model.addAttribute("currentMemberIds", currentMemberIds);
         model.addAttribute(
-                "currentMemberIds",
-                chatService.getRoomMemberIds(roomId));
+                "canSendMessage",
+                // 데이터나 정보가 끊임없이 '흐르는' 연속적인 통로 또는 이를 처리하기 위한 API
+                currentMemberIds.stream()
+                // .anyMatch() - Stream() 요소 중 단 하나라도 주어진 조건을 만족하는지 검사하는 메서드
+                        .anyMatch(memberId -> memberId != employeeId));
 
         // Service에서 참여자 검증 후 조회한 이전 메시지를 화면에 전달한다.
         model.addAttribute(
@@ -239,6 +246,27 @@ public class ChatController {
         // 참여자가 맞으면 해당 방의 메시지를 조회해서 JSON으로 반환.
     }
 
+    // 목록 버튼을 누를 때마다 현재 방의 참여자를 다시 조회한다.
+    // 화면을 처음 열 때 목록을 고정하지 않아, 누군가 나간 뒤에도 최신 참여자를 받을 수 있다.
+    @GetMapping("/chat/room/{roomId}/members")
+    @ResponseBody
+    public ResponseEntity<List<EmployeeDTO>> getRoomMembers(
+            // URL의 /chat/room/18/members에서 18을 roomId로 받는다.
+            @PathVariable("roomId") int roomId,
+            // 로그인 사용자 정보에서 직원 번호를 가져와 Service 권한 검사에 사용한다.
+            @AuthenticationPrincipal CustomUserDetails principal) {
+
+        try {
+            // ResponseEntity.ok(...)는 HTTP 200과 EmployeeDTO 목록을 JSON으로 반환한다.
+            return ResponseEntity.ok(chatService.getRoomMembers(
+                    roomId,
+                    principal.getEmployeeDTO().getEmployeeId()));
+        } catch (IllegalArgumentException exception) {
+            // 방 참여자가 아니면 직원 목록을 주지 않고 HTTP 403(FORBIDDEN)만 반환한다.
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+    }
+
     // 공통 헤더·사이드바가 로그인 사용자의 전체 안 읽은 메시지 수를 가져오는 채팅 전용 API다.
     @GetMapping("/chat/unread-count")
     @ResponseBody
@@ -315,6 +343,36 @@ public class ChatController {
         }
     }
 
+    // POST는 서버의 참여자 데이터를 실제로 삭제하는 요청에 사용한다.
+    @PostMapping("/chat/room/{roomId}/leave")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> leaveChatRoom(
+            // {roomId} 자리의 숫자를 int roomId로 받는 Spring MVC 문법이다.
+            @PathVariable("roomId") int roomId,
+            // 브라우저가 보낸 직원 번호를 믿지 않고 로그인한 사용자 정보에서 직원 번호를 가져온다.
+            @AuthenticationPrincipal CustomUserDetails principal) {
+
+        try {
+            ChatMessageDTO systemMessage = chatService.leaveRoom(
+                    roomId,
+                    principal.getEmployeeDTO().getEmployeeId());
+
+            // 마지막 참여자가 아니면 Service가 만든 SYSTEM 메시지를 같은 방 구독자에게 실시간 방송한다.
+            if (systemMessage != null) {
+                notifyRoomMembers("/queue/rooms/" + roomId, roomId, systemMessage);
+                // 남은 참여자들의 왼쪽 채팅방 목록에도 마지막 메시지가 반영되도록 개인 알림을 보낸다.
+                notifyRoomListMembers("MESSAGE", roomId, systemMessage);
+            }
+
+            // JavaScript가 나가기 성공 후 어디로 이동할지 알 수 있게 JSON으로 주소를 반환한다.
+            return ResponseEntity.ok(Map.of("redirectUrl", "/chat"));
+        } catch (IllegalArgumentException exception) {
+            // 참여자가 아니거나 삭제에 실패한 경우에는 HTTP 400과 오류 문구를 JSON으로 반환한다.
+            return ResponseEntity.badRequest().body(
+                    Map.<String, Object>of("message", exception.getMessage()));
+        }
+    }
+
     // 파일 본문은 HTTP multipart로 받고, 저장 성공 후에는 STOMP로 방 구독자에게 방송한다.
     @PostMapping(
             path = "/chat/room/{roomId}/file",
@@ -335,10 +393,7 @@ public class ChatController {
                     employeeId,
                     file);
 
-            messagingTemplate.convertAndSend(
-         // WebSocket을 통해 데이터를 전송하는 메서드를 호출
-                    "/topic/room/" + roomId,
-                    savedMessage);
+            notifyRoomMembers("/queue/rooms/" + roomId, roomId, savedMessage);
             notifyRoomListMembers("MESSAGE", roomId, savedMessage);
 
             return ResponseEntity.ok(savedMessage);
@@ -434,12 +489,23 @@ public class ChatController {
             return;
         }
 
-        // WebSocket 구독자들에게 데이터를 전송
-        messagingTemplate.convertAndSend(
-                "/topic/room/" + readEvent.get("roomId") + "/read",
-                // 읽음 이벤트를 보낼 주소 
-                (Object) readEvent);
-        		// 읽음 정보를 WebSocket 메시지로 전송
+        notifyRoomMembers(
+                "/queue/rooms/" + readEvent.get("roomId") + "/read",
+                readEvent.get("roomId"),
+                readEvent);
+    }
+
+    // DB에 아직 참여자로 남아 있는 사용자에게만 방 이벤트를 보낸다.
+    private void notifyRoomMembers(
+            String destination,
+            int roomId,
+            Object payload) {
+        for (String employeeNo : chatService.getRoomMemberEmployeeNos(roomId)) {
+            messagingTemplate.convertAndSendToUser(
+                    employeeNo,
+                    destination,
+                    payload);
+        }
     }
 
     // 새 대화 모달에 공통으로 필요한 조직 데이터를 Model에 담는다.
