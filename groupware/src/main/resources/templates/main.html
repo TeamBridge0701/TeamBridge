@@ -53,7 +53,7 @@
 
 				<div style="margin-bottom: 1.25rem;">
 					<h2 style="font-size: 1.35rem;">안녕하세요, <span id="dashGreetingName" th:if="${employee != null}"
-							th:text="|${employee?.employeeName} · ${employee.positionName}|">홍길동 사원</span>님! 👋</h2>
+							th:text="${employee.positionName != null ? (employee.employeeName + ' · ' + employee.positionName) : employee.employeeName}">홍길동 사원</span>님! 👋</h2>
 					<p style="font-size: 0.85rem; color: var(--text-secondary);">오늘도 즐거운 하루 되세요.</p>
 				</div>
 
@@ -61,10 +61,18 @@
 					<!-- 좌측 프로필 위젯 -->
 					<div class="col-3">
 						<div class="card profile-card-large">
-							<div class="profile-avatar-large" id="dashAvatar">홍</div>
+							<!-- 마이페이지(mypage.html)와 동일한 방식: 프로필 사진이 있으면 그 사진을,
+							     없으면 이름 첫 글자로 된 원형 아바타를 보여줌 -->
+							<img th:if="${employee != null and employee.profileImg != null}" id="dashAvatar"
+								th:src="@{'/uploads/profileImg/' + ${employee.profileImg}}" class="profile-avatar-large"
+								style="width: 100px; height: 100px; object-fit: cover; border-radius: 50%;">
+							<div th:unless="${employee != null and employee.profileImg != null}" id="dashAvatar"
+								class="profile-avatar-large"
+								th:text="${employee != null ? #strings.substring(employee.employeeName, 0, 1) : '?'}">홍</div>
 							<h3 th:text="${employee?.employeeName}">이름</h3>
+							<!-- 관리자는 부서/직급이 없어서(위에 이미 이름이 "관리자"로 나오니 중복 방지) 이 줄 자체를 숨김 -->
 							<p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1.25rem;"
-								id="dashRoleDept" th:if="${employee != null}"
+								id="dashRoleDept" th:if="${employee != null and employee.deptName != null}"
 								th:text="|${employee.deptName} · ${employee.positionName}|">개발팀 · 사원</p>
 
 							<button id="btnCommute" class="btn"
