@@ -22,9 +22,14 @@ public interface ChatMapper {
 	ChatRoomDTO findRoomByIdAndMember(
             @Param("roomId") int roomId,
             @Param("employeeId") int employeeId);
+
+    // 정지 처리 시 DM과 GROUP을 구분해 처리할 수 있도록, 직원이 참여한 모든 방을 조회한다.
+    List<ChatRoomDTO> findRoomsByMember(@Param("employeeId") int employeeId);
 	
 	// 방에 저장된 이전 메시지를 오래된 순서대로 조회한다.
-    List<ChatMessageDTO> findMessagesByRoomId(@Param("roomId") int roomId);
+    List<ChatMessageDTO> findMessagesByRoomId(
+            @Param("roomId") int roomId,
+            @Param("employeeId") int employeeId);
     
  // 두 사람이 정확히 참여 중인 기존 DM 방을 찾는다.
     ChatRoomDTO findExistingDirectRoom(
@@ -67,6 +72,29 @@ public interface ChatMapper {
 
     // 특정 채팅방 참여자들의 사번 목록을 조회한다.
     List<String> findRoomMemberEmployeeNos(@Param("roomId") int roomId);
+
+    // 메시지 번호가 해당 참여자의 정지 숨김 구간에 있지 않은 경우에만 실시간 수신 대상으로 반환한다.
+    List<String> findRoomMemberEmployeeNosForMessage(
+            @Param("roomId") int roomId,
+            @Param("messageId") int messageId);
+
+    // 복구 직원이 정지 기간의 파일을 주소로 직접 내려받지 못하게 메시지 가시성을 확인한다.
+    int countVisibleRoomMessage(
+            @Param("roomId") int roomId,
+            @Param("messageId") int messageId,
+            @Param("employeeId") int employeeId);
+
+    // 정지 시점부터 복구 시점까지 숨길 메시지 번호 구간을 참여자별로 저장한다.
+    int insertChatMemberSuspension(
+            @Param("roomId") int roomId,
+            @Param("employeeId") int employeeId,
+            @Param("hiddenFromMessageId") int hiddenFromMessageId);
+
+    // 복구 SYSTEM 메시지 다음 번호부터는 다시 보이도록 현재 열린 숨김 구간을 닫는다.
+    int closeOpenChatMemberSuspension(
+            @Param("roomId") int roomId,
+            @Param("employeeId") int employeeId,
+            @Param("hiddenToMessageId") int hiddenToMessageId);
 
     
     

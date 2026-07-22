@@ -50,6 +50,11 @@ import lombok.RequiredArgsConstructor;
 	    }
 	    // 로그인한 사람의 대화방을 사번으로 찾아서 반환한다.
 
+	    // 채팅 목록·모달처럼 아직 roomId가 없는 요청에서 계정 상태를 검사할 때 사용한다.
+	    public boolean isActiveEmployee(int employeeId) {
+	        return employeeMapper.findActiveEmployeeById(employeeId) != null;
+	    }
+
 	    // 현재 로그인한 사람이 이 방의 참여자인지 확인할 때 사용.
 		    public boolean isRoomMember(int roomId, int employeeId) {
 	    	 // roomId 채팅방에 employeeId 사용자가 실제 참여 중인지 확인한다.
@@ -87,6 +92,15 @@ import lombok.RequiredArgsConstructor;
                 return chatMapper.findRoomMemberEmployeeNos(roomId);
             }
 
+            // 복구 직원에게 정지 기간 메시지가 다시 WebSocket으로 가지 않도록 메시지별 수신자를 구한다.
+            public List<String> getRoomMemberEmployeeNosForMessage(
+                    int roomId,
+                    int messageId) {
+                return chatMapper.findRoomMemberEmployeeNosForMessage(
+                        roomId,
+                        messageId);
+            }
+
             // 본인 외에 메시지를 실제로 받을 참여자가 한 명 이상 있어야 전송할 수 있다.
             public boolean canSendMessage(int roomId, int employeeId) {
                 if (!isRoomMember(roomId, employeeId)) {
@@ -95,6 +109,88 @@ import lombok.RequiredArgsConstructor;
 
                 return chatMapper.findRoomMemberIds(roomId).stream()
                         .anyMatch(memberId -> memberId != employeeId);
+            }
+
+            // 계정 정지 시 DM은 기록을 보존하고, GROUP은 참여자 연결을 제거한다.
+            // 반환한 SYSTEM 메시지는 트랜잭션이 끝난 뒤 AdminController가 남은 참여자에게 방송한다.
+            @Transactional
+            public List<ChatMessageDTO> handleEmployeeSuspension(
+                    int employeeId,
+                    String employeeName) {
+                List<ChatMessageDTO> systemMessages = new ArrayList<>();
+
+                for (ChatRoomDTO room : chatMapper.findRoomsByMember(employeeId)) {
+                    int roomId = room.getRoomId();
+
+                    String content = "GROUP".equals(room.getRoomType())
+                            ? employeeName + "님이 비활성화되었습니다."
+                            : employeeName + "님 계정이 비활성화되었습니다.";
+                    ChatMessageDTO suspensionMessage = saveSystemMessage(
+                            roomId,
+                            content);
+
+                    // 정지 SYSTEM 메시지부터 복구 SYSTEM 메시지 전까지는 본인에게만 숨긴다.
+                    chatMapper.insertChatMemberSuspension(
+                            roomId,
+                            employeeId,
+                            suspensionMessage.getMessageId());
+
+                    if ("GROUP".equals(room.getRoomType())) {
+                        // GROUP은 참여자 행을 지우지 않는다. 그래야 비활성 상태도 목록에서 보이고,
+                        // 계정을 복구했을 때 같은 방과 기존 기록을 이어서 사용할 수 있다.
+                        // findRoomMemberIds()는 ACTIVE만 반환하므로 읽음·수신 대상에서는 자동 제외된다.
+                        if (chatMapper.findRoomMemberIds(roomId).isEmpty()) {
+                            continue;
+                        }
+
+                        systemMessages.add(suspensionMessage);
+                        continue;
+                    }
+
+                    if ("DM".equals(room.getRoomType())
+                            && !chatMapper.findRoomMemberIds(roomId).isEmpty()) {
+                        // DM은 참여자 행과 이전 기록을 유지한다. 활성 상대만 남아 있으면 안내를 남긴다.
+                        systemMessages.add(suspensionMessage);
+                    }
+                }
+
+                return systemMessages;
+            }
+
+            // 복구된 직원은 남아 있던 DM·GROUP 참여자 행을 그대로 사용하고 복구 안내만 남긴다.
+            @Transactional
+            public List<ChatMessageDTO> handleEmployeeRestoration(
+                    int employeeId,
+                    String employeeName) {
+                List<ChatMessageDTO> systemMessages = new ArrayList<>();
+
+                for (ChatRoomDTO room : chatMapper.findRoomsByMember(employeeId)) {
+                    ChatMessageDTO restorationMessage = saveSystemMessage(
+                            room.getRoomId(),
+                            employeeName + "님 계정이 복구되었습니다.");
+
+                    // 복구 SYSTEM 메시지도 본인에게는 숨기고, 그 다음 메시지부터 다시 보이게 한다.
+                    chatMapper.closeOpenChatMemberSuspension(
+                            room.getRoomId(),
+                            employeeId,
+                            restorationMessage.getMessageId() + 1);
+                    systemMessages.add(restorationMessage);
+                }
+
+                return systemMessages;
+            }
+
+            // SYSTEM 메시지도 일반 메시지와 같은 표시용 DTO로 다시 조회해 WebSocket 화면에 보낸다.
+            private ChatMessageDTO saveSystemMessage(int roomId, String content) {
+                ChatMessageDTO systemMessage = new ChatMessageDTO();
+                systemMessage.setRoomId(roomId);
+                systemMessage.setSenderId(null);
+                systemMessage.setMessageType("SYSTEM");
+                systemMessage.setContent(content);
+                chatMapper.insertChatMessage(systemMessage);
+
+                return prepareMessageForDisplay(
+                        chatMapper.findMessageById(systemMessage.getMessageId()));
             }
 	    
             // ==================여기까자=============== 밑에 하나 더 
@@ -113,7 +209,9 @@ import lombok.RequiredArgsConstructor;
 	        }
 
 		        // 참여자 검증이 끝난 뒤에만 해당 방의 메시지 이력을 조회한다.
-		        List<ChatMessageDTO> messages = chatMapper.findMessagesByRoomId(roomId);
+		        List<ChatMessageDTO> messages = chatMapper.findMessagesByRoomId(
+		                roomId,
+		                employeeId);
 		        String previousSentDateKey = null;
 
 		        // 최초 화면은 JavaScript가 다시 가공하지 않도록 표시용 값까지 서버에서 준비한다.
@@ -198,12 +296,15 @@ import lombok.RequiredArgsConstructor;
 	    // 메서드 안의 DB 작업을 하나의 묶음으로 처리한다는 뜻이다.
 	    // 한쪽이 안되면 다시 되돌림. (IllegalArgumentException은 실행 중 예외이라 롤백 대상이 됨.)
 	    
-	    public int createOrFindDirectRoom(
+		    public int createOrFindDirectRoom(
 	    // 상대와 1:1 방을 찾고 있으면 열고, 없으면 새 방으로 두 명을 참여자로 등록하는 기능이다.
-	            int myEmployeeId,
-	            int targetEmployeeId) { // 상대 사번.
+		            int myEmployeeId,
+		            int targetEmployeeId) { // 상대 사번.
 
-	        // 조직도에서 자기 자신을 선택하더라도 서버에서 한 번 더 막는다.
+		        // 정지 계정이 주소를 직접 호출해 새 DM을 만들지 못하게 생성자도 ACTIVE인지 확인한다.
+		        requireActiveEmployee(myEmployeeId);
+
+		        // 조직도에서 자기 자신을 선택하더라도 서버에서 한 번 더 막는다.
 	        if (myEmployeeId == targetEmployeeId) {
 	            throw new IllegalArgumentException("본인과는 대화방을 만들 수 없습니다.");
 	        }
@@ -251,10 +352,13 @@ import lombok.RequiredArgsConstructor;
 	    
 	    @Transactional
 		    public int createGroupRoom(
-	            int myEmployeeId,
-	            List<Integer> targetEmployeeIds) {
+		            int myEmployeeId,
+		            List<Integer> targetEmployeeIds) {
 
-	        // 선택 인원 목록 자체가 없으면 그룹방을 만들 수 없다.
+		        // 그룹방 생성 요청도 로그인한 생성자가 ACTIVE일 때만 허용한다.
+		        requireActiveEmployee(myEmployeeId);
+
+		        // 선택 인원 목록 자체가 없으면 그룹방을 만들 수 없다.
 	        if (targetEmployeeIds == null) {
 	            throw new IllegalArgumentException("대화 상대를 선택해주세요.");
 	        }
@@ -304,31 +408,11 @@ import lombok.RequiredArgsConstructor;
 	            targets.add(target);
 	        }
 
-	        /*
-	          그룹방 이름 변경 기능을 만들면 사용자가 나중에 바꿀 수 있다.
-	         */
-	        String roomName;
-	        // 개인방 
-	        if (targets.size() == 2) {
-	            roomName = targets.get(0).getEmployeeName()
-	            		// 목록의 첫번째 직원이다 - 자바는 0부터 시작 
-	                    + ", "
-	                    + targets.get(1).getEmployeeName();
-	        // 그룹방 
-	        } else {
-	            roomName = targets.get(0).getEmployeeName()
-	                    + ", "
-	                    + targets.get(1).getEmployeeName()
-	                    + " 외 "
-	                    + (targets.size() - 2)
-	                    // 첫 번째, 두 번째 직원 이름은 이미 표시했으므로 나머지 인원 수를 계산한다.
-	                    // 이름 나타내기 위해 함. ( 누구 누구 외 n명 )
-	                    + "명";
-	        }
-
-	        ChatRoomDTO newRoom = new ChatRoomDTO();
-	        newRoom.setRoomType("GROUP");
-	        newRoom.setRoomName(roomName);
+		        ChatRoomDTO newRoom = new ChatRoomDTO();
+		        newRoom.setRoomType("GROUP");
+		        // null은 기본 이름이라는 표시다. 목록 SQL이 현재 사용자를 제외한 참여자 이름을 만든다.
+		        // 사용자가 이름을 변경할 때만 ROOM_NAME에 실제 사용자 지정 이름을 저장한다.
+		        newRoom.setRoomName(null);
 
 	        // CHAT_ROOM에 GROUP 방을 먼저 저장한다.
 	        chatMapper.insertChatRoom(newRoom);
@@ -472,6 +556,17 @@ import lombok.RequiredArgsConstructor;
                 // 이름·표시 시간 등 화면에 필요한 값을 포함한 완성된 메시지를 다시 조회해 반환한다.
                 return prepareMessageForDisplay(
                         chatMapper.findMessageById(systemMessage.getMessageId()));
+            }
+
+            // 채팅 생성처럼 기존 방 번호가 없는 요청에서도 정지 계정을 서버에서 차단한다.
+            private EmployeeDTO requireActiveEmployee(int employeeId) {
+                EmployeeDTO employee = employeeMapper.findActiveEmployeeById(employeeId);
+
+                if (employee == null) {
+                    throw new IllegalArgumentException("활성 상태의 직원만 채팅을 사용할 수 있습니다.");
+                }
+
+                return employee;
             }
 	    
 	    
@@ -666,6 +761,14 @@ import lombok.RequiredArgsConstructor;
                 	// isRoomMember(...): 현재 직원이 그 방 참여자인지 확인
                 	// 파일 URL만 알아도 다른 사람이 받지 못하게 막는 핵심 권한 검사.
                     throw new IllegalArgumentException("첨부파일을 다운로드할 권한이 없습니다.");
+                }
+
+                // 복구된 직원은 URL을 알아도 정지 기간에 올라온 파일을 받을 수 없다.
+                if (chatMapper.countVisibleRoomMessage(
+                        attachment.getRoomId(),
+                        attachment.getMessageId(),
+                        employeeId) == 0) {
+                    throw new IllegalArgumentException("정지 기간의 첨부파일은 다운로드할 수 없습니다.");
                 }
 
                 return attachment;

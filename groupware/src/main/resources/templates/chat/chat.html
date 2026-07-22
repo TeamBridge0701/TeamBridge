@@ -141,7 +141,8 @@
 			  <div class="chat-main"
 			       id="chatMain"
 			       th:attr="data-current-employee-id=${employee.employeeId},
-			                data-current-room-id=${currentRoom != null ? currentRoom.roomId : ''}">
+			                data-current-room-id=${currentRoom != null ? currentRoom.roomId : ''},
+			                data-current-room-type=${currentRoom != null ? currentRoom.roomType : ''}">
 
 				  <!-- currentRoom이 있을 때만 채팅방 헤더를 출력한다. -->
 				  <div class="chat-thread-header"
@@ -350,10 +351,9 @@
 			                                 ? 'align-items:flex-end;'
 			                                 : 'align-items:flex-start;'">
 
-			              <!-- 내 메시지를 아직 읽지 않은 참여자가 있을 때만 그 인원 수를 표시한다. -->
+			              <!-- 모든 참여자가 같은 읽음 인원 수를 보도록 발신자 여부와 관계없이 표시한다. -->
 			              <span class="chat-bubble-read"
-			                    th:if="${message.senderId == employee.employeeId
-			                             and message.unreadMemberCount > 0}"
+			                    th:if="${message.unreadMemberCount > 0}"
 			                    th:text="${message.unreadMemberCount}">
 			                안 읽은 인원
 			              </span>

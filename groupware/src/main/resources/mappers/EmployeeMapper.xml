@@ -83,6 +83,7 @@
         SELECT e.EMPLOYEE_ID,
                e.EMPLOYEE_NO,
                e.EMPLOYEE_NAME,
+               e.DEPT_ID,
                e.EMPLOYEE_ROLE,
                e.EMPLOYEE_PHONE,
                e.EMPLOYEE_EMAIL,
@@ -164,15 +165,26 @@
                e.EMPLOYEE_ROLE,
                e.EMPLOYEE_PHONE,
                e.EMPLOYEE_EMAIL,
+               e.BIRTH_DATE,
                e.PROFILE_IMG,
                e.EMPLOYEE_STATUS,
                d.DEPT_NAME,
-               p.POSITION_NAME
+               p.POSITION_NAME,
+               CASE
+                   WHEN a.ATTENDANCE_STATUS = 'LEAVE' THEN 'LEAVE'
+                   WHEN a.ATTENDANCE_ID IS NULL THEN 'NONE'
+                   WHEN a.CHECK_OUT_TIME IS NOT NULL THEN 'DONE'
+                   ELSE 'WORKING'
+               END AS WORK_STATUS
         FROM EMPLOYEE e
         
         <!-- 마찬가지로 관리자 정보도 조회해야 하기에 LEFT JOIN 사용 -->
         LEFT JOIN DEPARTMENT d ON d.DEPT_ID = e.DEPT_ID
         LEFT JOIN `POSITION` p ON p.POSITION_ID = e.POSITION_ID
+        <!-- 휴가 여부는 계정 상태가 아니라 오늘 ATTENDANCE 기록으로만 판단한다. -->
+        LEFT JOIN ATTENDANCE a
+          ON a.EMPLOYEE_ID = e.EMPLOYEE_ID
+         AND a.WORK_DATE = CURDATE()
         WHERE e.EMPLOYEE_ID = #{employeeId}
         <!-- ACTIVE는 EMPLOYEE_STATUS 컬럼과 비교할 문자열 값이므로 작은따옴표로 감싼다. -->
         <!-- 백틱은 MySQL에서 컬럼명이나 테이블명에 쓰므로 ACTIVE에 사용하면 오류가 난다. -->

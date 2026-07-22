@@ -82,8 +82,24 @@ async function viewOrgMemberDetail(employeeId) {
   document.getElementById('mOrgPhone').textContent = employee.employeePhone || '-';
   // 없으면 -를 표시.
   document.getElementById('mOrgEmail').textContent = employee.employeeEmail || '-';
-  document.getElementById('mOrgStatus').textContent = employee.employeeStatus === 'ACTIVE'
-    ? '재직 중' : (employee.employeeStatus || '-');
+
+  // 생일은 개인정보이므로 저장된 값이 있는 직원에게만 연도 없이 월·일만 표시한다.
+  const birthDateRow = document.getElementById('mOrgBirthDateRow'); // 생일 한 줄 전체를 숨김 / 표시 ()
+  const birthDate = document.getElementById('mOrgBirthDate'); // 날짜 글자만 넣는
+  if (employee.birthDate) {
+    const [, month, day] = employee.birthDate.split('-');
+    birthDate.textContent = `${Number(month)}월 ${Number(day)}일`;
+    birthDateRow.style.display = 'block';
+  } else {
+    birthDate.textContent = '';
+    birthDateRow.style.display = 'none';
+  }
+
+  // 휴가(LEAVE)는 계정 정지와 무관한 오늘 근태 상태이므로 "휴가 (재직)"으로 따로 표시한다.
+  const statusText = employee.employeeRole === 'ADMIN'
+    ? '-'
+    : (employee.workStatus === 'LEAVE' ? '휴가 (재직)' : '재직 중');
+  document.getElementById('mOrgStatus').textContent = statusText;
 
   const chatButton = document.getElementById('mOrgChatBtn');
   const currentEmployeeId = Number(orgTableBody.dataset.currentEmployeeId);

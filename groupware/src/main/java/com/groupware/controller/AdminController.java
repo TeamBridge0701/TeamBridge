@@ -1,9 +1,12 @@
 package com.groupware.controller;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -13,10 +16,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.groupware.dto.AttendanceDTO;
+import com.groupware.dto.ChatMessageDTO;
 import com.groupware.dto.DepartmentDTO;
 import com.groupware.dto.EmployeeDTO;
 import com.groupware.dto.PositionDTO;
 import com.groupware.service.AttendanceService;
+import com.groupware.service.ChatService;
 import com.groupware.service.EmployeeService;
 
 import lombok.RequiredArgsConstructor;
@@ -29,6 +34,8 @@ public class AdminController {
 
 	private final EmployeeService employeeService;
 	private final AttendanceService attendanceService;
+	private final ChatService chatService;
+	private final SimpMessagingTemplate messagingTemplate;
 
 	// 관리자 화면(계정·인사정보 관리) 진입. 표 데이터는 화면 로드 후 JS가
 	// GET /admin/member를 호출해서 채운다 (검색어 입력 시 재호출하는 구조라 SSR 대신 AJAX로 감).
@@ -82,15 +89,56 @@ public class AdminController {
 	@PostMapping("/admin/member/suspend/{employeeId}")
 	@ResponseBody
 	public ResponseEntity<String> suspendMember(@PathVariable("employeeId") int employeeId) {
-		employeeService.updateEmployeeStatus(employeeId, "SUSPENDED");
+		
+		// 추가 
+		// 상태 변경과 SYSTEM 메시지 저장이 모두 끝난 뒤에만 실시간 알림을 보낸다.
+		for (ChatMessageDTO systemMessage :
+				employeeService.suspendEmployeeWithChat(employeeId)) {
+			notifyRoomSystemMessage(systemMessage);
+		} // 여기까지 
+
 		return ResponseEntity.ok("계정이 정지되었습니다.");
 	}
+	
+	// 추가 
+
+	// 정지·복구 처리 뒤 ACTIVE 참여자에게만 SYSTEM 메시지와 목록 갱신을 보낸다.
+	private void notifyRoomSystemMessage(ChatMessageDTO systemMessage) {
+		int roomId = systemMessage.getRoomId();
+
+		for (String employeeNo : chatService.getRoomMemberEmployeeNosForMessage(
+				roomId,
+				systemMessage.getMessageId())) {
+			messagingTemplate.convertAndSendToUser(
+					employeeNo,
+					"/queue/rooms/" + roomId,
+					systemMessage);
+		}
+
+		Map<String, Object> roomEvent = new HashMap<>();
+		roomEvent.put("eventType", "MESSAGE");
+		roomEvent.put("roomId", roomId);
+		roomEvent.put("message", systemMessage);
+
+		for (String employeeNo : chatService.getRoomMemberEmployeeNosForMessage(
+				roomId,
+				systemMessage.getMessageId())) {
+			messagingTemplate.convertAndSendToUser(
+					employeeNo,
+					"/queue/chat-rooms",
+					roomEvent);
+		}
+	} // 여기까지 
 
 	// 계정 정지 해제 (재직 복귀)
 	@PostMapping("/admin/member/restore/{employeeId}")
 	@ResponseBody
 	public ResponseEntity<String> restoreMember(@PathVariable("employeeId") int employeeId) {
-		employeeService.updateEmployeeStatus(employeeId, "ACTIVE");
+		for (ChatMessageDTO systemMessage :
+				employeeService.restoreEmployeeWithChat(employeeId)) {
+			notifyRoomSystemMessage(systemMessage);
+		}
+
 		return ResponseEntity.ok("계정이 복구되었습니다.");
 	}
 

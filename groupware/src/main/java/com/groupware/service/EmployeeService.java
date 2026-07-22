@@ -11,8 +11,10 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.groupware.dto.ChatMessageDTO;
 import com.groupware.dto.DepartmentDTO;
 import com.groupware.dto.EmployeeDTO;
 import com.groupware.dto.PositionDTO;
@@ -30,6 +32,7 @@ public class EmployeeService {
 	private final DepartmentMapper departmentMapper;
 	private final PositionMapper positionMapper;
 	private final PasswordEncoder passwordEncoder;
+	private final ChatService chatService;
 	
 	// 실제 파일이 저장될 폴더 (application.properties 참고) - ArchiveService의 uploadDir과 동일한 방식
 	// application.properties 설정값을 꽂는 용도 - Bean이 아니라 생성자 주입 대상이 아님.
@@ -176,6 +179,59 @@ public class EmployeeService {
 		return true;
 	}
 
+	
+	// 추가 ===============
+	
+	
+	// 계정 상태와 채팅방 정리 작업은 함께 성공하거나 함께 취소되어야 한다.
+	@Transactional
+	public List<ChatMessageDTO> suspendEmployeeWithChat(int employeeId) {
+		// 정지 전에 이름을 읽어야 SYSTEM 메시지에 직원 이름을 남길 수 있다.
+		// findMyPageInfo()는 ACTIVE 조건이 없어서 정지 여부와 관계없이 현재 상태를 확인할 수 있다.
+		EmployeeDTO employee = employeeMapper.findMyPageInfo(employeeId);
+
+		if (employee == null) {
+			throw new IllegalArgumentException("직원 정보를 찾을 수 없습니다.");
+		}
+
+		// 같은 계정을 다시 정지할 때 SYSTEM 메시지가 중복 저장되지 않게 한다.
+		if ("SUSPENDED".equals(employee.getEmployeeStatus())) {
+			return List.of();
+		}
+
+		if (employeeMapper.updateStatus(employeeId, "SUSPENDED") != 1) {
+			throw new IllegalArgumentException("계정 정지 처리에 실패했습니다.");
+		}
+
+		return chatService.handleEmployeeSuspension(
+				employeeId,
+				employee.getEmployeeName());
+	}
+
+	// 복구 시에는 정지 때 남겨 둔 채팅방 참여자 행을 다시 사용할 수 있다.
+	@Transactional
+	public List<ChatMessageDTO> restoreEmployeeWithChat(int employeeId) {
+		EmployeeDTO employee = employeeMapper.findMyPageInfo(employeeId);
+
+		if (employee == null) {
+			throw new IllegalArgumentException("직원 정보를 찾을 수 없습니다.");
+		}
+
+		// 이미 ACTIVE면 복구 SYSTEM 메시지를 중복 저장하지 않는다.
+		if ("ACTIVE".equals(employee.getEmployeeStatus())) {
+			return List.of();
+		}
+
+		if (employeeMapper.updateStatus(employeeId, "ACTIVE") != 1) {
+			throw new IllegalArgumentException("계정 복구 처리에 실패했습니다.");
+		}
+
+		return chatService.handleEmployeeRestoration(
+				employeeId,
+				employee.getEmployeeName());
+	} // 여기까지 
+
+	
 	// 관리자: 비밀번호 초기화 - 임시 비밀번호는 본인 사번으로 통일해서 안내 없이도 재로그인 가능하게 함
 	// (직원이 로그인 후 마이페이지에서 바로 바꾸는 걸 전제. 팀에서 다른 규칙 정하면 이 메서드만 바꾸면 됨)
 	public void resetPassword(int employeeId) {

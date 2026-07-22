@@ -31,9 +31,23 @@
         </association>
     </resultMap>
 
+    <!-- 복구 직원은 본인의 정지 기간에 속한 메시지를 HTTP 목록·방 목록·배지에서 모두 제외한다. -->
+    <sql id="excludeSuspendedMessageForEmployee">
+        AND NOT EXISTS (
+            SELECT 1
+            FROM CHAT_ROOM_MEMBER_SUSPENSION suspension
+            WHERE suspension.ROOM_ID = cm.ROOM_ID
+              AND suspension.EMPLOYEE_ID = #{employeeId}
+              AND cm.MESSAGE_ID &gt;= suspension.HIDDEN_FROM_MESSAGE_ID
+              AND (suspension.HIDDEN_TO_MESSAGE_ID IS NULL
+                   OR cm.MESSAGE_ID &lt; suspension.HIDDEN_TO_MESSAGE_ID)
+        )
+    </sql>
+
 	<!--
       - 로그인한 직원이 들어가 있는 채팅방 목록 
-      DM은 참여자 중 본인이 아닌 상대 이름을, GROUP은 ROOM_NAME을 표시한다.
+	      DM은 참여자 중 본인이 아닌 상대 이름을 표시한다.
+	      GROUP은 사용자 지정 이름이 있으면 ROOM_NAME을, 없으면 본인을 제외한 참여자 이름을 표시한다.
     -->
     <select id="findMyChatRooms" resultType="com.groupware.dto.ChatRoomDTO">
         SELECT r.ROOM_ID,
@@ -57,7 +71,32 @@
 			
                CASE
                	    <!-- 그룹방 -->
-                   WHEN r.ROOM_TYPE = 'GROUP' THEN r.ROOM_NAME
+                   WHEN r.ROOM_TYPE = 'GROUP' AND r.ROOM_NAME IS NOT NULL
+                       THEN r.ROOM_NAME
+                   WHEN r.ROOM_TYPE = 'GROUP' THEN (
+                       SELECT CASE
+                                  WHEN COUNT(*) &lt;= 2 THEN GROUP_CONCAT(
+                                      e.EMPLOYEE_NAME
+                                      ORDER BY otherMember.MEMBER_ROW_ID
+                                      SEPARATOR ', ')
+                                  ELSE CONCAT(
+                                      SUBSTRING_INDEX(
+                                          GROUP_CONCAT(
+                                              e.EMPLOYEE_NAME
+                                              ORDER BY otherMember.MEMBER_ROW_ID
+                                              SEPARATOR ', '),
+                                          ', ',
+                                          2),
+                                      ' 외 ',
+                                      COUNT(*) - 2,
+                                      '명')
+                              END
+                       FROM CHAT_ROOM_MEMBER otherMember
+                       JOIN EMPLOYEE e
+                         ON e.EMPLOYEE_ID = otherMember.EMPLOYEE_ID
+                       WHERE otherMember.ROOM_ID = r.ROOM_ID
+                         AND otherMember.EMPLOYEE_ID != #{employeeId}
+                   )
                    ELSE (
 					
 					<!-- 개인방 -->
@@ -139,6 +178,7 @@
                           END
                    FROM CHAT_MESSAGE cm
                    WHERE cm.ROOM_ID = r.ROOM_ID
+	               <include refid="excludeSuspendedMessageForEmployee" />
                 <!-- 
 					현재 바깥쪽에서 조회 중인 채팅방의 메시지만 가져온다.
 					cm.ROOM_ID: 메시지가 속한 방 번호
@@ -163,6 +203,7 @@
                    SELECT cm.MESSAGE_TYPE
                    FROM CHAT_MESSAGE cm
                    WHERE cm.ROOM_ID = r.ROOM_ID
+	               <include refid="excludeSuspendedMessageForEmployee" />
                    ORDER BY cm.MESSAGE_ID DESC
                    LIMIT 1
                ) AS LAST_MESSAGE_TYPE,
@@ -178,6 +219,7 @@
                    SELECT cm.SENT_AT
                    FROM CHAT_MESSAGE cm
                    WHERE cm.ROOM_ID = r.ROOM_ID
+	               <include refid="excludeSuspendedMessageForEmployee" />
                    ORDER BY cm.MESSAGE_ID DESC
                    LIMIT 1
                ) AS LAST_SENT_AT,
@@ -191,6 +233,7 @@
                    SELECT COUNT(*)
                    FROM CHAT_MESSAGE cm
                    WHERE cm.ROOM_ID = r.ROOM_ID
+	               <include refid="excludeSuspendedMessageForEmployee" />
                    
                      AND (
 						cm.SENDER_ID IS NULL 
@@ -222,7 +265,10 @@
         FROM CHAT_ROOM r
         JOIN CHAT_ROOM_MEMBER member
           ON member.ROOM_ID = r.ROOM_ID
+        JOIN EMPLOYEE currentEmployee
+          ON currentEmployee.EMPLOYEE_ID = member.EMPLOYEE_ID
         WHERE member.EMPLOYEE_ID = #{employeeId}
+	      AND currentEmployee.EMPLOYEE_STATUS = 'ACTIVE'
      <!-- 이 조건을 걸면 현재 로그인한 사람이 참여중인 방만 나온다.  -->
 
 
@@ -240,6 +286,7 @@
                 
                 FROM CHAT_MESSAGE cm
                 WHERE cm.ROOM_ID = r.ROOM_ID
+	            <include refid="excludeSuspendedMessageForEmployee" />
             ),
             r.CREATED_AT
             <!-- 메세지가 없으면 방 생성 시간 기준으로 정렬 -->
@@ -260,8 +307,23 @@
         FROM CHAT_ROOM r
         JOIN CHAT_ROOM_MEMBER member
           ON member.ROOM_ID = r.ROOM_ID
+        JOIN EMPLOYEE currentEmployee
+          ON currentEmployee.EMPLOYEE_ID = member.EMPLOYEE_ID
         WHERE r.ROOM_ID = #{roomId}
           AND member.EMPLOYEE_ID = #{employeeId}
+          AND currentEmployee.EMPLOYEE_STATUS = 'ACTIVE'
+    </select>
+
+    <!-- 정지 직후에도 GROUP/DM 규칙을 적용할 수 있게, 상태와 관계없이 현재 참여 방을 찾는다. -->
+    <select id="findRoomsByMember" resultType="com.groupware.dto.ChatRoomDTO">
+        SELECT r.ROOM_ID,
+               r.ROOM_TYPE,
+               r.ROOM_NAME,
+               r.CREATED_AT
+        FROM CHAT_ROOM r
+        JOIN CHAT_ROOM_MEMBER member
+          ON member.ROOM_ID = r.ROOM_ID
+        WHERE member.EMPLOYEE_ID = #{employeeId}
     </select>
     
     
@@ -290,10 +352,22 @@
                (
                    SELECT COUNT(*)
                    FROM CHAT_ROOM_MEMBER readMember
+                   JOIN EMPLOYEE readEmployee
+                     ON readEmployee.EMPLOYEE_ID = readMember.EMPLOYEE_ID
                    WHERE readMember.ROOM_ID = cm.ROOM_ID
+                     AND readEmployee.EMPLOYEE_STATUS = 'ACTIVE'
                      AND readMember.EMPLOYEE_ID != cm.SENDER_ID
                      AND (readMember.LAST_READ_MESSAGE_ID IS NULL
                           OR readMember.LAST_READ_MESSAGE_ID &lt; cm.MESSAGE_ID)
+                     AND NOT EXISTS (
+                         SELECT 1
+                         FROM CHAT_ROOM_MEMBER_SUSPENSION suspension
+                         WHERE suspension.ROOM_ID = cm.ROOM_ID
+                           AND suspension.EMPLOYEE_ID = readMember.EMPLOYEE_ID
+                           AND cm.MESSAGE_ID &gt;= suspension.HIDDEN_FROM_MESSAGE_ID
+                           AND (suspension.HIDDEN_TO_MESSAGE_ID IS NULL
+                                OR cm.MESSAGE_ID &lt; suspension.HIDDEN_TO_MESSAGE_ID)
+                     )
                ) AS UNREAD_MEMBER_COUNT,
                e.EMPLOYEE_NAME AS SENDER_NAME,
                e.PROFILE_IMG AS SENDER_PROFILE_IMG,
@@ -309,6 +383,7 @@
         LEFT JOIN CHAT_ATTACHMENT ca
           ON ca.MESSAGE_ID = cm.MESSAGE_ID
         WHERE cm.ROOM_ID = #{roomId}
+        <include refid="excludeSuspendedMessageForEmployee" />
         ORDER BY cm.MESSAGE_ID ASC
     </select>
 
@@ -388,12 +463,15 @@
           AND EMPLOYEE_ID = #{employeeId}
     </delete>
 
-    <!-- 기존 방 참여자는 그대로 두고, 초대 시 새 그룹방에 넣을 인원만 조회한다. -->
+    <!-- ACTIVE 참여자만 반환해 비활성 직원은 전송 가능 인원·읽음 계산 대상에서 제외한다. -->
     <select id="findRoomMemberIds" resultType="int">
-        SELECT EMPLOYEE_ID
-        FROM CHAT_ROOM_MEMBER
-        WHERE ROOM_ID = #{roomId}
-        ORDER BY MEMBER_ROW_ID ASC
+        SELECT member.EMPLOYEE_ID
+        FROM CHAT_ROOM_MEMBER member
+        JOIN EMPLOYEE e
+          ON e.EMPLOYEE_ID = member.EMPLOYEE_ID
+         AND e.EMPLOYEE_STATUS = 'ACTIVE'
+        WHERE member.ROOM_ID = #{roomId}
+        ORDER BY member.MEMBER_ROW_ID ASC
     </select>
 
     <!--
@@ -442,7 +520,49 @@
         JOIN EMPLOYEE e
           ON e.EMPLOYEE_ID = member.EMPLOYEE_ID
         WHERE member.ROOM_ID = #{roomId}
+	      AND e.EMPLOYEE_STATUS = 'ACTIVE'
     </select>
+
+    <!-- 해당 메시지를 볼 수 있는 ACTIVE 참여자에게만 실시간 메시지를 보낸다. -->
+    <select id="findRoomMemberEmployeeNosForMessage" resultType="string">
+        SELECT e.EMPLOYEE_NO
+        FROM CHAT_ROOM_MEMBER member
+        JOIN EMPLOYEE e
+          ON e.EMPLOYEE_ID = member.EMPLOYEE_ID
+        WHERE member.ROOM_ID = #{roomId}
+          AND e.EMPLOYEE_STATUS = 'ACTIVE'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM CHAT_ROOM_MEMBER_SUSPENSION suspension
+              WHERE suspension.ROOM_ID = member.ROOM_ID
+                AND suspension.EMPLOYEE_ID = member.EMPLOYEE_ID
+                AND #{messageId} &gt;= suspension.HIDDEN_FROM_MESSAGE_ID
+                AND (suspension.HIDDEN_TO_MESSAGE_ID IS NULL
+                     OR #{messageId} &lt; suspension.HIDDEN_TO_MESSAGE_ID)
+          )
+    </select>
+
+    <!-- 정지 SYSTEM 메시지부터는 해당 직원의 화면에서 숨길 메시지 구간을 연다. -->
+    <insert id="insertChatMemberSuspension">
+        INSERT INTO CHAT_ROOM_MEMBER_SUSPENSION (
+            ROOM_ID,
+            EMPLOYEE_ID,
+            HIDDEN_FROM_MESSAGE_ID
+        ) VALUES (
+            #{roomId},
+            #{employeeId},
+            #{hiddenFromMessageId}
+        )
+    </insert>
+
+    <!-- 복구 SYSTEM 메시지까지 숨기고, 그 다음 메시지부터 다시 보이도록 열린 구간을 닫는다. -->
+    <update id="closeOpenChatMemberSuspension">
+        UPDATE CHAT_ROOM_MEMBER_SUSPENSION
+        SET HIDDEN_TO_MESSAGE_ID = #{hiddenToMessageId}
+        WHERE ROOM_ID = #{roomId}
+          AND EMPLOYEE_ID = #{employeeId}
+          AND HIDDEN_TO_MESSAGE_ID IS NULL
+    </update>
 
     <select id="findLatestMessageId" resultType="int">
         SELECT MAX(MESSAGE_ID)
@@ -463,9 +583,13 @@
         FROM CHAT_ROOM_MEMBER member
         JOIN CHAT_MESSAGE cm
           ON cm.ROOM_ID = member.ROOM_ID
+        JOIN EMPLOYEE e
+          ON e.EMPLOYEE_ID = member.EMPLOYEE_ID
         WHERE member.EMPLOYEE_ID = #{employeeId}
+          AND e.EMPLOYEE_STATUS = 'ACTIVE'
           AND (cm.SENDER_ID IS NULL OR cm.SENDER_ID != #{employeeId})
           AND cm.MESSAGE_ID &gt; COALESCE(member.LAST_READ_MESSAGE_ID, 0)
+          <include refid="excludeSuspendedMessageForEmployee" />
     </select>
 
     <!-- 더 큰 읽음 번호일 때만 UPDATE해 같은 읽음 이벤트의 중복 방송을 막는다. -->
@@ -536,10 +660,22 @@
                (
                    SELECT COUNT(*)
                    FROM CHAT_ROOM_MEMBER readMember
+                   JOIN EMPLOYEE readEmployee
+                     ON readEmployee.EMPLOYEE_ID = readMember.EMPLOYEE_ID
                    WHERE readMember.ROOM_ID = cm.ROOM_ID
+                     AND readEmployee.EMPLOYEE_STATUS = 'ACTIVE'
                      AND readMember.EMPLOYEE_ID != cm.SENDER_ID
                      AND (readMember.LAST_READ_MESSAGE_ID IS NULL
                           OR readMember.LAST_READ_MESSAGE_ID &lt; cm.MESSAGE_ID)
+                     AND NOT EXISTS (
+                         SELECT 1
+                         FROM CHAT_ROOM_MEMBER_SUSPENSION suspension
+                         WHERE suspension.ROOM_ID = cm.ROOM_ID
+                           AND suspension.EMPLOYEE_ID = readMember.EMPLOYEE_ID
+                           AND cm.MESSAGE_ID &gt;= suspension.HIDDEN_FROM_MESSAGE_ID
+                           AND (suspension.HIDDEN_TO_MESSAGE_ID IS NULL
+                                OR cm.MESSAGE_ID &lt; suspension.HIDDEN_TO_MESSAGE_ID)
+                     )
                ) AS UNREAD_MEMBER_COUNT,
                e.EMPLOYEE_NAME AS SENDER_NAME,
                e.PROFILE_IMG AS SENDER_PROFILE_IMG,
@@ -596,6 +732,21 @@
         JOIN CHAT_MESSAGE cm
           ON cm.MESSAGE_ID = ca.MESSAGE_ID
         WHERE ca.ATTACH_ID = #{attachId}
+    </select>
+
+    <!-- 첨부파일의 원본 메시지가 현재 직원에게 보이는 구간인지 확인한다. -->
+    <select id="countVisibleRoomMessage" resultType="int">
+        SELECT COUNT(*)
+        FROM CHAT_ROOM_MEMBER member
+        JOIN EMPLOYEE e
+          ON e.EMPLOYEE_ID = member.EMPLOYEE_ID
+        JOIN CHAT_MESSAGE cm
+          ON cm.ROOM_ID = member.ROOM_ID
+         AND cm.MESSAGE_ID = #{messageId}
+        WHERE member.ROOM_ID = #{roomId}
+          AND member.EMPLOYEE_ID = #{employeeId}
+          AND e.EMPLOYEE_STATUS = 'ACTIVE'
+          <include refid="excludeSuspendedMessageForEmployee" />
     </select>
 
 
