@@ -35,6 +35,7 @@ function renderDraftSelectedFiles() {
 function statusBadge(status) {
   if (status === 'APPROVED') return '<span class="badge badge-success">승인 완료</span>';
   if (status === 'REJECTED') return '<span class="badge badge-danger">반려됨</span>';
+  if (status === 'WITHDRAWN') return '<span class="badge badge-muted">회수됨</span>';
   return '<span class="badge badge-warning">진행중</span>';
 }
 
@@ -294,19 +295,27 @@ function viewApprovalDetail(id) {
         rejectBox.style.display = 'none';
       }
 
-      // 액션 패널 - 서버가 계산해 내려준 canDecide만 신뢰한다(버튼 숨김은 보안이 아니라
-      // 실제 승인/반려 요청은 서버가 다시 검증하지만, 노출 여부는 이 값 하나로 충분함)
+      // 액션 패널 - 서버가 계산해 내려준 canDecide/canWithdraw만 신뢰한다(버튼 숨김은 보안이
+      // 아니라 실제 승인/반려/회수 요청은 서버가 다시 검증하지만, 노출 여부는 이 값으로 충분함)
       const actionBox = document.getElementById('mAppActionBox');
       const actionBtns = document.getElementById('mAppActionButtons');
+      const withdrawBtn = document.getElementById('mAppWithdrawBtn');
       const closeBtn = document.getElementById('mAppCloseBtn');
       if (a.canDecide) {
         actionBox.style.display = 'block';
         actionBtns.style.display = 'flex';
+        withdrawBtn.style.display = 'none';
         closeBtn.style.display = 'none';
         document.getElementById('appActionComment').value = '';
+      } else if (a.canWithdraw) {
+        actionBox.style.display = 'none';
+        actionBtns.style.display = 'none';
+        withdrawBtn.style.display = 'block';
+        closeBtn.style.display = 'block';
       } else {
         actionBox.style.display = 'none';
         actionBtns.style.display = 'none';
+        withdrawBtn.style.display = 'none';
         closeBtn.style.display = 'block';
       }
 
@@ -344,6 +353,24 @@ function doApprovalDecision(approved) {
       if (activeApprovalTab === 'inbox') renderInbox();
       if (activeApprovalTab === 'outbox') renderOutbox();
       if (activeApprovalTab === 'ref') renderReferenceBox();
+    })
+    .catch(err => showToast(err.message, 'danger'));
+}
+
+// 상세 모달의 "기안 회수하기" 버튼에 연결. 사유 입력 없이 확인창만 띄운다(반려와 달리
+// 회수는 "내가 실수해서 취소"하는 성격이라 사유가 크게 의미 없다는 판단 - 2026-07-21 협의).
+function doWithdrawApproval() {
+  if (!confirm('정말 이 기안을 회수하시겠습니까?')) return;
+
+  fetch(`/approval/withdraw/${activeApprovalId}`, { method: 'POST' })
+    .then(res => res.text().then(text => {
+      if (!res.ok) throw new Error(text);
+      return text;
+    }))
+    .then(message => {
+      showToast(message, 'success');
+      closeModal();
+      if (activeApprovalTab === 'outbox') renderOutbox();
     })
     .catch(err => showToast(err.message, 'danger'));
 }
