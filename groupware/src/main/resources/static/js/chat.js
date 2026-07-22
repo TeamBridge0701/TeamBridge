@@ -19,6 +19,9 @@ const roomFilterState = {
   type: "all"
 };
 
+// 부서를 옮겨도 그룹 대화용으로 이미 체크한 직원 선택을 유지한다.
+const newChatSelectedEmployeeIds = new Set();
+
 // 프로필 사진 유무와 출근 상태에 따라 채팅 전용 아바타를 만든다.
 // 목록 모달과 실시간 메시지가 같은 DOM 구조를 쓰도록 중복 생성을 한 함수로 모았다.
 function createChatAvatar(name, profileImg, showOnlineDot, size = null) {
@@ -801,6 +804,11 @@ function appendMessage(message) {
   row.dataset.unreadMemberCount = message.unreadMemberCount || 0;
   // 현재 메시지를 아직 읽지 않은 참여자 수를 HTML 속성에 저장.
 
+  
+  
+  // 출근 표시 (점)
+  
+  
   // 상대방 메시지일 때만 왼쪽 아바타를 만든다.
   if (!isMine) {
     // 메시지 말풍선 아바타에는 출근 점을 표시하지 않는다.
@@ -814,15 +822,17 @@ function appendMessage(message) {
   const bubbleColumn = document.createElement("div");
   bubbleColumn.className = "chat-bubble-col";
 
-  // 상대방 메시지일 때만 발신자 이름을 표시한다.
+  // 상대방 메시지일 때만 발신자 이름을 말풍선 머리 위에 표시한다.
   if (!isMine) {
     const senderName = document.createElement("span");
     senderName.className = "chat-sender-name";
     senderName.textContent = message.senderName || "시스템";
 
     bubbleColumn.appendChild(senderName);
+	// appendChild() - 지정한 부모 노드의 자식 노드 리스트 중 마지막 자식으로 새로운 요소를 추가
   }
 
+  // 영역을 하나로 묶는 것 
   const bubbleMeta = document.createElement("div");
   bubbleMeta.className = "chat-bubble-meta";
 
@@ -1004,9 +1014,131 @@ function setupMemberPicker(departmentTreeId, memberTableBodyId) {
       .forEach(node => node.classList.remove("active"));
 
     departmentNode.classList.add("active");
-    // 클릭한 부서 id를 다음 함수에 넘겨 같은 부서 직원만 보이게 한다.
-    filterMemberPicker(memberTableBodyId, departmentNode.dataset.deptId);
+    const deptId = departmentNode.dataset.deptId;
+
+    // 새 대화 모달은 부서 번호를 서버에 보내 최신 재직 직원 목록을 다시 받는다.
+    if (memberTableBodyId === "newChatMemberTableBody") {
+      loadNewChatMembers(deptId);
+      return;
+    }
+
+    // 초대 모달은 이미 화면에 받은 후보 행을 부서별로 필터링한다.
+    filterMemberPicker(memberTableBodyId, deptId);
   });
+}
+
+// 선택한 부서의 재직 직원을 서버에서 받아 새 대화 모달 표를 다시 만든다.
+async function loadNewChatMembers(deptId = "") {
+  const tableBody = document.getElementById("newChatMemberTableBody");
+  if (!tableBody) {
+    return;
+  }
+
+  tableBody.replaceChildren();
+  const loadingRow = document.createElement("tr");
+  const loadingCell = document.createElement("td");
+  loadingCell.colSpan = 5;
+  loadingCell.textContent = "직원을 불러오는 중입니다.";
+  loadingCell.style.textAlign = "center";
+  loadingRow.appendChild(loadingCell);
+  tableBody.appendChild(loadingRow);
+
+  const params = new URLSearchParams();
+  if (deptId) {
+    // deptId=3처럼 URL에 넣어 Controller의 @RequestParam으로 전달한다.
+    params.set("deptId", deptId);
+  }
+
+  const queryString = params.toString();
+
+  try {
+    const response = await fetch(
+      `/chat/employees${queryString ? `?${queryString}` : ""}`
+    );
+
+    if (!response.ok) {
+      throw new Error("직원 목록을 불러오지 못했습니다.");
+    }
+
+    const employees = await response.json();
+    tableBody.replaceChildren();
+
+    // 서버는 ACTIVE 직원만 반환하고, 여기서는 로그인한 본인만 한 번 더 제외한다.
+    const candidates = employees.filter(employee =>
+      Number(employee.employeeId) !== currentEmployeeId
+    );
+
+    candidates.forEach(employee => {
+      const row = document.createElement("tr");
+      row.dataset.deptId = employee.deptId == null
+        ? ""
+        : String(employee.deptId);
+      row.dataset.employeeId = String(employee.employeeId);
+
+      const selectCell = document.createElement("td");
+      selectCell.style.textAlign = "center";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.name = "employeeIds";
+      checkbox.className = "new-chat-member-checkbox";
+      checkbox.value = String(employee.employeeId);
+      checkbox.checked = newChatSelectedEmployeeIds.has(checkbox.value);
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) {
+          newChatSelectedEmployeeIds.add(checkbox.value);
+        } else {
+          newChatSelectedEmployeeIds.delete(checkbox.value);
+        }
+      });
+      selectCell.appendChild(checkbox);
+
+      const nameCell = document.createElement("td");
+      const name = document.createElement("strong");
+      name.textContent = employee.employeeName || "이름 없음";
+      nameCell.appendChild(name);
+
+      const departmentCell = document.createElement("td");
+      departmentCell.textContent = employee.deptName || "관리자";
+
+      const positionCell = document.createElement("td");
+      const position = document.createElement("span");
+      position.className = "badge badge-primary";
+      position.textContent = employee.positionName || "-";
+      positionCell.appendChild(position);
+
+      const statusCell = document.createElement("td");
+      const status = document.createElement("span");
+      status.className = "badge badge-success";
+      status.textContent = "재직";
+      statusCell.appendChild(status);
+
+      row.appendChild(selectCell);
+      row.appendChild(nameCell);
+      row.appendChild(departmentCell);
+      row.appendChild(positionCell);
+      row.appendChild(statusCell);
+      tableBody.appendChild(row);
+    });
+
+    if (candidates.length === 0) {
+      const emptyRow = document.createElement("tr");
+      const emptyCell = document.createElement("td");
+      emptyCell.colSpan = 5;
+      emptyCell.textContent = "선택한 부서에 대화할 직원이 없습니다.";
+      emptyCell.style.textAlign = "center";
+      emptyRow.appendChild(emptyCell);
+      tableBody.appendChild(emptyRow);
+    }
+  } catch (error) {
+    tableBody.replaceChildren();
+    const errorRow = document.createElement("tr");
+    const errorCell = document.createElement("td");
+    errorCell.colSpan = 5;
+    errorCell.textContent = error.message;
+    errorCell.style.textAlign = "center";
+    errorRow.appendChild(errorCell);
+    tableBody.appendChild(errorRow);
+  }
 }
 
 // 선택한 부서와 같은 직원 행만 보이게 한다.
@@ -1047,12 +1179,17 @@ function resetMemberPicker(departmentTreeId, memberTableBodyId, checkboxClass) {
 
 // 새 대화 모달을 연다.
 function openNewChatModal() {
+  newChatSelectedEmployeeIds.clear();
+
   // 새 대화 모달에 맞는 id와 checkbox 클래스를 공통 초기화 함수로 전달한다.
   resetMemberPicker(
     "newChatDeptTree",
     "newChatMemberTableBody",
     "new-chat-member-checkbox"
   );
+
+  // 모달을 열 때도 서버에서 전체 재직 직원 목록을 다시 받아 오래된 화면 데이터를 막는다.
+  loadNewChatMembers();
 
   // common.js에 있는 공통 모달 함수다.
   openModal("modal-new-chat");
@@ -1404,14 +1541,10 @@ async function renameChatRoom(event) {
 
 // 선택한 직원 번호들을 POST /chat/room으로 보낸다.
 async function confirmNewChat() {
-  // 새 대화 모달에서 체크한 상대 직원 checkbox만 배열로 만든다.
-  const checkedMembers = [
-    ...document.querySelectorAll(
-      ".new-chat-member-checkbox:checked"
-    )
-  ];
+  // 부서를 바꿔 화면에서 사라진 체크 항목까지 포함하도록 Set에 보관한 직원 번호를 사용한다.
+  const selectedEmployeeIds = [...newChatSelectedEmployeeIds];
 
-  if (checkedMembers.length === 0) {
+  if (selectedEmployeeIds.length === 0) {
     showToast("대화 상대를 한 명 이상 선택해주세요.", "warning");
     return;
   }
@@ -1419,9 +1552,9 @@ async function confirmNewChat() {
   // 여러 employeeIds 값을 보낼 수 있는 application/x-www-form-urlencoded 본문이다.
   const requestBody = new URLSearchParams();
 
-  checkedMembers.forEach(checkbox => {
+  selectedEmployeeIds.forEach(employeeId => {
     // employeeIds=5&employeeIds=8 형태로 전송된다.
-    requestBody.append("employeeIds", checkbox.value);
+    requestBody.append("employeeIds", employeeId);
   });
 
   try {

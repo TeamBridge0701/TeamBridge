@@ -82,6 +82,19 @@ async function viewOrgMemberDetail(employeeId) {
   document.getElementById('mOrgPhone').textContent = employee.employeePhone || '-';
   // 없으면 -를 표시.
   document.getElementById('mOrgEmail').textContent = employee.employeeEmail || '-';
+
+  // 생일은 개인정보이므로 저장된 값이 있는 직원에게만 연도 없이 월·일만 표시한다.
+  const birthDateRow = document.getElementById('mOrgBirthDateRow'); // 생일 한 줄 전체를 숨김 / 표시 ()
+  const birthDate = document.getElementById('mOrgBirthDate'); // 날짜 글자만 넣는
+  if (employee.birthDate) {
+    const [, month, day] = employee.birthDate.split('-');
+    birthDate.textContent = `${Number(month)}월 ${Number(day)}일`;
+    birthDateRow.style.display = 'block';
+  } else {
+    birthDate.textContent = '';
+    birthDateRow.style.display = 'none';
+  }
+
   document.getElementById('mOrgStatus').textContent = employee.employeeStatus === 'ACTIVE'
     ? '재직 중' : (employee.employeeStatus || '-');
 

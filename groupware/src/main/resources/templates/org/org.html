@@ -160,9 +160,11 @@
           <div class="profile-avatar-large" style="width:90px; height:90px; font-size:2rem;" id="mOrgAvatar">홍</div>
           <div id="mOrgDept" style="color:var(--text-secondary); font-size:0.9rem;">개발팀 · 사번 20260601</div>
         </div>
-        <div style="background-color:var(--bg-tertiary); padding:1rem; border-radius:8px; border:1px solid var(--border-color); font-size:0.85rem;">
+          <div style="background-color:var(--bg-tertiary); padding:1rem; border-radius:8px; border:1px solid var(--border-color); font-size:0.85rem;">
           <div style="margin-bottom:0.35rem;">연락처: <strong id="mOrgPhone">-</strong></div>
           <div style="margin-bottom:0.35rem;">이메일: <strong id="mOrgEmail">-</strong></div>
+          <!-- 생년월일을 입력한 직원에게만 JavaScript가 이 행을 보이게 한다. -->
+          <div id="mOrgBirthDateRow" style="display:none; margin-bottom:0.35rem;">생일: <strong id="mOrgBirthDate"></strong></div>
           <div>상태: <strong id="mOrgStatus">-</strong></div>
         </div>
       </div>

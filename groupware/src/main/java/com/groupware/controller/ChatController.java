@@ -84,6 +84,17 @@ public class ChatController {
         return "chat/chat";
     }
 
+    // 새 대화 모달에서 선택한 부서의 재직 직원만 다시 조회하는 JSON API다.
+    @GetMapping("/chat/employees")
+    @ResponseBody
+    public ResponseEntity<List<EmployeeDTO>> getChatEmployees(
+            @RequestParam(value = "deptId", required = false) Integer deptId) {
+
+        // Mapper SQL이 EMPLOYEE_STATUS='ACTIVE' 조건을 적용하므로 정지·퇴사 직원은 반환되지 않는다.
+        return ResponseEntity.ok(
+                employeeMapper.findActiveEmployeesByDepartment(deptId));
+    }
+
     // 특정 채팅방에 입장하고, 이전 메시지를 함께 출력한다.
     @GetMapping("/chat/room/{roomId}")
     public String chatRoom(
