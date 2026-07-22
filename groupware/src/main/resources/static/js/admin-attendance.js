@@ -4,8 +4,11 @@
 
 let currentAttendanceList = [];   // 최근 조회 결과 캐시 - 이름 검색은 재조회 없이 여기서 필터링
 
-// 한글 표시 ↔ DB 저장값 변환 (백엔드는 항상 NORMAL/LATE/LEAVE만 주고받음, 팀 컨벤션)
-const LABEL_TO_STATUS = { '정상': 'NORMAL', '지각': 'LATE', '휴가': 'LEAVE' };
+// 상태(정상/지각/휴가)는 더 이상 관리자가 select로 직접 고르지 않는다 - 출근 시간을
+// 기준으로 서버(AttendanceService.saveAttendanceByAdmin)가 자동 계산해서 저장한다
+// (배포전_수정사항.md 1번 "출근 시간 수정 시 상태 자동 재계산"). 여기 남은 맵은 표시 전용.
+const STATUS_LABELS = { NORMAL: '정상', LATE: '지각', LEAVE: '휴가' };
+const STATUS_BADGE_CLASS = { NORMAL: 'badge-success', LATE: 'badge-warning', LEAVE: 'badge-primary' };
 
 // 날짜 select(input[type=date])가 바뀔 때마다 호출됨
 function renderAdminAttendance() {
@@ -46,12 +49,8 @@ function renderAttendanceTable(list) {
         <td><input type="text" class="form-control" id="attOut-${a.employeeId}"
                     value="${a.checkOutTime ? a.checkOutTime.substring(0, 5) : ''}"
                     placeholder="18:00" style="font-size:0.85rem;"></td>
-        <td>
-          <select class="form-control" id="attStatus-${a.employeeId}" style="font-size:0.85rem;">
-            <option value="정상" ${status === 'NORMAL' ? 'selected' : ''}>정상</option>
-            <option value="지각" ${status === 'LATE' ? 'selected' : ''}>지각</option>
-            <option value="휴가" ${status === 'LEAVE' ? 'selected' : ''}>휴가</option>
-          </select>
+        <td style="text-align:center;">
+          <span class="badge ${STATUS_BADGE_CLASS[status] || 'badge-success'}" id="attStatusBadge-${a.employeeId}">${STATUS_LABELS[status] || status}</span>
         </td>
         <td style="text-align:center;">
           <button class="btn btn-primary btn-sm" onclick="saveEmployeeAttendance(${a.employeeId}, '${date}')">저장</button>
@@ -65,21 +64,24 @@ function renderAttendanceTable(list) {
   `;
 }
 
-// 행의 "저장" 버튼에 연결
+// 행의 "저장" 버튼에 연결 - 관리자가 직원 출퇴근 기록을 직접 덮어쓰는 기능이라
+// admin.js의 계정 정지/복구와 같은 이유로 실행 전 확인창을 거친다(배포전_수정사항.md 1번)
 function saveEmployeeAttendance(employeeId, workDate) {
+    if (!confirm(`${workDate} 출결 기록을 저장하시겠습니까?`)) return;
+
     const checkInTime = document.getElementById(`attIn-${employeeId}`).value.trim();
     const checkOutTime = document.getElementById(`attOut-${employeeId}`).value.trim();
-    const statusLabel = document.getElementById(`attStatus-${employeeId}`).value;
 
     const formData = new FormData();
     formData.append('workDate', workDate);
     formData.append('checkInTime', checkInTime);
     formData.append('checkOutTime', checkOutTime);
-    formData.append('status', LABEL_TO_STATUS[statusLabel]);
 
     fetch(`/admin/attendance/${employeeId}`, { method: 'POST', body: formData })
         .then(res => res.text().then(message => {
             showToast(message, res.ok ? 'success' : 'danger');
+            // 서버가 계산한 최신 상태(정상/지각/휴가)를 배지에 반영하려고 목록을 다시 불러온다
+            if (res.ok) renderAdminAttendance();
         }));
 }
 
