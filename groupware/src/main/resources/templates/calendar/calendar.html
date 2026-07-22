@@ -130,6 +130,14 @@
 							<option value="COMPANY" th:disabled="${employee.employeeRole != 'ADMIN'}">회사 일정 (전사 노출)</option>
 						</select>
 					</div>
+					<!-- 관리자한테만 렌더링(비관리자는 COMPANY 자체를 못 고르니 이 체크박스가 DOM에
+					     있을 필요조차 없음). "회사 일정" 선택했을 때만 calendar.js가 보이게 함 -->
+					<div class="form-group" id="scheduleHolidayGroup" style="display:none;" th:if="${employee.employeeRole == 'ADMIN'}">
+						<label class="form-label" style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+							<input type="checkbox" id="scheduleIsHoliday" name="isHoliday">
+							공휴일로 지정<!--(출근율 계산에서 이 날짜 제외) -->
+						</label>
+					</div>
 				</div>
 				<div class="modal-footer">
 					<!-- 신규 등록 모드에서는 숨겨져 있다가, 일정 막대를 클릭해 수정

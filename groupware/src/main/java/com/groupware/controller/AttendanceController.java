@@ -3,7 +3,6 @@ package com.groupware.controller;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -62,19 +61,27 @@ public class AttendanceController {
 		return getAttendanceData(user.getEmployeeDTO().getEmployeeId());
 	}
 
-	// 4. 출퇴근정보 attendance.html에 뿌려주기
+	// 4. 출퇴근정보 attendance.html에 뿌려주기 - 캘린더 배지용 원본 레코드(records)와
+	// "이번 달 출결 현황" 카드용 집계(presentDays/lateCount/leaveCount/attendanceRate)를
+	// 같이 내려준다. 예전엔 레코드만 주고 집계는 attendance.js가 클라이언트에서 직접
+	// 다시 셌는데, 그러면 주말/공휴일 필터링이 안 돼서 대시보드 카드 숫자와 어긋났다
+	// (2026-07-22 발견 - 김우주 확인). getAttendanceSummary와 같은 메서드를 쓰므로
+	// 대시보드/실시간 갱신/attendance.html 셋의 계산 기준이 항상 같게 유지된다.
 	@ResponseBody
 	@GetMapping("/monthly")
-	public List<AttendanceDTO> getMonthlyAttendance(@AuthenticationPrincipal CustomUserDetails user,
+	public Map<String, Object> getMonthlyAttendance(@AuthenticationPrincipal CustomUserDetails user,
 			@RequestParam("year") int year, @RequestParam("month") int month) {
 
 		int employeeId = user.getEmployeeDTO().getEmployeeId();
-		return attendanceService.getMonthlyAttendance(employeeId, year, month);
+		Map<String, Object> response = new HashMap<>(attendanceService.getAttendanceSummary(employeeId, year, month));
+		response.put("records", attendanceService.getMonthlyAttendance(employeeId, year, month));
+		return response;
 	}
 
 	// 공통 응답 메서드 (상태 + 대시보드 정보 통합)
 	private Map<String, Object> getAttendanceData(int employeeId) {
-		String today = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+		LocalDate now = LocalDate.now();
+		String today = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 		AttendanceDTO dto = attendanceService.getTodayAttendance(employeeId, today);
 
 		Map<String, Object> response = new HashMap<>();
@@ -94,7 +101,7 @@ public class AttendanceController {
 		// 대시보드 "월간 근태 요약" 카드(출근일수/지각/연차/출근율)도 이 응답에 같이 실어보낸다 -
 		// 출근/퇴근 버튼을 누른 직후 그 카드가 새로고침 없이 바로 갱신되게 하기 위함
 		// (DashboardService가 페이지 최초 렌더링 때 쓰는 것과 동일한 메서드 재사용, 2026-07-22)
-		response.putAll(attendanceService.getAttendanceSummary(employeeId, LocalDate.now()));
+		response.putAll(attendanceService.getAttendanceSummary(employeeId, now.getYear(), now.getMonthValue()));
 
 		return response;
 	}

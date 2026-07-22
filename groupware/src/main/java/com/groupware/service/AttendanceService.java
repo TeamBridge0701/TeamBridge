@@ -5,23 +5,30 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.groupware.dto.AttendanceDTO;
+import com.groupware.dto.CalendarEventDTO;
 import com.groupware.mapper.AttendanceMapper;
+import com.groupware.mapper.CalendarMapper;
 
 @Service
 public class AttendanceService {
 
 	private final AttendanceMapper attendanceMapper;
+	private final CalendarMapper calendarMapper;
 
-	public AttendanceService(AttendanceMapper attendanceMapper) {
+	public AttendanceService(AttendanceMapper attendanceMapper, CalendarMapper calendarMapper) {
 		this.attendanceMapper = attendanceMapper;
+		this.calendarMapper = calendarMapper;
 	}
 
 	// 출근 정보 조회
@@ -105,54 +112,87 @@ public class AttendanceService {
 		return attendanceMapper.selectAttendanceByPeriod(employeeId, startDate, endDate);
 	}
 
+	// 그 달의 공휴일(IS_HOLIDAY=1인 COMPANY 일정) 날짜를 하루 단위로 펼친 집합.
+	// 대체공휴일처럼 여러 날짜에 걸친 일정도 있을 수 있어 시작~종료를 하루씩 순회한다.
+	// countWorkingDaysInMonth(분모)와 getMonthlySummary(분자)가 "근무일" 판단 기준을
+	// 여기 하나로 공유해야, 기준이 갈려서 다시 100% 넘는 문제가 생기지 않는다(2026-07-22).
+	private Set<LocalDate> getHolidayDatesInMonth(int year, int month) {
+		Set<LocalDate> holidays = new HashSet<>();
+		for (CalendarEventDTO holiday : calendarMapper.selectHolidayDates(year, month)) {
+			LocalDate date = LocalDate.parse(holiday.getStartDate());
+			LocalDate end = LocalDate.parse(holiday.getEndDate());
+			while (!date.isAfter(end)) {
+				holidays.add(date);
+				date = date.plusDays(1);
+			}
+		}
+		return holidays;
+	}
+
+	// 그 날짜가 "근무일"인지(주말도 아니고 공휴일도 아님) 판단
+	private boolean isWorkingDay(LocalDate date, Set<LocalDate> holidays) {
+		boolean isWeekend = date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY;
+		return !isWeekend && !holidays.contains(date);
+	}
+
 	// 월간 근태 상태별 건수 집계 - 출결 현황 페이지(attendance.js의 loadAttendanceData())가
 	// 클라이언트에서 이미 하고 있는 정상/지각/연차 카운팅과 똑같은 로직을 서버에도 둔 것.
 	// 화면(JS)이 없는 곳(대시보드 등 SSR 화면)에서도 같은 집계를 재사용하려고 추가함.
 	// "조퇴"는 여기 안 넣음 - ATTENDANCE_STATUS 컬럼 자체가 NORMAL/LATE/LEAVE 셋만 허용해서
 	// (ERD_설계서.md 2-4 확정 사항) 애초에 셀 수 있는 데이터가 없음(2026-07-21 김우주 확인).
+	//
+	// 주말/공휴일에 찍힌 기록(특근, 관리자 수기입력, 연차가 실수로 주말에 걸친 경우 등)은
+	// 여기서 집계 대상에서 뺀다 - 분모(countWorkingDaysInMonth)도 근무일만 세므로 기준을
+	// 맞춰야 출근율이 100%를 넘지 않는다(2026-07-22 근무일 기준 집계로 결정).
 	public Map<String, Long> getMonthlySummary(int employeeId, int year, int month) {
 		List<AttendanceDTO> records = getMonthlyAttendance(employeeId, year, month);
+		Set<LocalDate> holidays = getHolidayDatesInMonth(year, month);
+		List<AttendanceDTO> workingDayRecords = records.stream()
+				.filter(a -> isWorkingDay(LocalDate.parse(a.getWorkDate()), holidays))
+				.collect(Collectors.toList());
 
 		Map<String, Long> summary = new HashMap<>();
 		// .filter()로 그 상태인 것만 걸러내고 .count()로 몇 개인지 센다
-		summary.put("normal", records.stream().filter(a -> "NORMAL".equals(a.getAttendanceStatus())).count());
-		summary.put("late", records.stream().filter(a -> "LATE".equals(a.getAttendanceStatus())).count());
-		summary.put("leave", records.stream().filter(a -> "LEAVE".equals(a.getAttendanceStatus())).count());
+		summary.put("normal", workingDayRecords.stream().filter(a -> "NORMAL".equals(a.getAttendanceStatus())).count());
+		summary.put("late", workingDayRecords.stream().filter(a -> "LATE".equals(a.getAttendanceStatus())).count());
+		summary.put("leave", workingDayRecords.stream().filter(a -> "LEAVE".equals(a.getAttendanceStatus())).count());
 		return summary;
 	}
 
-	// 이번 달 1일부터 today까지 중 평일(월~금) 개수. 원래 DashboardService에 private로
-	// 있던 걸 여기로 옮김 - AttendanceController(실시간 갱신)에서도 같은 계산이 필요해져서,
-	// "근태 관련 계산은 AttendanceService에 모은다" 원칙에 맞춰 이동함(2026-07-22).
-	// 공휴일 제외는 아직 안 함 - COMPANY 카테고리 일정 중 뭐가 진짜 공휴일인지 구분할 방법이
-	// 아직 없어서 보류 중(김우주 확인 사항, 나중에 처리 예정).
-	public int countWorkingDaysSoFar(LocalDate today) {
+	// 그 달 전체(1일~말일) 중 근무일(평일이면서 공휴일이 아닌 날) 개수 - 출근율 분모.
+	// 예전엔 "오늘까지"만 셌는데(countWorkingDaysSoFar), 그러면 이번 달에 미리 반영된
+	// 미래 날짜 연차 기록(분자) 때문에 분모보다 분자가 커져 100%를 넘는 문제가 있어서
+	// 그 달 전체로 바꿨다(2026-07-22).
+	public int countWorkingDaysInMonth(int year, int month) {
+		Set<LocalDate> holidays = getHolidayDatesInMonth(year, month);
+		LocalDate first = LocalDate.of(year, month, 1);
+		LocalDate last = first.withDayOfMonth(first.lengthOfMonth());
+
 		int count = 0;
-		LocalDate date = today.withDayOfMonth(1);
-		while (!date.isAfter(today)) { // 1일부터 오늘까지 하루씩 검사
-			boolean isWeekend = date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY;
-			if (!isWeekend) {
+		for (LocalDate date = first; !date.isAfter(last); date = date.plusDays(1)) {
+			if (isWorkingDay(date, holidays)) {
 				count++;
 			}
-			date = date.plusDays(1);
 		}
 		return count;
 	}
 
 	// 월간 근태 요약(출근일수/지각/연차/출근율)을 한 번에 계산 - AttendanceController(출근/퇴근
-	// 처리 직후 실시간 갱신용)와 DashboardService(페이지 최초 렌더링용) 둘 다 이 메서드
-	// 하나만 부르면 되도록 통일함. 계산 방식이 나중에 바뀌어도(공휴일 제외 등) 여기 한
-	// 곳만 고치면 실시간/초기렌더 둘 다 같이 반영됨(2026-07-22).
-	public Map<String, Object> getAttendanceSummary(int employeeId, LocalDate today) {
-		Map<String, Long> statusCounts = getMonthlySummary(employeeId, today.getYear(), today.getMonthValue());
+	// 처리 직후 실시간 갱신 + attendance.html 이전/다음 달 조회용)와 DashboardService(페이지
+	// 최초 렌더링용) 셋 다 이 메서드 하나만 부르면 되도록 통일함. 원래 LocalDate today를 받아
+	// "이번 달"만 계산했는데, attendance.html 카드가 자체적으로 클라이언트에서 따로 집계하다
+	// 보니(주말/공휴일 필터링이 안 돼 있어서) 대시보드 카드와 숫자가 어긋나는 문제가 있어
+	// year/month를 직접 받게 바꿔서 attendance.html도 이 메서드를 그대로 쓰게 함(2026-07-22).
+	public Map<String, Object> getAttendanceSummary(int employeeId, int year, int month) {
+		Map<String, Long> statusCounts = getMonthlySummary(employeeId, year, month);
 		long normalCount = statusCounts.get("normal");
 		long lateCount = statusCounts.get("late");
 		long leaveCount = statusCounts.get("leave");
 		// "출근일수"는 정상+지각+연차를 전부 "그 날에 대해 근태 기록이 남아있다"는 의미로 합쳐서 센다
 		long presentDays = normalCount + lateCount + leaveCount;
 
-		int workingDays = countWorkingDaysSoFar(today);
-		// workingDays가 0이면(이번 달 1일이 아직 안 지났을 때뿐) 0으로 나누기 에러 방지
+		int workingDays = countWorkingDaysInMonth(year, month);
+		// workingDays가 0이면(이론상 그 달 전체가 주말/공휴일뿐일 때) 0으로 나누기 에러 방지
 		int attendanceRate = workingDays > 0 ? (int) Math.round(presentDays * 100.0 / workingDays) : 0;
 
 		Map<String, Object> result = new HashMap<>();

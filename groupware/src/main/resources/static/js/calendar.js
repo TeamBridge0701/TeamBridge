@@ -37,6 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
   $('scheduleModalCloseBtn')?.addEventListener('click', closeScheduleModal);
   $('scheduleCancelBtn')?.addEventListener('click', closeScheduleModal);
   $('cEventDeleteBtn')?.addEventListener('click', deleteCalendarEvent);
+  // "일정 구분"을 바꿀 때마다 공휴일 체크박스를 보였다 숨겼다 함(COMPANY일 때만 의미 있음)
+  $('scheduleType')?.addEventListener('change', toggleHolidayCheckboxVisibility);
 
   // ⭐️ [중요] 일반 일정 관리 페이지(calendar.html)일 때만 자체 일정 데이터를 불러와 렌더링
   // 출결 현황 페이지(attendance.html)에서는 attendance.js가 이 폼 함수를 가져다 쓰므로 충돌하지 않음!
@@ -50,7 +52,11 @@ document.addEventListener('DOMContentLoaded', () => {
 // - attendance.js 등 다른 페이지에서도 이 함수를 호출하여 폼을 재사용할 수 있습니다.
 // - customCellRenderer 함수를 넘겨주면, 날짜 칸 내부(event-list 영역)를 입맛대로 채울 수 있습니다.
 // ===================================================================
-function generateCalendarGridHtml(year, month, customCellRenderer) {
+// holidayDates: 공휴일로 지정된 "yyyy-MM-dd" 문자열들의 Set(선택 - 안 넘기면 그냥 빈 Set).
+// attendance.js가 출결현황 페이지에서 이 함수를 부를 때 같이 넘겨서, 그 날짜에 출근 기록이
+// 있어도 "왜 출근율에는 안 들어갔지?"를 날짜 색만 보고 바로 알 수 있게 함(제목까지는 안
+// 보여줌 - 공휴일 목록/이름은 캘린더 페이지에서 보면 되고, 여기선 날짜 강조만 필요, 2026-07-22).
+function generateCalendarGridHtml(year, month, customCellRenderer, holidayDates = new Set()) {
   const first = new Date(year, month - 1, 1), lastDate = new Date(year, month, 0).getDate();
   const prevLast = new Date(year, month - 1, 0).getDate(), startDay = first.getDay();
   const totalCells = Math.ceil((startDay + lastDate) / 7) * 7, today = new Date().toISOString().slice(0, 10);
@@ -68,12 +74,8 @@ function generateCalendarGridHtml(year, month, customCellRenderer) {
     const dayNum = i - startDay + 1;
     const isOther = dayNum < 1 || dayNum > lastDate;
     const label = dayNum < 1 ? prevLast + dayNum : dayNum > lastDate ? dayNum - lastDate : dayNum;
-    // 이번 칸이 무슨 요일인지(i는 항상 일요일=0부터 시작하는 배치라 7로 나눈 나머지가 곧 요일).
-    // 공휴일(관리자가 COMPANY로 등록한 일정)까지 빨간색 처리하는 건 아직 미구현 - 그날이
-    // 공휴일인지 이 함수가 알 방법이 없어서(일정 목록을 안 받음), 나중에 필요하면
-    // customCellRenderer처럼 별도로 넘겨받는 방식을 추가해야 함
+    // 이번 칸이 무슨 요일인지(i는 항상 일요일=0부터 시작하는 배치라 7로 나눈 나머지가 곧 요일)
     const dayOfWeek = i % 7;
-    const weekendNumClass = dayOfWeek === 0 ? ' sunday' : dayOfWeek === 6 ? ' saturday' : '';
 
     let cellDate = '';
     if (dayNum < 1) {
@@ -83,6 +85,10 @@ function generateCalendarGridHtml(year, month, customCellRenderer) {
     } else {
         cellDate = `${year}-${String(month).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
     }
+
+    // 공휴일이면 원래 요일 색과 상관없이 빨간색(.sunday)으로 통일 - renderCalendarGrid와 동일 기준
+    const weekendNumClass = holidayDates.has(cellDate) ? ' sunday'
+      : dayOfWeek === 0 ? ' sunday' : dayOfWeek === 6 ? ' saturday' : '';
 
     // 각 날짜 칸 내부 영역에 들어갈 커스텀 HTML 주입
     const innerContent = customCellRenderer ? customCellRenderer(cellDate) : '';
@@ -95,6 +101,23 @@ function generateCalendarGridHtml(year, month, customCellRenderer) {
   });
 
   return headers + cells.join('');
+}
+
+// 일정 목록(events, /calendar/events 응답 형식)에서 공휴일(COMPANY + isHoliday)로
+// 지정된 날짜만 뽑아 "yyyy-MM-dd" 문자열 Set으로 펼친다. calendar.html(renderCalendarGrid)과
+// attendance.html(attendance.js의 loadAttendanceData → generateCalendarGridHtml) 둘 다
+// "이 날짜가 공휴일이라 출근율에서 빠졌다"를 화면에 빨간 글씨로 보여줘야 해서 공용으로 뺌(2026-07-22).
+// "yyyy-MM-dd" 문자열을 new Date(str)로 바로 파싱하면 UTC로 해석돼 타임존에 따라 하루
+// 밀릴 수 있어서(자정 근처 오차), 다른 함수들처럼 연/월/일을 쪼개 숫자로 넘긴다.
+function extractHolidayDates(events) {
+  const holidayDates = new Set();
+  events.filter(e => e.eventCategory === 'COMPANY' && e.isHoliday).forEach(e => {
+    const [sy, sm, sd] = e.startDate.split('-').map(Number);
+    for (let d = new Date(sy, sm - 1, sd); formatDate(d) <= e.endDate; d.setDate(d.getDate() + 1)) {
+      holidayDates.add(formatDate(d));
+    }
+  });
+  return holidayDates;
 }
 
 // ===================================================================
@@ -151,8 +174,15 @@ function renderCalendarGrid(year, month) {
   const categoryLabel = { PERSONAL: '개인', TEAM: '팀', COMPANY: '회사' };
 
   const headerHtml = ['일', '월', '화', '수', '목', '금', '토']
-    .map(d => `<div class="calendar-day-header" style="text-align:center; font-weight:bold; padding:0.5rem 0;">${d}</div>`)
+    .map((d, idx) => {
+      const weekendClass = idx === 0 ? ' sunday' : idx === 6 ? ' saturday' : '';
+      return `<div class="calendar-day-header${weekendClass}" style="text-align:center; font-weight:bold; padding:0.5rem 0;">${d}</div>`;
+    })
     .join('');
+
+  // 공휴일 날짜 집합 - attendance.js도 같은 로직이 필요해서(출결현황 캘린더에도 공휴일
+  // 표시) extractHolidayDates()로 뽑아 공용 함수로 만들고 여기선 호출만 한다(2026-07-22)
+  const holidayDates = extractHolidayDates(currentEvents);
 
   const weeksHtml = weeks.map(week => {
     const weekDates = week.map(formatDate);
@@ -189,9 +219,12 @@ function renderCalendarGrid(year, month) {
       const continuesPrev = spanStart !== e.startDate ? ' continues-prev' : '';
       const continuesNext = spanEnd !== e.endDate ? ' continues-next' : '';
       const category = String(e.eventCategory || '').toLowerCase();
+      // 공휴일로 지정된 회사 일정만 별도 색(.holiday, CSS에서 빨강)으로 구분 -
+      // 일반 회사 일정(주황)과 섞이면 "이날 쉬는 날"인지 눈으로 구별이 안 됨
+      const holidayClass = e.eventCategory === 'COMPANY' && e.isHoliday ? ' holiday' : '';
 
       return `
-        <button type="button" class="cal-event-bar ${category}${continuesPrev}${continuesNext}"
+        <button type="button" class="cal-event-bar ${category}${holidayClass}${continuesPrev}${continuesNext}"
                 style="grid-column:${colStart} / ${colEnd}; grid-row:${lane + 1};"
                 title="${e.eventTitle} (${categoryLabel[e.eventCategory] || e.eventCategory} 일정)"
                 onclick="event.stopPropagation(); openEditScheduleModal('${e.eventId}')">
@@ -199,13 +232,16 @@ function renderCalendarGrid(year, month) {
         </button>`;
     }).join('');
 
-    const cellsHtml = week.map(dt => {
+    const cellsHtml = week.map((dt, idx) => {
       const dateStr = formatDate(dt);
       const inMonth = dt.getMonth() === month - 1;
       const isToday = dateStr === todayStr;
+      // 공휴일이면 원래 요일 색(토=파랑 등)과 상관없이 빨간색(.sunday)으로 통일 -
+      // 평일에 지정된 공휴일도 "쉬는 날"이라는 게 한눈에 보여야 하므로
+      const numClass = holidayDates.has(dateStr) ? ' sunday' : idx === 0 ? ' sunday' : idx === 6 ? ' saturday' : '';
       return `
         <div class="calendar-day cal-cell${!inMonth ? ' other-month' : ''}${isToday ? ' today' : ''}" data-date="${dateStr}">
-          <div class="cal-cell-header"><span class="day-number cal-day-num">${dt.getDate()}</span>${isToday ? '<span style="font-size:0.6rem; color:var(--color-primary); font-weight:bold; margin-left:4px;">오늘</span>' : ''}</div>
+          <div class="cal-cell-header"><span class="day-number cal-day-num${numClass}">${dt.getDate()}</span>${isToday ? '<span style="font-size:0.6rem; color:var(--color-primary); font-weight:bold; margin-left:4px;">오늘</span>' : ''}</div>
         </div>`;
     }).join('');
 
@@ -228,10 +264,25 @@ function renderCalendarGrid(year, month) {
   container.querySelectorAll('.calendar-day').forEach(c => c.addEventListener('click', () => openScheduleModal(c.dataset.date)));
 }
 
+// 관리자한테만 있는 요소라(calendar.html에서 th:if로 아예 안 만들어질 수도 있음) 없을 때는
+// 조용히 아무 것도 안 함. "일정 구분"이 COMPANY일 때만 체크박스를 보여주고, COMPANY가
+// 아니게 바뀌면 체크도 같이 풀어서(숨겨진 채로 체크만 남아있는 상태 방지) 제출 시 실수로
+// isHoliday=true가 같이 나가는 일이 없게 함
+function toggleHolidayCheckboxVisibility() {
+  const group = $('scheduleHolidayGroup');
+  if (!group) return;
+  const isCompany = $('scheduleType')?.value === 'COMPANY';
+  group.style.display = isCompany ? '' : 'none';
+  if (!isCompany && $('scheduleIsHoliday')) $('scheduleIsHoliday').checked = false;
+}
+
 // [등록/수정] 일정 폼 제출
 async function submitScheduleForm(event) {
   event.preventDefault();
   const payload = Object.fromEntries(new FormData(event.target));
+  // 체크박스는 체크 안 하면 FormData에 키 자체가 안 들어오고, 체크하면 값이 문자열 "on"으로
+  // 들어온다 - 서버(CalendarEventDTO.isHoliday)는 true/false를 기대하니 명시적으로 채워줌
+  payload.isHoliday = $('scheduleIsHoliday')?.checked || false;
 
   if (!payload.eventTitle || !payload.startDate || !payload.endDate) return showToast('필수 항목을 입력하세요.', 'error');
   if (payload.endDate < payload.startDate) return showToast('종료일이 시작일보다 빠를 수 없습니다.', 'error');
@@ -276,6 +327,7 @@ function openScheduleModal(date = new Date().toISOString().slice(0, 10)) {
   $('calendarModalTitle').textContent = '새 일정 등록'; $('cEventSubmitBtn').textContent = '등록';
   $('scheduleStartDate').value = $('scheduleEndDate').value = date;
   $('scheduleTitle').value = ''; $('scheduleType').value = 'PERSONAL';
+  toggleHolidayCheckboxVisibility(); // 기본값 PERSONAL이니 숨김 + 체크 해제
   if ($('cEventDeleteBtn')) $('cEventDeleteBtn').style.display = 'none';
   setScheduleFormEditable(true); // 새로 등록하는 것이므로 항상 입력 가능하게 초기화
   toggleModal('modal-calendar-write', true);
@@ -290,6 +342,10 @@ function openEditScheduleModal(id) {
   $('calendarModalTitle').textContent = '일정 수정'; $('cEventSubmitBtn').textContent = '수정';
   $('scheduleStartDate').value = e.startDate; $('scheduleEndDate').value = e.endDate;
   $('scheduleTitle').value = e.eventTitle; $('scheduleType').value = e.eventCategory;
+  toggleHolidayCheckboxVisibility(); // 카테고리에 맞춰 체크박스 보이기/숨기기
+  // COMPANY 일정이면 기존 공휴일 지정 여부를 그대로 보여줌(toggle 호출 이후에 값을 세팅해야,
+  // COMPANY가 아닐 때 toggle이 강제로 꺼버리는 것과 순서가 안 꼬임)
+  if ($('scheduleIsHoliday')) $('scheduleIsHoliday').checked = !!e.isHoliday;
   // 삭제 버튼과 같은 기준(canModifyEventClient)으로 폼 전체(입력칸+구분 드롭다운+저장버튼)도
   // 잠금 - 서버(canModifyEvent)도 동일 기준으로 재검증하므로 이건 UX용, 실제 차단은 서버가 함
   const canModify = canModifyEventClient(e);

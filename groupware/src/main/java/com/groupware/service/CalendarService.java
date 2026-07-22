@@ -39,11 +39,16 @@ public class CalendarService {
     }
 
     /**
-     * 새 일정 등록 - 등록자/부서는 클라이언트 값을 믿지 않고 로그인 사용자 기준으로 서버에서 채운다
+     * 새 일정 등록 - 등록자/부서는 클라이언트 값을 믿지 않고 로그인 사용자 기준으로 서버에서 채운다.
+     * isHoliday도 COMPANY가 아니면 클라이언트가 뭘 보냈든 강제로 false - PERSONAL/TEAM 일정이
+     * 실수로(혹은 조작으로) 공휴일 취급되어 출근율 계산에서 빠지는 걸 막기 위함.
+     * 여기 도달하는 시점엔 이미 컨트롤러의 canCreateEvent()가 COMPANY=관리자만 걸러낸
+     * 뒤라서 "COMPANY".equals(...)만 봐도 안전함(2026-07-22)
      */
     public void insertEvent(CalendarEventDTO dto, EmployeeDTO writer) {
         dto.setEmployeeId(writer.getEmployeeId());
         dto.setDeptId("TEAM".equals(dto.getEventCategory()) ? writer.getDeptId() : null);
+        dto.setHoliday("COMPANY".equals(dto.getEventCategory()) && dto.isHoliday());
         calendarMapper.insertEvent(dto);
     }
 
@@ -77,10 +82,16 @@ public class CalendarService {
     }
 
     /**
-     * 일정 수정 - 카테고리가 TEAM으로 바뀌면 수정하는 사람 기준 부서로 다시 고정
+     * 일정 수정 - 카테고리가 TEAM으로 바뀌면 수정하는 사람 기준 부서로 다시 고정.
+     * isHoliday도 등록과 같은 원칙(COMPANY가 아니면 강제 false)으로 처리.
+     * "관리자가 아닌 사람이 카테고리 자체를 COMPANY로 바꾸려는 시도" 차단은 여기가 아니라
+     * CalendarController에서 canCreateEvent()로 미리 막는다(getEventForModify로 조회한
+     * "기존" 카테고리만 검사하는 canModifyEvent와 달리, 새로 제출되는 카테고리를 검증해야
+     * 하는 문제라 기존 등록 검증 로직을 그대로 재사용하는 게 맞음 - 2026-07-22 발견)
      */
     public void updateEvent(CalendarEventDTO dto, EmployeeDTO editor) {
         dto.setDeptId("TEAM".equals(dto.getEventCategory()) ? editor.getDeptId() : null);
+        dto.setHoliday("COMPANY".equals(dto.getEventCategory()) && dto.isHoliday());
         calendarMapper.updateEvent(dto);
     }
 

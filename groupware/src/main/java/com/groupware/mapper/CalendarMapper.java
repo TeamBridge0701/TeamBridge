@@ -16,6 +16,11 @@ public interface CalendarMapper {
     // 수정/삭제 권한 재검증용 단건 조회
     CalendarEventDTO selectEventById(@Param("eventId") int eventId);
 
+    // 출근율 계산(AttendanceService)용 - 그 달의 공휴일(IS_HOLIDAY=1인 COMPANY 일정) 날짜
+    // 범위만 조회. 공휴일은 전 직원 공통이라 조회 권한 필터링이 필요 없어서
+    // selectEventsByYearAndMonth와 별도로 뺐다(2026-07-22)
+    List<CalendarEventDTO> selectHolidayDates(@Param("year") int year, @Param("month") int month);
+
     // 새 일정 등록
     void insertEvent(CalendarEventDTO dto);
     

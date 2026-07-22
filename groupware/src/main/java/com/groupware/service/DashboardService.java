@@ -109,7 +109,7 @@ public class DashboardService {
         // 월간 근태 요약(출근일수/지각/연차/출근율) - AttendanceService.getAttendanceSummary()로
         // 계산을 통째로 옮김. AttendanceController(실시간 갱신)도 같은 메서드를 쓰므로
         // 여기서 다시 계산하지 않고 그 결과만 그대로 꺼내 쓴다(2026-07-22 정리)
-        resultMap.putAll(attendanceService.getAttendanceSummary(employeeId, today));
+        resultMap.putAll(attendanceService.getAttendanceSummary(employeeId, today.getYear(), today.getMonthValue()));
 
         // 이번 달 생일자 - 생년월일을 아직 입력 안 한 직원은 EmployeeMapper.findBirthdaysInMonth
         // SQL 조건(BIRTH_DATE IS NOT NULL)에서 자연히 빠진다
