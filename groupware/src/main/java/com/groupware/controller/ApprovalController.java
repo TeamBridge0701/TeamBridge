@@ -25,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.groupware.dto.ApprovalDTO;
 import com.groupware.dto.ApprovalFileDTO;
+import com.groupware.dto.ApprovalPageDTO;
 import com.groupware.dto.DepartmentDTO;
 import com.groupware.dto.EmployeeDTO;
 import com.groupware.service.ApprovalService;
@@ -85,22 +86,27 @@ public class ApprovalController {
 		return ResponseEntity.ok("결재가 상신되었습니다.");
 	}
 
+	// page 파라미터 기본값 1 - 탭을 처음 열 때나 다른 탭에서 넘어올 때는 항상 1페이지부터.
+	// 페이지 번호 버튼을 누르면 approval.js가 이 값만 바꿔서 다시 fetch한다(화면 이동 없음).
 	@GetMapping("/approval/inbox")
 	@ResponseBody
-	public List<ApprovalDTO> inbox(@ModelAttribute("employee") EmployeeDTO employee) {
-		return approvalService.getInbox(employee.getEmployeeId());
+	public ApprovalPageDTO inbox(@ModelAttribute("employee") EmployeeDTO employee,
+			@RequestParam(value = "page", defaultValue = "1") int page) {
+		return approvalService.getInbox(employee.getEmployeeId(), page);
 	}
 
 	@GetMapping("/approval/outbox")
 	@ResponseBody
-	public List<ApprovalDTO> outbox(@ModelAttribute("employee") EmployeeDTO employee) {
-		return approvalService.getOutbox(employee.getEmployeeId());
+	public ApprovalPageDTO outbox(@ModelAttribute("employee") EmployeeDTO employee,
+			@RequestParam(value = "page", defaultValue = "1") int page) {
+		return approvalService.getOutbox(employee.getEmployeeId(), page);
 	}
 
 	@GetMapping("/approval/reference")
 	@ResponseBody
-	public List<ApprovalDTO> reference(@ModelAttribute("employee") EmployeeDTO employee) {
-		return approvalService.getReferenceBox(employee);
+	public ApprovalPageDTO reference(@ModelAttribute("employee") EmployeeDTO employee,
+			@RequestParam(value = "page", defaultValue = "1") int page) {
+		return approvalService.getReferenceBox(employee, page);
 	}
 
 	// 결재 상세 - 어느 탭에서든 문서 한 줄을 클릭하면 모달이 fetch로 호출하는 JSON API.
