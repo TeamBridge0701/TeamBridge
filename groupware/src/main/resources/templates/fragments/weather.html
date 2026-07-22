@@ -8,124 +8,33 @@
 </head>
 
 <th:block th:fragment="weatherWidget">
-	<style>
-		/* ----------------------------------------------------
-           [미니 날씨 위젯 스타일] - 메인페이지 어디든 배치 가능
-           ---------------------------------------------------- */
-		.weather-widget-card {
-			width: 260px;
-			background: #ffffff;
-			border: 1px solid #e2e8f0;
-			border-radius: 16px;
-			padding: 20px;
-			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-			color: #1e293b;
-		}
+	<!-- 옆의 "이번 달 생일자"/미니 캘린더 카드와 똑같은 .card + 같은 padding/폰트 크기를 그대로
+	     맞춰 씀 - 예전엔 이 위젯만 별도 <style>에 고정 너비(260px)·자체 색상값을 써서 다른
+	     대시보드 카드들과 크기·여백·글씨체가 어긋나 보였음(2026-07-22 발견). -->
+	<div class="card" style="padding: 1.25rem;">
+		<div class="card-header" style="margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
+			<h4 class="card-title" style="font-size: 0.9rem;">
+				<i class="fa-solid fa-cloud-sun" style="color: var(--color-accent);"></i>
+				<span id="wLocation">서울</span>
+			</h4>
+			<span style="font-size:0.75rem; color:var(--text-muted);" id="wDate">00월 00일 (요일)</span>
+		</div>
 
-		/* 상단: 지역 및 날짜 영역 */
-		.widget-header {
-			display: flex;
-			justify-content: space-between;
-			align-items: flex-start;
-			margin-bottom: 15px;
-		}
-
-		.widget-location {
-			font-size: 15px;
-			font-weight: 700;
-			color: #0f172a;
-		}
-
-		.widget-date {
-			font-size: 12px;
-			color: #64748b;
-			margin-top: 2px;
-		}
-
-		/* 중간: 메인 날씨 정보 (이모지 & 기온) */
-		.widget-main {
-			display: flex;
-			align-items: center;
-			gap: 16px;
-			margin-bottom: 15px;
-		}
-
-		.widget-icon {
-			font-size: 38px;
-			line-height: 1;
-		}
-
-		.widget-temp-box {
-			display: flex;
-			flex-direction: column;
-		}
-
-		.widget-current-temp {
-			font-size: 28px;
-			font-weight: 800;
-			color: #0f172a;
-			line-height: 1;
-		}
-
-		.widget-desc {
-			font-size: 12px;
-			color: #475569;
-			margin-top: 4px;
-			font-weight: 500;
-		}
-
-		/* 하단: 부가 정보 영역 (습도 & 풍속) */
-		.widget-footer {
-			display: flex;
-			gap: 12px;
-			border-top: 1px solid #f1f5f9;
-			padding-top: 12px;
-			font-size: 11px;
-			color: #64748b;
-			font-weight: 500;
-		}
-
-		.info-item {
-			display: flex;
-			align-items: center;
-			gap: 4px;
-		}
-		.dash-weather-icon {
-		      width: 56px;
-		      height: 56px;
-		      border-radius: 14px;
-		      background: linear-gradient(135deg, rgb(0, 0, 0), rgba(249, 115, 22, 0.14));
-		      display: flex;
-		      align-items: center;
-		      justify-content: center;
-		      flex-shrink: 0;
-		      box-shadow: 0 0 18px rgba(251, 191, 36, 0.25);
-		  }
-		
-	</style>
-		<!-- [HTML] 메인페이지 레이아웃 원하는 위치에 삽입하세요 -->
-		<div class="weather-widget-card">
-			<div class="widget-header">
-				<div>
-					<div class="widget-location" id="wLocation">서울</div>
-					<div class="widget-date" id="wDate">00월 00일 (요일)</div>
+		<div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">
+			<div style="font-size:2rem; line-height:1;" id="wIcon">☀️</div>
+			<div>
+				<div style="font-size:1.4rem; font-weight:700; color:var(--text-primary); line-height:1;">
+					<span id="wTemp">--</span>°C
 				</div>
-			</div>
-
-			<div class="widget-main">
-				<div class="widget-icon dash-weather-icon" id="wIcon">☀️</div>
-				<div class="widget-temp-box">
-					<div class="widget-current-temp"><span id="wTemp">--</span>°C</div>
-					<div class="widget-desc" id="wDesc">날씨 로딩 중...</div>
-				</div>
-			</div>
-
-			<div class="widget-footer">
-				<div class="info-item">💧 습도 <span id="wHumi">--</span>%</div>
-				<div class="info-item">💨 바람 <span id="wWind">--</span>m/s</div>
+				<div style="font-size:0.8rem; color:var(--text-secondary); margin-top:0.25rem;" id="wDesc">날씨 로딩 중...</div>
 			</div>
 		</div>
+
+		<div style="display:flex; gap:0.75rem; border-top:1px solid var(--border-color); padding-top:0.5rem; font-size:0.75rem; color:var(--text-muted);">
+			<span>💧 습도 <span id="wHumi">--</span>%</span>
+			<span>💨 바람 <span id="wWind">--</span>m/s</span>
+		</div>
+	</div>
 
 		<!-- [JavaScript] 실시간 데이터 요청 및 바인딩 스크립트 -->
 		<script>
@@ -139,60 +48,42 @@
 
 				document.getElementById('wDate').innerText = `${month}월 ${date}일 (${dayName}요일)`;
 
-				// 2. OpenWeatherMap API 연동 환경 설정
-				// ⚠️ 발급받은 실제 API 키값(32자리 문자열)을 아래 고정해 주세요.
-				const API_KEY = 'API키 넣을 자리';
-				const CITY = 'Seoul'; // 대전 'Daejeon', 부산 'Busan', 인천 'Incheon' 등으로 변경 가능
+				// 2. 날씨 데이터 조회 - OpenWeatherMap을 브라우저가 직접 부르지 않고, 서버(/weather,
+				// MainController)를 통해서만 부른다. API 키는 서버(application.properties)에만
+				// 있고 브라우저로는 절대 안 나간다(2026-07-22).
+				fetch('/weather')
+					.then(response => {
+						if (!response.ok) throw new Error('날씨 정보를 가져오지 못했습니다.');
+						return response.json();
+					})
+					.then(data => {
+						const temp = Math.round(data.main.temp);             // 기온 반올림
+						const humidity = data.main.humidity;                 // 습도
+						const windSpeed = data.wind.speed.toFixed(1);         // 풍속 소수점 한자리
+						const desc = data.weather[0].description;            // 한국어 날씨 설명
+						const condition = data.weather[0].main.toLowerCase(); // 기상 상태 분류명
 
-				// API_KEY가 변경되었을 때만 실제 실시간 호출 작동
-				if (API_KEY !== 'YOUR_API_KEY') {
-					const url = `https://api.openweathermap.org/data/2.5/weather?q=${CITY}&appid=${API_KEY}&units=metric&lang=ko`;
+						// 기상 상태 코드에 맞춰 이모지 변경 - 이모지 수정 가능
+						let icon = '☀️';
+						if (condition.includes('cloud')) icon = '☁️';
+						else if (condition.includes('rain')) icon = '🌧️';
+						else if (condition.includes('snow')) icon = '❄️';
+						else if (condition.includes('thunder')) icon = '⚡';
+						else if (condition.includes('drizzle')) icon = '🌦️';
+						else if (condition.includes('mist') || condition.includes('fog')) icon = '🌫️';
 
-					fetch(url)
-						.then(response => {
-							if (!response.ok) {
-								throw new Error('네트워크 응답에 문제가 있습니다.');
-							}
-							return response.json();
-						})
-						.then(data => {
-							const temp = Math.round(data.main.temp);             // 기온 반올림
-							const humidity = data.main.humidity;                 // 습도
-							const windSpeed = data.wind.speed.toFixed(1);         // 풍속 소수점 한자리
-							const desc = data.weather[0].description;            // 한국어 날씨 설명
-							const condition = data.weather[0].main.toLowerCase(); // 기상 상태 분류명
-
-							// 기상 상태 코드에 맞춰 이모지 변경 - 이모지 수정 가능
-							let icon = '☀️';
-							if (condition.includes('cloud')) icon = '☁️';
-							else if (condition.includes('rain')) icon = '🌧️';
-							else if (condition.includes('snow')) icon = '❄️';
-							else if (condition.includes('thunder')) icon = '⚡';
-							else if (condition.includes('drizzle')) icon = '🌦️';
-							else if (condition.includes('mist') || condition.includes('fog')) icon = '🌫️';
-
-							// 추출한 데이터를 HTML 엘리먼트에 순차 매핑
-							document.getElementById('wTemp').innerText = temp;
-							document.getElementById('wDesc').innerText = desc;
-							document.getElementById('wHumi').innerText = humidity;
-							document.getElementById('wWind').innerText = windSpeed;
-							document.getElementById('wIcon').innerText = icon;
-
-							// 도시 이름 다국어 노출 처리 (예: Seoul -> 서울) - 현재는 서울이 기본값으로 설정
-							if (CITY.toLowerCase() === 'seoul') document.getElementById('wLocation').innerText = '서울';
-							else document.getElementById('wLocation').innerText = data.name;
-						})
-						.catch(err => {
-							console.error('날씨 데이터 연동 실패:', err);
-							document.getElementById('wDesc').innerText = '연동 실패';
-						});
-				} else {
-					// [키 입력 전 가이드용 임시 프리뷰 데이터]  - 임시 test 데이터
-					document.getElementById('wTemp').innerText = '25';
-					document.getElementById('wDesc').innerText = '맑고 쾌적함';
-					document.getElementById('wHumi').innerText = '50';
-					document.getElementById('wWind').innerText = '1.5';
-				}
+						// 추출한 데이터를 HTML 엘리먼트에 순차 매핑
+						document.getElementById('wTemp').innerText = temp;
+						document.getElementById('wDesc').innerText = desc;
+						document.getElementById('wHumi').innerText = humidity;
+						document.getElementById('wWind').innerText = windSpeed;
+						document.getElementById('wIcon').innerText = icon;
+						document.getElementById('wLocation').innerText = '서울';
+					})
+					.catch(err => {
+						console.error('날씨 데이터 연동 실패:', err);
+						document.getElementById('wDesc').innerText = '연동 실패';
+					});
 			});
 		</script>
 </th:block>

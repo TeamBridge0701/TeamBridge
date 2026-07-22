@@ -128,16 +128,23 @@ async function loadAttendanceData(year, month) {
 
 async function commute() {
     const btn = document.getElementById('btnCommute');
+    // updateButtonUI()가 저장해둔 현재 상태(NONE/WORKING/DONE/LEAVE) - 클래스 대신 이걸로
+    // 판단해야 DONE/LEAVE(둘 다 btn-secondary라 클래스로는 구분 불가)를 구별할 수 있음(2026-07-22)
+    const status = btn.dataset.commuteStatus;
 
-    // 현재 버튼의 상태를 판단 (클래스 기반)
-    let action = '';
-    if (btn.classList.contains('btn-primary')) {
-        action = 'checkIn';
-    } else if (btn.classList.contains('btn-danger')) {
-        action = 'checkOut';
-    } else {
-        return; // 이미 종료된 상태면 동작 안 함
+    // 이미 끝난 상태는 서버까지 갈 필요 없이 바로 안내만 띄우고 끝 - 예전엔 버튼이 disabled라
+    // 아예 클릭이 안 됐는데, 이제는 눌러도 되니 그 대신 여기서 안내한다
+    if (status === 'DONE') {
+        showToast('이미 퇴근 처리되었습니다.', 'warning');
+        return;
     }
+    if (status === 'LEAVE') {
+        showToast('휴가중입니다.', 'warning');
+        return;
+    }
+
+    const action = status === 'NONE' ? 'checkIn' : status === 'WORKING' ? 'checkOut' : null;
+    if (!action) return;
 
     try {
         const response = await fetch(`/attendance/${action}`, {
@@ -147,15 +154,20 @@ async function commute() {
 
         const result = await response.json();
 
+        // 실패한 경우(예: 아주 짧은 간격의 중복 클릭으로 서버에서 IllegalStateException이 난 경우)에도
+        // 서버가 최신 상태를 같이 내려주므로, 화면을 그 기준으로 다시 맞추고 이유를 그대로 보여준다
+        updateButtonUI(result.nextStatus);
+        updateAttendanceDisplay(result);
+
         if (result.success) {
-            updateButtonUI(result.nextStatus);
-            updateAttendanceDisplay(result);
             const message = action === 'checkIn' ? '출근처리되었습니다.' : '퇴근처리되었습니다.';
             showToast(message, 'success');
+        } else {
+            showToast(result.message || '처리에 실패했습니다.', 'danger');
         }
     } catch (error) {
         console.error('통신 오류:', error);
-        alert('서버 통신 중 오류가 발생했습니다.');
+        showToast('서버 통신 중 오류가 발생했습니다.', 'danger');
     }
 }
 
@@ -164,25 +176,23 @@ function updateButtonUI(status) {
     if (!btn) return;
 
     btn.classList.remove('btn-primary', 'btn-danger', 'btn-secondary');
+    btn.disabled = false; // 이제 네 상태 다 클릭 가능 - 어떤 상태든 commute()가 알아서 판단함
+    // commute()가 클릭 시 "지금 무슨 상태인지" 정확히 알아야 해서 버튼에 직접 저장해둠.
+    // DONE/LEAVE는 클래스(btn-secondary)가 똑같아서 클래스만으로는 구분이 안 됐음(2026-07-22)
+    btn.dataset.commuteStatus = status;
 
     if (status === 'NONE') {
         btn.innerText = '출근하기';
         btn.classList.add('btn', 'btn-primary');
-        btn.disabled = false;
     } else if (status === 'WORKING') {
         btn.innerText = '퇴근하기';
         btn.classList.add('btn', 'btn-danger');
-        btn.disabled = false;
     } else if (status === 'LEAVE') {
-        // 연차 승인된 날 - 출근 기록 자체가 없어서(insertLeaveRecord가 시각을 안 채움) 눌러도
-        // 의미가 없으니 비활성화. 휴가중에도 출근하는 케이스 지원은 나중에 별도로 다룸
         btn.innerText = '휴가중';
         btn.classList.add('btn', 'btn-secondary');
-        btn.disabled = true;
     } else {
         btn.innerText = '업무 종료';
         btn.classList.add('btn', 'btn-secondary');
-        btn.disabled = true;
     }
 }
 

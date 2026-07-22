@@ -45,20 +45,40 @@ public class AttendanceController {
 		return getAttendanceData(user.getEmployeeDTO().getEmployeeId());
 	}
 
-	// 2. 출근 처리 API
+	// 2. 출근 처리 API - 더블클릭 경합이나 여러 탭/기기에서 동시에 눌러서 이미 출근 처리된
+	// 상태에 또 요청이 오면 AttendanceService.checkIn()이 IllegalStateException을 던진다.
+	// 예전엔 이걸 아무도 안 잡아서 그대로 500 에러로 튕겨나갔는데, 여기서 붙잡아
+	// success:false + 안내 메시지로 바꿔서 돌려준다. 실패해도 getAttendanceData()로 최신
+	// 상태(nextStatus 등)는 같이 내려줘서 화면 버튼이 서버 기준으로 다시 맞춰지게 한다(2026-07-22).
 	@ResponseBody
 	@PostMapping("/checkIn")
 	public Map<String, Object> checkIn(@AuthenticationPrincipal CustomUserDetails user) {
-		attendanceService.checkIn(user.getEmployeeDTO().getEmployeeId());
-		return getAttendanceData(user.getEmployeeDTO().getEmployeeId());
+		int employeeId = user.getEmployeeDTO().getEmployeeId();
+		try {
+			attendanceService.checkIn(employeeId);
+		} catch (IllegalStateException e) {
+			Map<String, Object> response = getAttendanceData(employeeId);
+			response.put("success", false);
+			response.put("message", e.getMessage());
+			return response;
+		}
+		return getAttendanceData(employeeId);
 	}
 
-	// 3. 퇴근 처리 API
+	// 3. 퇴근 처리 API - 출근 처리와 같은 이유로 동일하게 처리(2026-07-22)
 	@ResponseBody
 	@PostMapping("/checkOut")
 	public Map<String, Object> checkOut(@AuthenticationPrincipal CustomUserDetails user) {
-		attendanceService.checkOut(user.getEmployeeDTO().getEmployeeId());
-		return getAttendanceData(user.getEmployeeDTO().getEmployeeId());
+		int employeeId = user.getEmployeeDTO().getEmployeeId();
+		try {
+			attendanceService.checkOut(employeeId);
+		} catch (IllegalStateException e) {
+			Map<String, Object> response = getAttendanceData(employeeId);
+			response.put("success", false);
+			response.put("message", e.getMessage());
+			return response;
+		}
+		return getAttendanceData(employeeId);
 	}
 
 	// 4. 출퇴근정보 attendance.html에 뿌려주기 - 캘린더 배지용 원본 레코드(records)와

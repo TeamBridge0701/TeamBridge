@@ -8,11 +8,8 @@ build/
 !**/src/test/**/build/
 uploads/
 .DS_Store
-<<<<<<< HEAD
-=======
 .gitignore
 
->>>>>>> main
 ### STS ###
 .apt_generated
 .classpath
