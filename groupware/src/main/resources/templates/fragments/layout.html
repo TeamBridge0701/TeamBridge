@@ -53,8 +53,9 @@
 						th:text="${#strings.substring(employee.employeeName, 0, 1)}">홍</div>
 					<div class="user-details">
 						<span class="user-name-text" id="headerName" th:text="${employee.employeeName}">홍길동</span>
-						<span class="user-role-text" id="headerDept"
-							th:text="${employee.deptName} + ' · ' + ${employee.positionName}">개발팀 · 사원</span>
+						<!-- 관리자는 부서/직급이 없어서(바로 위 이름이 이미 "관리자"라 중복 방지) 이 줄 자체를 숨김 -->
+						<span class="user-role-text" id="headerDept" th:if="${employee.deptName != null}"
+							th:text="|${employee.deptName} · ${employee.positionName}|">개발팀 · 사원</span>
 					</div>
 				</a>
 				<a class="icon-btn" th:href="@{/logout}" title="로그아웃"
