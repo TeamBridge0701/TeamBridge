@@ -100,10 +100,28 @@
                       아래 값은 재직 여부가 아니라 오늘 ATTENDANCE 기록으로 계산한 근태 상태다.
                     -->
                     <td>
-                      <th:block th:switch="${employee.workStatus}">
+                      <!--
+                        employee는 th:each가 employees 목록에서 한 명씩 꺼낸 EmployeeDTO다.
+                        th:if는 ${...} 안의 조건이 true일 때만 현재 span 태그를 HTML에 출력하는 Thymeleaf 문법이다.
+                        ==는 두 값이 같은지 비교한다. EMPLOYEE_ROLE이 ADMIN인 관리자만 아래 "-"를 보게 된다.
+                      -->
+                      <span th:if="${employee.employeeRole == 'ADMIN'}">-</span>
+
+                      <!--
+                        th:unless는 th:if의 반대다. 조건이 false일 때만 이 블록을 출력한다.
+                        즉 관리자는 위의 "-"만 출력하고, ADMIN이 아닌 일반 직원만 아래 근태 상태 분기로 들어간다.
+                        th:block은 화면에 실제 HTML 태그를 남기지 않고 Thymeleaf 조건·반복을 묶을 때 사용하는 전용 태그다.
+                        th:switch는 employee.workStatus 값에 따라 여러 th:case 중 하나를 선택하는 조건 분기 문법이다.
+                      -->
+                      <th:block th:unless="${employee.employeeRole == 'ADMIN'}"
+                                th:switch="${employee.workStatus}">
+                        <!-- WORKING이면 오늘 출근 후 아직 퇴근하지 않은 상태로, 초록 badge CSS 클래스를 적용한다. -->
                         <span th:case="'WORKING'" class="badge badge-success">출근 (근무중)</span>
+                        <!-- LEAVE이면 휴가 상태를 표시한다. -->
                         <span th:case="'LEAVE'" class="badge badge-primary">휴가</span>
+                        <!-- DONE이면 오늘 퇴근 처리가 끝난 상태를 표시한다. -->
                         <span th:case="'DONE'" class="badge badge-muted">퇴근</span>
+                        <!-- th:case="*"는 위 어느 상태에도 맞지 않을 때 실행되는 기본값(default)이다. -->
                         <span th:case="*" class="badge badge-warning">미출근</span>
                       </th:block>
                     </td>

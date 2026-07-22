@@ -42,6 +42,9 @@ public interface ChatMapper {
             @Param("roomId") int roomId,
             @Param("employeeId") int employeeId);
 
+    // CHAT_ROOM_MEMBER의 참여 연결 한 건을 삭제한다.
+    // @Param("...")은 XML의 #{roomId}, #{employeeId}와 Java 매개변수 이름을 연결한다.
+    // int 반환값은 실제로 삭제된 행 수이며, Service가 1인지 확인해 실패를 판단한다.
     int deleteChatRoomMember(
             @Param("roomId") int roomId,
             @Param("employeeId") int employeeId);
@@ -57,7 +60,9 @@ public interface ChatMapper {
     List<Integer> findRoomMemberIds(@Param("roomId") int roomId);
     								// XML에서 이 값을 #{roomId}라는 이름으로 사용하기 위한 설정이다
 
-    // 참여자 목록 모달에 표시할 이름, 부서, 직급, 프로필을 함께 조회한다.
+    // 참여자 목록 모달에 표시할 직원 정보를 조회한다.
+    // List<EmployeeDTO>는 한 방에 참여자가 여러 명일 수 있어 EmployeeDTO를 여러 건 반환한다.
+    // @Param("roomId")의 값은 XML SQL의 #{roomId}에 전달된다.
     List<EmployeeDTO> findRoomMembers(@Param("roomId") int roomId);
 
     // 특정 채팅방 참여자들의 사번 목록을 조회한다.

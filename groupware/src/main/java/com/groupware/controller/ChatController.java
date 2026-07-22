@@ -241,17 +241,22 @@ public class ChatController {
     }
 
     // 목록 버튼을 누를 때마다 현재 방의 참여자를 다시 조회한다.
+    // 화면을 처음 열 때 목록을 고정하지 않아, 누군가 나간 뒤에도 최신 참여자를 받을 수 있다.
     @GetMapping("/chat/room/{roomId}/members")
     @ResponseBody
     public ResponseEntity<List<EmployeeDTO>> getRoomMembers(
+            // URL의 /chat/room/18/members에서 18을 roomId로 받는다.
             @PathVariable("roomId") int roomId,
+            // 로그인 사용자 정보에서 직원 번호를 가져와 Service 권한 검사에 사용한다.
             @AuthenticationPrincipal CustomUserDetails principal) {
 
         try {
+            // ResponseEntity.ok(...)는 HTTP 200과 EmployeeDTO 목록을 JSON으로 반환한다.
             return ResponseEntity.ok(chatService.getRoomMembers(
                     roomId,
                     principal.getEmployeeDTO().getEmployeeId()));
         } catch (IllegalArgumentException exception) {
+            // 방 참여자가 아니면 직원 목록을 주지 않고 HTTP 403(FORBIDDEN)만 반환한다.
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
     }
@@ -332,10 +337,13 @@ public class ChatController {
         }
     }
 
+    // POST는 서버의 참여자 데이터를 실제로 삭제하는 요청에 사용한다.
     @PostMapping("/chat/room/{roomId}/leave")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> leaveChatRoom(
+            // {roomId} 자리의 숫자를 int roomId로 받는 Spring MVC 문법이다.
             @PathVariable("roomId") int roomId,
+            // 브라우저가 보낸 직원 번호를 믿지 않고 로그인한 사용자 정보에서 직원 번호를 가져온다.
             @AuthenticationPrincipal CustomUserDetails principal) {
 
         try {
@@ -343,15 +351,19 @@ public class ChatController {
                     roomId,
                     principal.getEmployeeDTO().getEmployeeId());
 
+            // 마지막 참여자가 아니면 Service가 만든 SYSTEM 메시지를 같은 방 구독자에게 실시간 방송한다.
             if (systemMessage != null) {
                 messagingTemplate.convertAndSend(
                         "/topic/room/" + roomId,
                         systemMessage);
+                // 남은 참여자들의 왼쪽 채팅방 목록에도 마지막 메시지가 반영되도록 개인 알림을 보낸다.
                 notifyRoomListMembers("MESSAGE", roomId, systemMessage);
             }
 
+            // JavaScript가 나가기 성공 후 어디로 이동할지 알 수 있게 JSON으로 주소를 반환한다.
             return ResponseEntity.ok(Map.of("redirectUrl", "/chat"));
         } catch (IllegalArgumentException exception) {
+            // 참여자가 아니거나 삭제에 실패한 경우에는 HTTP 400과 오류 문구를 JSON으로 반환한다.
             return ResponseEntity.badRequest().body(
                     Map.<String, Object>of("message", exception.getMessage()));
         }

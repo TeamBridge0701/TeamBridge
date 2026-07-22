@@ -333,6 +333,11 @@
         )
     </insert>
 
+    <!--
+      Mapper의 deleteChatRoomMember()가 호출할 SQL이다.
+      ROOM_ID와 EMPLOYEE_ID를 함께 조건으로 써서, 같은 방의 다른 참여자는 삭제하지 않는다.
+      #{...}는 문자열을 이어 붙이지 않고 MyBatis가 값으로 안전하게 전달하는 파라미터 바인딩 문법이다.
+    -->
     <delete id="deleteChatRoomMember">
         DELETE FROM CHAT_ROOM_MEMBER
         WHERE ROOM_ID = #{roomId}
@@ -347,8 +352,14 @@
         ORDER BY MEMBER_ROW_ID ASC
     </select>
 
-    <!-- 현재 방 참여자 목록 모달에 필요한 직원 정보를 한 번에 조회한다. -->
+    <!--
+      현재 방 참여자 목록 모달에 필요한 직원 정보를 한 번에 조회한다.
+      CHAT_ROOM_MEMBER는 "방-직원" 연결만 가지므로, EMPLOYEE와 JOIN하여 이름·상태를 가져온다.
+      LEFT JOIN은 관리자처럼 부서나 직급이 없는 직원도 목록에서 빠지지 않게 한다.
+      MEMBER_ROW_ID 오름차순은 방에 참여한 순서대로 보여 주기 위한 정렬이다.
+    -->
     <select id="findRoomMembers" resultType="com.groupware.dto.EmployeeDTO">
+        <!-- resultType의 EmployeeDTO 필드명과 같은 컬럼을 SELECT해야 MyBatis가 자동으로 담는다. -->
         SELECT e.EMPLOYEE_ID,
                e.EMPLOYEE_NAME,
                e.PROFILE_IMG,
@@ -356,12 +367,14 @@
                d.DEPT_NAME,
                p.POSITION_NAME
         FROM CHAT_ROOM_MEMBER member
+        <!-- JOIN은 두 테이블에서 EMPLOYEE_ID가 같은 행을 하나로 묶는 SQL 문법이다. -->
         JOIN EMPLOYEE e
           ON e.EMPLOYEE_ID = member.EMPLOYEE_ID
         LEFT JOIN DEPARTMENT d
           ON d.DEPT_ID = e.DEPT_ID
         LEFT JOIN `POSITION` p
           ON p.POSITION_ID = e.POSITION_ID
+        <!-- 현재 선택한 방의 참여자만 조회한다. -->
         WHERE member.ROOM_ID = #{roomId}
         ORDER BY member.MEMBER_ROW_ID ASC
     </select>
