@@ -91,6 +91,11 @@ public class AttendanceController {
 		response.put("checkOutTime",
 				(dto != null && dto.getCheckOutTime() != null) ? dto.getCheckOutTime().substring(0, 5) : "-"); // HH:mm으로
 
+		// 대시보드 "월간 근태 요약" 카드(출근일수/지각/연차/출근율)도 이 응답에 같이 실어보낸다 -
+		// 출근/퇴근 버튼을 누른 직후 그 카드가 새로고침 없이 바로 갱신되게 하기 위함
+		// (DashboardService가 페이지 최초 렌더링 때 쓰는 것과 동일한 메서드 재사용, 2026-07-22)
+		response.putAll(attendanceService.getAttendanceSummary(employeeId, LocalDate.now()));
+
 		return response;
 	}
 }
