@@ -30,6 +30,10 @@ public interface EmployeeMapper {
 	// ACTIVE 직원 전체 (부서 제한 없음 - 기안자가 회사 전체 팀장/부서장 중에서 고름)
 	List<EmployeeDTO> findByPositionRank(@Param("positionRank") int positionRank);
 
+	// 전자결재 지출결의서 2차 승인자 후보 - 특정 부서(예: 재무관리팀) 소속이면서
+	// 부서장/팀장급인 ACTIVE 직원만 (일반 사원은 승인 권한이 없다는 전제)
+	List<EmployeeDTO> findApproversByDeptName(@Param("deptName") String deptName);
+
 	// 부서 필터에 맞는 ACTIVE 직원만 조직도 표에 표시한다. deptId가 null 이면 전체다.
 	List<EmployeeDTO> findActiveEmployeesByDepartment(@Param("deptId") Integer deptId);
 

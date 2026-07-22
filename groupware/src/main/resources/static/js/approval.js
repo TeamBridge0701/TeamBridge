@@ -140,6 +140,124 @@ function confirmRefPicker() {
   closeModal();
 }
 
+// -----------------------------------------------------------
+// 결재선 규칙(2026-07-22 확정) - 서식 + "기안자 자신의 직급"에 따라 몇 단계인지,
+// 각 단계가 어느 후보 목록(팀장/부서장/재무관리팀)에서 고르는지가 달라진다.
+// ApprovalService.writeApproval()의 분기와 반드시 같은 기준이어야 한다(서버가 다시
+// 검증하지만, 화면에 몇 개의 승인자 필드를 그릴지는 이 표 하나로 정해야 안 헷갈림).
+// 반환값: [{ field: 'signer1', label, candidates }, (2단계면) { field: 'signer2', ... }]
+// -----------------------------------------------------------
+function getApprovalSteps(formTypeName, drafterPositionRank) {
+  const RANK_DEPT_HEAD = 1;
+  const RANK_TEAM_LEAD = 2;
+  const drafterIsDeptHead = drafterPositionRank === RANK_DEPT_HEAD;
+  const drafterIsTeamLead = drafterPositionRank === RANK_TEAM_LEAD;
+
+  if (formTypeName === '연차휴가신청서') {
+    // 부서장 본인이 기안하면 승인자 없이 참조자만 지정하고 바로 승인 완료 처리(2026-07-22
+    // 팀 협의 확정) - 승인자 필드 자체를 안 보여준다(빈 배열).
+    if (drafterIsDeptHead) {
+      return [];
+    }
+    // 그 외(팀장/사원)는 항상 부서장 1인 승인 - 팀장한테 받는 게 아니라 부서장한테 받는다.
+    return [{ field: 'signer1', label: '승인자 (부서장)', candidates: deptHeadCandidates }];
+  }
+
+  if (formTypeName === '지출결의서') {
+    // 부서장이 기안하면 1차(부서장=본인)를 생략하고 바로 재무관리팀 1단계로 끝남
+    if (drafterIsDeptHead) {
+      return [{ field: 'signer1', label: '승인자 (재무관리팀)', candidates: financeCandidates }];
+    }
+    return [
+      { field: 'signer1', label: '1차 승인자 (부서장)', candidates: deptHeadCandidates },
+      { field: 'signer2', label: '2차 승인자 (재무관리팀)', candidates: financeCandidates }
+    ];
+  }
+
+  // 프로젝트품의서: 기본 1차 팀장 → 2차 부서장. 팀장/부서장 본인이 기안하면 자기 자신이
+  // 걸리는 단계를 생략하고 부서장 승인 1단계로 끝남(부서장이 기안하면 다른 부서장이 승인)
+  if (drafterIsDeptHead || drafterIsTeamLead) {
+    return [{ field: 'signer1', label: '승인자 (부서장)', candidates: deptHeadCandidates }];
+  }
+  return [
+    { field: 'signer1', label: '1차 승인자 (팀장)', candidates: teamLeadCandidates },
+    { field: 'signer2', label: '2차 승인자 (부서장)', candidates: deptHeadCandidates }
+  ];
+}
+
+// -----------------------------------------------------------
+// 승인자 선택 팝업 - 참조 대상 선택과 같은 조직도 스타일이지만 다중 선택이 아니라
+// "행을 클릭하면 그 사람으로 바로 확정되고 모달이 닫히는" 단일 선택 방식이다.
+// 부서 트리는 서버에서 새로 받아오지 않고, 이미 화면에 로드된 후보 목록 안에 실제로
+// 있는 부서만 추려서 만든다 - 후보가 없는 부서까지 넣어봤자 클릭해도 후보가 안 나옴.
+// -----------------------------------------------------------
+let currentApprovalSteps = [];        // initApprovalForm이 채워둔 이번 서식의 단계 목록(getApprovalSteps 결과)
+let approverPickerField = null;       // 지금 팝업이 채우는 필드('signer1' 또는 'signer2')
+let approverPickerCandidates = [];    // 지금 팝업에서 고를 수 있는 후보 전체(부서 필터 전)
+let approverPickerViewDeptId = null;  // 오른쪽 표를 좁혀서 보여줄 기준 부서 (null=전체)
+
+// "조직도에서 선택" 버튼을 누르면 실행. field('signer1'/'signer2')에 맞는 후보 목록은
+// currentApprovalSteps(이 서식+기안자 조합으로 이미 계산해 둔 값)에서 찾는다.
+function openApproverPicker(field) {
+  const step = currentApprovalSteps.find(s => s.field === field);
+  if (!step) return;
+
+  approverPickerField = field;
+  approverPickerCandidates = step.candidates;
+  approverPickerViewDeptId = null;
+
+  document.getElementById('approverPickerTitle').innerText = step.label;
+
+  renderApproverDeptTree();
+  renderApproverMemberList();
+  openModal('modal-approver-picker');
+}
+
+function renderApproverDeptTree() {
+  // 후보 목록 안에서 중복 없이 부서 목록만 뽑아낸다(Map이라 deptId 기준으로 자동 중복 제거)
+  const deptMap = new Map();
+  approverPickerCandidates.forEach(c => {
+    if (c.deptId) deptMap.set(c.deptId, c.deptName);
+  });
+
+  let html = `<li><a class="org-node ${approverPickerViewDeptId === null ? 'active' : ''}" onclick="filterApproverDeptView(null)"><i class="fa-solid fa-building"></i> 전체보기</a></li>`;
+  deptMap.forEach((deptName, deptId) => {
+    html += `<li><a class="org-node ${approverPickerViewDeptId === deptId ? 'active' : ''}" onclick="filterApproverDeptView(${deptId})">${deptName}</a></li>`;
+  });
+  document.getElementById('approverDeptTree').innerHTML = html;
+}
+
+function filterApproverDeptView(deptId) {
+  approverPickerViewDeptId = deptId;
+  renderApproverDeptTree();
+  renderApproverMemberList();
+}
+
+function renderApproverMemberList() {
+  const filtered = approverPickerViewDeptId === null
+    ? approverPickerCandidates
+    : approverPickerCandidates.filter(c => c.deptId === approverPickerViewDeptId);
+
+  document.getElementById('approverMemberTableBody').innerHTML = filtered.length ? filtered.map(c => `
+    <tr class="clickable" onclick="selectApprover(${c.employeeId}, '${c.employeeName}', '${(c.deptName || '').replace(/'/g, "\\'")}')">
+      <td><strong>${c.employeeName}</strong></td>
+      <td>${c.deptName || ''}</td>
+      <td><span class="badge badge-primary">${c.positionName || ''}</span></td>
+    </tr>
+  `).join('') : `
+    <tr><td colspan="3" style="text-align:center; padding:1.5rem; color:var(--text-muted);">해당 부서에 후보가 없습니다.</td></tr>
+  `;
+}
+
+// 표에서 한 명을 클릭하면 실행 - 그 사람 employeeId를 hidden input에 채우고, 버튼 옆
+// 요약 텍스트를 갱신한 뒤 바로 모달을 닫는다(참조 대상과 달리 "확인" 버튼이 따로 없음).
+function selectApprover(employeeId, employeeName, deptName) {
+  const fieldId = approverPickerField === 'signer1' ? 'draftSigner1' : 'draftSigner2';
+  document.getElementById(fieldId).value = employeeId;
+  document.getElementById(`${approverPickerField}Summary`).innerText = deptName ? `${employeeName} (${deptName})` : employeeName;
+  closeModal();
+}
+
 // 좌측 메뉴의 4개 탭 전환. inbox/outbox/ref는 탭을 열 때마다 서버에서 새로 받아온다
 // (mock의 switchApprovalTab과 동일하게 - 다른 사람이 승인/기안한 내용이 바로 반영되도록).
 function switchApprovalTab(tab) {
@@ -413,8 +531,9 @@ function doWithdrawApproval() {
 
 // 서식 카드(연차휴가신청서/지출결의서/프로젝트품의서)를 클릭하면 실행.
 // 서식명은 문자열이라 onclick에 직접 끼워넣지 않고 카드의 data-form-name 속성(cardEl)에서 읽는다.
-// 서식별 결재 단계 수(stepCount)에 맞춰 1차/최종 승인자 select를 다르게 보여준다.
-function initApprovalForm(formTypeId, cardEl, stepCount) {
+// 몇 단계인지/어느 후보 목록인지는 getApprovalSteps()가 서식명+기안자 직급으로 판단하므로
+// 카드 클릭 시점엔 결재 단계 수를 따로 안 받는다.
+function initApprovalForm(formTypeId, cardEl) {
   const formTypeName = cardEl.dataset.formName;
   const container = document.getElementById('approvalFormContainer');
   container.style.display = 'block';
@@ -454,24 +573,30 @@ function initApprovalForm(formTypeId, cardEl, stepCount) {
     </div>
   ` : '';
 
-  const signer1Options = teamLeadCandidates
-    .map(c => `<option value="${c.employeeId}">${c.employeeName} 팀장 (${c.deptName || ''})</option>`).join('');
-
-  const signer2FieldHtml = stepCount === 2 ? `
-    <div class="form-group">
-      <label class="form-label" for="draftSigner2">최종 승인자 (부서장)</label>
-      <select id="draftSigner2" class="form-control">
-        ${deptHeadCandidates.map(c => `<option value="${c.employeeId}">${c.employeeName} 부서장 (${c.deptName || ''})</option>`).join('')}
-      </select>
-    </div>
-  ` : '';
-
   resetRefSelection();
   draftSelectedFiles = [];
 
+  // 이 서식 + 기안자 자신의 직급 조합으로 몇 단계인지, 각 단계가 어느 후보 목록을 쓰는지
+  // 결정한다(getApprovalSteps). openApproverPicker/submitDraft가 이 값을 그대로 참고함.
+  currentApprovalSteps = getApprovalSteps(formTypeName, drafterPositionRank);
+  const approverFieldHtml = step => `
+    <div class="form-group">
+      <label class="form-label">${step.label}</label>
+      <div style="display:flex; align-items:center; gap:0.75rem;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="openApproverPicker('${step.field}')"><i class="fa-solid fa-sitemap"></i> 조직도에서 선택</button>
+        <span id="${step.field}Summary" style="font-size:0.85rem; color:var(--text-secondary);">선택된 승인자 없음</span>
+      </div>
+      <input type="hidden" id="draft${step.field === 'signer1' ? 'Signer1' : 'Signer2'}">
+    </div>
+  `;
+  // 2단계면 1차/2차를 좌우로 나란히(grid-2), 1단계면 필드 하나만 그대로 둔다.
+  const approverFieldsHtml = currentApprovalSteps.length === 2
+    ? `<div class="grid-2">${currentApprovalSteps.map(approverFieldHtml).join('')}</div>`
+    : currentApprovalSteps.map(approverFieldHtml).join('');
+
   container.innerHTML = `
     <h4 style="margin-bottom:1rem; color:var(--color-primary)">${formTypeName} 기안 서식 작성</h4>
-    <form onsubmit="submitDraft(event, ${formTypeId}, ${stepCount})">
+    <form onsubmit="submitDraft(event, ${formTypeId})">
       <div class="form-group">
         <label class="form-label" for="draftTitle">기안문 제목</label>
         <input type="text" id="draftTitle" class="form-control" required value="[기안] ${formTypeName} 상신 건">
@@ -485,18 +610,12 @@ function initApprovalForm(formTypeId, cardEl, stepCount) {
       ${amountHtml}
       ${fileAttachHtml}
 
-      <div class="grid-2">
-        <div class="form-group">
-          <label class="form-label" for="draftSigner1">1차 승인자 (팀장)</label>
-          <select id="draftSigner1" class="form-control">
-            ${signer1Options}
-          </select>
-        </div>
-        ${signer2FieldHtml}
-      </div>
+      ${approverFieldsHtml}
 
       <div class="form-group">
-        <label class="form-label">참조 대상 지정</label>
+        <!-- 승인자가 없는 경우(부서장 본인 연차)는 참조 대상 지정이 필수 - 승인 절차가
+             없는 대신 누군가는 볼 수 있어야 하므로 최소 1명/1부서를 강제한다. -->
+        <label class="form-label">참조 대상 지정${currentApprovalSteps.length === 0 ? ' (필수 - 승인자 없음)' : ''}</label>
         <div style="display:flex; align-items:center; gap:0.75rem;">
           <button type="button" class="btn btn-secondary btn-sm" onclick="openRefPicker()"><i class="fa-solid fa-sitemap"></i> 조직도에서 선택</button>
           <span id="refSelectionSummary" style="font-size:0.85rem; color:var(--text-secondary);">선택된 참조 대상 없음</span>
@@ -513,14 +632,47 @@ function initApprovalForm(formTypeId, cardEl, stepCount) {
 
 // 기안 폼의 "결재 상신" 버튼(submit)에 연결. 첨부파일이 있을 수 있어 FormData(multipart)로
 // POST /approval/write에 전송한다 (자료실 submitArchivePost와 동일한 방식).
-function submitDraft(event, formTypeId, stepCount) {
+function submitDraft(event, formTypeId) {
   event.preventDefault();
+
+  // 승인자는 <select>가 아니라 hidden input이라 브라우저가 자동으로 첫 값을 골라주지
+  // 않는다 - "조직도에서 선택"을 안 누르면 그냥 비어 있으므로 직접 막아야 함.
+  // 몇 개를 검증할지는 currentApprovalSteps(이번 서식+기안자 조합의 단계 수)를 따른다.
+  // 승인자가 아예 없는 경우(부서장 본인 연차)는 대신 참조 대상이 최소 1개는 있어야 한다.
+  const hasApprover = currentApprovalSteps.length > 0;
+  let signer1Value = null;
+  if (hasApprover) {
+    signer1Value = document.getElementById('draftSigner1').value;
+    if (!signer1Value) {
+      showToast('승인자를 선택해주세요.', 'danger');
+      return;
+    }
+  } else if (refSelectedDepts.size === 0 && refSelectedEmployees.size === 0) {
+    showToast('승인자가 없는 문서라 참조 대상을 최소 1명 이상 지정해야 합니다.', 'danger');
+    return;
+  }
+  const hasSecondStep = currentApprovalSteps.some(s => s.field === 'signer2');
+  const signer2Value = hasSecondStep ? document.getElementById('draftSigner2').value : null;
+  if (hasSecondStep && !signer2Value) {
+    showToast('2차 승인자를 선택해주세요.', 'danger');
+    return;
+  }
+
+  // 입력값 검증을 다 통과한 뒤에만 확인창을 띄운다 - 잘못 눌러서 바로 상신돼버리는 걸 방지
+  if (!confirm('결재 상신하시겠습니까?')) {
+    return;
+  }
 
   const formData = new FormData();
   formData.append('formTypeId', formTypeId);
   formData.append('approvalTitle', document.getElementById('draftTitle').value.trim());
   formData.append('approvalContent', document.getElementById('draftContent').value.trim());
-  formData.append('signer1Id', document.getElementById('draftSigner1').value);
+  if (hasApprover) {
+    formData.append('signer1Id', signer1Value);
+  }
+  if (hasSecondStep) {
+    formData.append('signer2Id', signer2Value);
+  }
 
   if (document.getElementById('draftLeaveStart')) {
     formData.append('leaveStartDate', document.getElementById('draftLeaveStart').value);
@@ -528,9 +680,6 @@ function submitDraft(event, formTypeId, stepCount) {
   }
   if (document.getElementById('draftAmount')) {
     formData.append('amount', document.getElementById('draftAmount').value);
-  }
-  if (stepCount === 2) {
-    formData.append('signer2Id', document.getElementById('draftSigner2').value);
   }
   refSelectedDepts.forEach((name, deptId) => formData.append('refDeptIds', deptId));
   refSelectedEmployees.forEach((name, employeeId) => formData.append('refEmployeeIds', employeeId));

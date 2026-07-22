@@ -8,10 +8,13 @@ USE groupware;
 -- ------------------------------------
 -- 1. DEPARTMENT
 -- ------------------------------------
+-- 재무관리팀(4번째) - 지출결의서 2차 승인자(재무관리팀 부서장/팀장) 후보용
+-- (2026-07-22, 정진국 담당 전자결재 결재선 개편 중 추가 - ApprovalService.FINANCE_DEPT_NAME 참고)
 INSERT INTO DEPARTMENT (DEPT_NAME) VALUES
   ('개발팀'),
   ('인사팀'),
-  ('영업팀');
+  ('영업팀'),
+  ('재무관리팀');
 
 -- ------------------------------------
 -- 2. POSITION (POSITION_RANK: 1=부서장 … 5=사원)
@@ -39,7 +42,9 @@ VALUES
   -- 개발팀 사원
   ('20260601', '$2a$10$6mG/6wF8HO.a0UnKigjXYOtmblujqdx2pnmWlgT5DRiTzErqUXzq6', '박사원',   1,    5,    'EMPLOYEE', '010-1111-0601', 'staff601@groupware.com', 'ACTIVE', '2026-01-05'),
   -- 정지 계정 테스트용 (isEnabled()=false 경로 확인용)
-  ('20260099', '$2a$10$6mG/6wF8HO.a0UnKigjXYOtmblujqdx2pnmWlgT5DRiTzErqUXzq6', '최정지',   2,    5,    'EMPLOYEE', '010-2222-0099', 'susp099@groupware.com',  'SUSPENDED', '2022-09-01');
+  ('20260099', '$2a$10$6mG/6wF8HO.a0UnKigjXYOtmblujqdx2pnmWlgT5DRiTzErqUXzq6', '최정지',   2,    5,    'EMPLOYEE', '010-2222-0099', 'susp099@groupware.com',  'SUSPENDED', '2022-09-01'),
+  -- 재무관리팀 부서장 - 지출결의서 2차 승인자 후보 테스트용 (DEPT_ID=4는 위 4번째 INSERT한 재무관리팀)
+  ('20260401', '$2a$10$6mG/6wF8HO.a0UnKigjXYOtmblujqdx2pnmWlgT5DRiTzErqUXzq6', '최재무',   4,    1,    'EMPLOYEE', '010-4444-0401', 'finance401@groupware.com', 'ACTIVE', '2022-02-01');
 
 -- ------------------------------------
 -- 테스트 계정 목록 (전부 비밀번호 1234)
@@ -49,6 +54,7 @@ VALUES
 -- 20260102   | 이팀장   | 정상 로그인 확인용 (팀장)
 -- 20260601   | 박사원   | 정상 로그인 확인용 (사원)
 -- 20260099   | 최정지   | 로그인 차단(SUSPENDED) 확인용 -> 로그인 시도하면 실패해야 정상
+-- 20260401   | 최재무   | 정상 로그인 확인용 (재무관리팀 부서장 - 지출결의서 2차 승인자 테스트용)
 
 -- ------------------------------------
 -- 4. NOTICE (공지사항 테스트 데이터 25건)
