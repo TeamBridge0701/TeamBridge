@@ -116,16 +116,16 @@ public class AdminController {
 		return attendanceService.getAttendanceByDate(targetDate);
 	}
 
-	// 관리자가 특정 직우너의 특정 날짜 출결을 직접 등록/수정
+	// 관리자가 특정 직원의 특정 날짜 출결을 직접 등록/수정 - 상태(정상/지각/휴가)는 더 이상
+	// 관리자가 직접 고르지 않고, 출근 시간을 기준으로 서버가 계산한다(AttendanceService 참고)
 	@PostMapping("/admin/attendance/{employeeId}")
 	@ResponseBody
 	public ResponseEntity<String> saveAdminAttendance(@PathVariable("employeeId") int employeeId,
 			@RequestParam("workDate") String workDate,
 			@RequestParam(value = "checkInTime", required = false) String checkInTime,
-			@RequestParam(value = "checkOutTime", required = false) String checkOutTime,
-			@RequestParam("status") String status) {
+			@RequestParam(value = "checkOutTime", required = false) String checkOutTime) {
 		try {
-			attendanceService.saveAttendanceByAdmin(employeeId, workDate, checkInTime, checkOutTime, status);
+			attendanceService.saveAttendanceByAdmin(employeeId, workDate, checkInTime, checkOutTime);
 		} catch (IllegalArgumentException e) {
 			return ResponseEntity.badRequest().body(e.getMessage());
 		}
