@@ -1,10 +1,6 @@
 // 현재 WebSocket 연결 객체를 저장한다.
 let stompClient = null;
 
-// 연결이 끊겼을 때 중복 예약 없이 재시도하기 위한 상태다.
-let webSocketReconnectTimer = null;
-let webSocketReconnectAttempt = 0;
-
 // 현재 화면에서 선택한 채팅방 번호다.
 let currentRoomId = null;
 
@@ -173,11 +169,6 @@ function connectWebSocket() {
     return;
   }
 
-  // 이미 정상 연결된 상태에서는 같은 페이지에서 연결을 하나 더 만들지 않는다.
-  if (stompClient && stompClient.connected) {
-    return;
-  }
-
   // WebSocketConfig의 registerStompEndpoints()에 등록한 주소다.
   const socket = new SockJS("/ws-stomp");
 
@@ -202,9 +193,6 @@ function connectWebSocket() {
 
     // 서버 연결 성공 시 실행된다.
     () => {
-
-      // 재연결에 성공하면 다음 장애가 났을 때 다시 짧은 시간부터 시도한다.
-      webSocketReconnectAttempt = 0;
 		
 	  // 내 채팅방 목록이 변경됐다는 실시간 알림을 받는 구독 코드
       stompClient.subscribe("/user/queue/chat-rooms", (frame) => {
@@ -217,10 +205,9 @@ function connectWebSocket() {
 
       // 현재 선택한 방이 있을 때만 메시지와 읽음 이벤트를 구독한다.
       if (currentRoomId) {
-        // 서버가 참여자 개인 큐로 보내므로 /user 접두어가 붙은 내 전용 주소를 구독한다.
-        const roomQueue = `/user/queue/rooms/${currentRoomId}`;
+        const topic = `/topic/room/${currentRoomId}`;
 
-        stompClient.subscribe(roomQueue, (frame) => {
+        stompClient.subscribe(topic, (frame) => {
           // ChatMessageController가 방송한 JSON 문자열을 객체로 바꾼다.
           const message = JSON.parse(frame.body);
 		  // 서버에서 받은 JSON 문자열을 JavaScript 객체로 바꾼다
@@ -229,14 +216,14 @@ function connectWebSocket() {
         });
 
 		// 현재 채팅방의 읽음 이벤트 주소를 구독한다.
-        stompClient.subscribe(`${roomQueue}/read`, (frame) => {
+        stompClient.subscribe(`${topic}/read`, (frame) => {
 			
 		// 서버가 보낸 읽음 정보를 JavaScript 객체로 바꾼 뒤 applyReadEvent()를 실행.
           applyReadEvent(JSON.parse(frame.body));
         });
 
 		// 현재 채팅방의 입력 중 이벤트 주소를 구독.
-        stompClient.subscribe(`${roomQueue}/typing`, (frame) => {
+        stompClient.subscribe(`${topic}/typing`, (frame) => {
 		
 		// 서버가 보낸 입력 중 정보를 객체로 바꾼 뒤 applyTypingEvent()를 실행함 
           applyTypingEvent(JSON.parse(frame.body));
@@ -250,32 +237,8 @@ function connectWebSocket() {
     // 연결 실패 시 실행된다.
     () => {
       showToast("실시간 채팅 연결에 실패했습니다.", "danger");
-      scheduleWebSocketReconnect();
-    },
-
-    // 연결 중이던 소켓이 끊겨도 같은 재연결 흐름을 사용한다.
-    () => {
-      scheduleWebSocketReconnect();
     }
   );
-}
-
-// 재시도 간격을 1초, 2초, 4초처럼 늘려 서버가 잠시 내려간 경우 불필요한 연결 요청을 줄인다.
-function scheduleWebSocketReconnect() {
-  if (webSocketReconnectTimer) {
-    return;
-  }
-
-  const delay = Math.min(
-    1000 * (2 ** webSocketReconnectAttempt),
-    15000
-  );
-  webSocketReconnectAttempt += 1;
-
-  webSocketReconnectTimer = setTimeout(() => {
-    webSocketReconnectTimer = null;
-    connectWebSocket();
-  }, delay);
 }
 
 // 입력창에서 전송 버튼 또는 Enter로 호출된다.

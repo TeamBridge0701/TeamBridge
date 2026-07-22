@@ -95,10 +95,6 @@ public interface ChatMapper {
             @Param("roomId") int roomId,
             @Param("roomName") String roomName);
 
-    // 상대가 나간 DM은 남은 참여자가 방을 알아볼 수 있도록 마지막 상대 이름을 보관한다.
-    int updateDirectRoomName(
-            @Param("roomId") int roomId,
-            @Param("roomName") String roomName);
     
     
     

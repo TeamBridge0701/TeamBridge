@@ -353,7 +353,9 @@ public class ChatController {
 
             // 마지막 참여자가 아니면 Service가 만든 SYSTEM 메시지를 같은 방 구독자에게 실시간 방송한다.
             if (systemMessage != null) {
-                notifyRoomMembers("/queue/rooms/" + roomId, roomId, systemMessage);
+                messagingTemplate.convertAndSend(
+                        "/topic/room/" + roomId,
+                        systemMessage);
                 // 남은 참여자들의 왼쪽 채팅방 목록에도 마지막 메시지가 반영되도록 개인 알림을 보낸다.
                 notifyRoomListMembers("MESSAGE", roomId, systemMessage);
             }
@@ -387,7 +389,10 @@ public class ChatController {
                     employeeId,
                     file);
 
-            notifyRoomMembers("/queue/rooms/" + roomId, roomId, savedMessage);
+            messagingTemplate.convertAndSend(
+         // WebSocket을 통해 데이터를 전송하는 메서드를 호출
+                    "/topic/room/" + roomId,
+                    savedMessage);
             notifyRoomListMembers("MESSAGE", roomId, savedMessage);
 
             return ResponseEntity.ok(savedMessage);
@@ -483,23 +488,12 @@ public class ChatController {
             return;
         }
 
-        notifyRoomMembers(
-                "/queue/rooms/" + readEvent.get("roomId") + "/read",
-                readEvent.get("roomId"),
-                readEvent);
-    }
-
-    // DB에 아직 참여자로 남아 있는 사용자에게만 방 이벤트를 보낸다.
-    private void notifyRoomMembers(
-            String destination,
-            int roomId,
-            Object payload) {
-        for (String employeeNo : chatService.getRoomMemberEmployeeNos(roomId)) {
-            messagingTemplate.convertAndSendToUser(
-                    employeeNo,
-                    destination,
-                    payload);
-        }
+        // WebSocket 구독자들에게 데이터를 전송
+        messagingTemplate.convertAndSend(
+                "/topic/room/" + readEvent.get("roomId") + "/read",
+                // 읽음 이벤트를 보낼 주소 
+                (Object) readEvent);
+        		// 읽음 정보를 WebSocket 메시지로 전송
     }
 
     // 새 대화 모달에 공통으로 필요한 조직 데이터를 Model에 담는다.

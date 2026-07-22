@@ -442,13 +442,6 @@ import lombok.RequiredArgsConstructor;
                     throw new IllegalArgumentException("채팅방 나가기에 실패했습니다.");
                 }
 
-                // DM은 상대가 나가면 otherMember 조회 결과가 없어지므로, 남은 사람이 방을 알아볼 수 있게 이름을 보관한다.
-                if ("DM".equals(room.getRoomType())) {
-                    chatMapper.updateDirectRoomName(
-                            roomId,
-                            employee.getEmployeeName() + " (나감)");
-                }
-
                 // 마지막 참여자가 나가면 이 방을 볼 사람이 없으므로 시스템 메시지는 남기지 않는다.
                 if (chatMapper.findRoomMemberIds(roomId).isEmpty()) {
                     // null은 Controller에게 "방송할 시스템 메시지가 없음"을 알리는 약속이다.

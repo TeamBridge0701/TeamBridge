@@ -58,7 +58,7 @@
                CASE
                	    <!-- 그룹방 -->
                    WHEN r.ROOM_TYPE = 'GROUP' THEN r.ROOM_NAME
-                   ELSE COALESCE((
+                   ELSE (
 					
 					<!-- 개인방 -->
                        SELECT e.EMPLOYEE_NAME
@@ -71,7 +71,7 @@
                          AND otherMember.EMPLOYEE_ID != #{employeeId}
                        LIMIT 1 
                        <!-- 조건에 맞는 상대가 여럿 나와도 한 명만 조회된다. (개인방이여서 추가함) -->
-                   ), r.ROOM_NAME, '대화 상대가 나갔습니다.')
+                   )
                END AS DISPLAY_NAME,
                <!-- CASE 문이 끝났고, 이 결과 컬럼 이름을 DISPLAY_NAME으로 붙이겠다는 뜻. -->
        
@@ -430,15 +430,6 @@
           AND ROOM_TYPE = 'GROUP'
     </update>
 
-    <!-- DM 상대가 나간 경우에만 ROOM_NAME을 목록 표시용 마지막 상대 이름으로 사용한다. -->
-    <update id="updateDirectRoomName">
-        UPDATE CHAT_ROOM
-        SET ROOM_NAME = #{roomName}
-        WHERE ROOM_ID = #{roomId}
-          AND ROOM_TYPE = 'DM'
-    </update>
-    
-    
     <!-- ============ 채팅 실시간 추가함 ========== -->
     
      <!--
