@@ -74,6 +74,50 @@
                    )
                END AS DISPLAY_NAME,
                <!-- CASE 문이 끝났고, 이 결과 컬럼 이름을 DISPLAY_NAME으로 붙이겠다는 뜻. -->
+
+               CASE
+                   WHEN r.ROOM_TYPE = 'GROUP' THEN NULL
+                   ELSE (
+                       SELECT e.PROFILE_IMG
+                       FROM CHAT_ROOM_MEMBER otherMember
+                       JOIN EMPLOYEE e
+                         ON e.EMPLOYEE_ID = otherMember.EMPLOYEE_ID
+                       WHERE otherMember.ROOM_ID = r.ROOM_ID
+                         AND otherMember.EMPLOYEE_ID != #{employeeId}
+                       LIMIT 1
+                   )
+               END AS DISPLAY_PROFILE_IMG,
+
+               <!--
+                 개인방 목록의 상대 프로필에만 초록 점을 표시하기 위한 값이다.
+                 GROUP은 고정 "단" 아바타를 쓰므로 null을 반환해 점이 생기지 않게 한다.
+               -->
+               CASE
+                   WHEN r.ROOM_TYPE = 'GROUP' THEN NULL
+                   ELSE (
+                       <!--
+                         ATTENDANCE는 오늘(CURDATE()) 행만 LEFT JOIN한다.
+                         출근 기록이 있고, 아직 퇴근하지 않았고, 휴가가 아니면 WORKING이다.
+                         LEFT JOIN이므로 오늘 근태 행이 없는 직원도 OFFLINE으로 정상 처리된다.
+                       -->
+                       SELECT CASE
+                                  WHEN a.ATTENDANCE_ID IS NOT NULL
+                                   AND a.CHECK_OUT_TIME IS NULL
+                                   AND a.ATTENDANCE_STATUS != 'LEAVE'
+                                      THEN 'WORKING'
+                                  ELSE 'OFFLINE'
+                              END
+                       FROM CHAT_ROOM_MEMBER otherMember
+                       JOIN EMPLOYEE e
+                         ON e.EMPLOYEE_ID = otherMember.EMPLOYEE_ID
+                       LEFT JOIN ATTENDANCE a
+                         ON a.EMPLOYEE_ID = e.EMPLOYEE_ID
+                        AND a.WORK_DATE = CURDATE()
+                       WHERE otherMember.ROOM_ID = r.ROOM_ID
+                         AND otherMember.EMPLOYEE_ID != #{employeeId}
+                       LIMIT 1
+                   )
+               END AS DISPLAY_WORK_STATUS,
        
                
                
@@ -333,12 +377,62 @@
         )
     </insert>
 
+    <!--
+      Mapper의 deleteChatRoomMember()가 호출할 SQL이다.
+      ROOM_ID와 EMPLOYEE_ID를 함께 조건으로 써서, 같은 방의 다른 참여자는 삭제하지 않는다.
+      #{...}는 문자열을 이어 붙이지 않고 MyBatis가 값으로 안전하게 전달하는 파라미터 바인딩 문법이다.
+    -->
+    <delete id="deleteChatRoomMember">
+        DELETE FROM CHAT_ROOM_MEMBER
+        WHERE ROOM_ID = #{roomId}
+          AND EMPLOYEE_ID = #{employeeId}
+    </delete>
+
     <!-- 기존 방 참여자는 그대로 두고, 초대 시 새 그룹방에 넣을 인원만 조회한다. -->
     <select id="findRoomMemberIds" resultType="int">
         SELECT EMPLOYEE_ID
         FROM CHAT_ROOM_MEMBER
         WHERE ROOM_ID = #{roomId}
         ORDER BY MEMBER_ROW_ID ASC
+    </select>
+
+    <!--
+      현재 방 참여자 목록 모달에 필요한 직원 정보를 한 번에 조회한다.
+      CHAT_ROOM_MEMBER는 "방-직원" 연결만 가지므로, EMPLOYEE와 JOIN하여 이름·상태를 가져온다.
+      LEFT JOIN은 관리자처럼 부서나 직급이 없는 직원도 목록에서 빠지지 않게 한다.
+      MEMBER_ROW_ID 오름차순은 방에 참여한 순서대로 보여 주기 위한 정렬이다.
+    -->
+    <select id="findRoomMembers" resultType="com.groupware.dto.EmployeeDTO">
+        <!-- resultType의 EmployeeDTO 필드명과 같은 컬럼을 SELECT해야 MyBatis가 자동으로 담는다. -->
+        SELECT e.EMPLOYEE_ID,
+               e.EMPLOYEE_NAME,
+               e.PROFILE_IMG,
+               e.EMPLOYEE_STATUS,
+               d.DEPT_NAME,
+               p.POSITION_NAME,
+               <!-- 참여자 목록 모달의 프로필 우측 하단 초록 점 판단용 값이다. -->
+               CASE
+                   WHEN a.ATTENDANCE_ID IS NOT NULL
+                    AND a.CHECK_OUT_TIME IS NULL
+                    AND a.ATTENDANCE_STATUS != 'LEAVE'
+                       THEN 'WORKING'
+                   ELSE 'OFFLINE'
+               END AS WORK_STATUS
+        FROM CHAT_ROOM_MEMBER member
+        <!-- JOIN은 두 테이블에서 EMPLOYEE_ID가 같은 행을 하나로 묶는 SQL 문법이다. -->
+        JOIN EMPLOYEE e
+          ON e.EMPLOYEE_ID = member.EMPLOYEE_ID
+        LEFT JOIN DEPARTMENT d
+          ON d.DEPT_ID = e.DEPT_ID
+        LEFT JOIN `POSITION` p
+          ON p.POSITION_ID = e.POSITION_ID
+		LEFT JOIN ATTENDANCE a
+		  ON a.EMPLOYEE_ID = e.EMPLOYEE_ID
+		 AND a.WORK_DATE = CURDATE()
+        <!-- 참여자별 오늘 근태를 연결하되, 근태 기록이 없어도 참여자 행은 유지한다. -->
+        <!-- 현재 선택한 방의 참여자만 조회한다. -->
+        WHERE member.ROOM_ID = #{roomId}
+        ORDER BY member.MEMBER_ROW_ID ASC
     </select>
 
     <!-- /user/queue/chat-rooms 개인 알림을 보낼 때 Spring Security 사용자명(사번)을 사용한다. -->
@@ -391,8 +485,7 @@
         WHERE ROOM_ID = #{roomId}
           AND ROOM_TYPE = 'GROUP'
     </update>
-    
-    
+
     <!-- ============ 채팅 실시간 추가함 ========== -->
     
      <!--

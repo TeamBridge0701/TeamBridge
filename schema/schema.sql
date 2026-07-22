@@ -275,3 +275,10 @@ CREATE TABLE CHAT_ATTACHMENT (
 ALTER TABLE CALENDAR_EVENT
     ADD COLUMN DEPT_ID INT NULL,
     ADD CONSTRAINT FK_EVENT_DEPT FOREIGN KEY (DEPT_ID) REFERENCES DEPARTMENT(DEPT_ID);
+
+-- ⑱ EMPLOYEE.BIRTH_DATE — 메인 대시보드 "이번 달 생일자" 표기 기능 추가.
+-- 계정 생성 시에는 입력하지 않고(관리자 등록 화면에 입력란 없음), 본인이 마이페이지에서
+-- 직접 입력/수정한다. 그래서 NULL 허용 - 기존 계정과 새로 만든 계정 모두 처음엔 값이 없다.
+ALTER TABLE EMPLOYEE
+    ADD COLUMN BIRTH_DATE DATE NULL AFTER HIRE_DATE;
+

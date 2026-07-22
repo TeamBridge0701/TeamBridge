@@ -8,9 +8,6 @@ let currentRoomId = null;
 // 내 메시지와 상대 메시지를 좌우로 구분할 때 사용한다.
 let currentEmployeeId = null;
 
-// DM/GROUP에 따라 메시지 옆 읽음 표시 규칙이 달라진다.
-let currentRoomType = null;
-
 // 입력 중 알림은 짧은 시간만 유지한다. 직원별 타이머를 따로 두어 여러 명도 처리한다.
 const typingRemoveTimers = new Map();
 let typingStopTimer = null;
@@ -22,64 +19,111 @@ const roomFilterState = {
   type: "all"
 };
 
+// 프로필 사진 유무와 출근 상태에 따라 채팅 전용 아바타를 만든다.
+// 목록 모달과 실시간 메시지가 같은 DOM 구조를 쓰도록 중복 생성을 한 함수로 모았다.
+function createChatAvatar(name, profileImg, showOnlineDot, size = null) {
+  // wrapper는 아바타와 우측 하단 점을 한 묶음으로 배치하는 부모 요소다.
+  const wrapper = document.createElement("div");
+  wrapper.className = "chat-avatar-wrap";
 
-// 채팅 목록 시간 변경 
+  // 삼항 연산자: 사진 파일명이 있으면 img, 없으면 이름 첫 글자를 담을 div를 만든다.
+  const avatar = document.createElement(profileImg ? "img" : "div");
+  avatar.className = "chat-room-avatar";
 
+  // 참여자 목록 모달처럼 작은 아바타가 필요한 호출만 size를 전달한다.
+  if (size) {
+    avatar.style.width = `${size}px`;
+    avatar.style.height = `${size}px`;
+  }
+
+  if (profileImg) {
+    // encodeURIComponent는 파일명에 공백 같은 URL 특수 문자가 있어도 주소가 깨지지 않게 한다.
+    avatar.classList.add("chat-profile-image");
+    avatar.src = `/uploads/profileImg/${encodeURIComponent(profileImg)}`;
+    avatar.alt = "프로필 사진";
+    avatar.style.objectFit = "cover";
+  } else {
+    avatar.textContent = name ? name.charAt(0) : "시";
+  }
+
+  wrapper.appendChild(avatar);
+
+  // showOnlineDot이 true, 즉 WORKING일 때만 초록 점 요소를 추가한다.
+  if (showOnlineDot) {
+    const onlineDot = document.createElement("span");
+    onlineDot.className = "chat-online-dot";
+    wrapper.appendChild(onlineDot);
+  }
+
+  return wrapper;
+}
+
+
+// DB에서 받은 마지막 메시지 시간을 목록용 상대 시간 문자열로 바꾼다.
 function formatRelativeRoomTime(sentAt) {
+  // sentAt이 null, undefined, 빈 문자열이면 계산할 시간이 없으므로 빈 문자열을 반환한다.
   if (!sentAt) {
     return "";
   }
 
-  // MySQL 시간 문자열 "2026-07-21 14:30:00"을
-  // JavaScript가 읽기 쉬운 "2026-07-21T14:30:00"으로 바꾼다.
+  // MySQL의 "2026-07-21 14:30:00" 형식은 브라우저마다 Date가 다르게 해석할 수 있다.
+  // replace(" ", "T")는 첫 번째 공백을 T로 바꿔 ISO에 가까운 시간 문자열로 만든다.
+  // new Date(...)는 문자열을 JavaScript 날짜 객체로 바꾼다.
   const sentDate = new Date(sentAt.replace(" ", "T"));
 
+  // 날짜 변환에 실패하면 getTime()은 NaN(Not a Number)을 반환한다.
+  // Number.isNaN(...)으로 잘못된 날짜를 걸러 화면에 "NaN" 같은 값이 표시되지 않게 한다.
   if (Number.isNaN(sentDate.getTime())) {
     return "";
   }
 
+  // new Date()에 인수가 없으면 사용자의 현재 날짜와 시간을 만든다.
   const now = new Date();
 
-  // 시간 차이가 아니라 날짜 차이로 계산.
+  // 오늘 자정 시각을 만든다. 시·분이 아닌 "날짜"만 비교하려고 사용한다.
   const todayStart = new Date(
     now.getFullYear(),
     now.getMonth(),
     now.getDate()
   );
 
+  // 메시지가 발송된 날의 자정 시각도 같은 방식으로 만든다.
   const sentDayStart = new Date(
     sentDate.getFullYear(),
     sentDate.getMonth(),
     sentDate.getDate()
   );
 
-  // 오늘 날짜와 메시지를 보낸 날짜의 일수 차이를 계산하는 코드.
-  const dayDiff = Math.floor( // 소수점이 생겨도 버리고 정수만 남김
-    (todayStart - sentDayStart) / (1000 * 60 * 60 * 24) 
-	// 오늘 날짜와 메시지를 보낸 날짜의 일수 차이를 계산하는 코드
+  // Date끼리 빼면 두 시각의 밀리초 차이가 나온다.
+  // 1000밀리초 * 60초 * 60분 * 24시간으로 나누면 일 차이가 된다.
+  // Math.floor는 1.9일처럼 나온 소수점 값을 1일로 내림해 정수로 만든다.
+  const dayDiff = Math.floor(
+    (todayStart - sentDayStart) / (1000 * 60 * 60 * 24)
   );
 
-  // 오늘 보낸 메시지면 시:분만 표시한다.
+  // 오늘(0일 차이)이거나 미래 시간처럼 계산된 경우에는 시:분만 표시한다.
+  // <=는 "작거나 같다"를 비교하는 연산자다.
   if (dayDiff <= 0) {
+    // getHours(), getMinutes()는 숫자를 반환한다.
+    // String(...)은 숫자를 문자열로 바꾸고, padStart(2, "0")는 한 자리면 앞에 0을 붙인다.
     const hour = String(sentDate.getHours()).padStart(2, "0");
-	// 숫자 9를 문자열 "9"로 바꿈
-	// 문자열 길이가 2보다 짧으면 앞에 "0"을 붙임   --> 09시 14시 이렇게 
     const minute = String(sentDate.getMinutes()).padStart(2, "0");
 
+    // 백틱(`) 안의 ${...}는 변수 값을 문자열 안에 넣는 템플릿 리터럴 문법이다.
     return `${hour}:${minute}`;
   }
 
-  // 하루 전이면 어제라고 표시한다.
+  // ===은 값뿐 아니라 자료형까지 같은지 비교하는 엄격한 비교 연산자다.
   if (dayDiff === 1) {
     return "어제";
   }
 
-  // 2일 전부터 7일 전까지는 N일전으로 표시한다.
+  // 앞의 "오늘"과 "어제" 조건에서 이미 반환했으므로 여기에는 2~7일 전만 남는다.
   if (dayDiff <= 7) {
     return `${dayDiff}일전`;
   }
 
-  // 8일 전부터는 N주전으로 표시한다.
+  // 8일 이상은 7로 나눠 주 단위로 바꾸고, 소수점은 버린다.
   return `${Math.floor(dayDiff / 7)}주전`;
 }
 
@@ -104,14 +148,16 @@ document.addEventListener("DOMContentLoaded", () => {
       chatMain.dataset.currentEmployeeId
 	  // html에서 값을 가져와 data-current-employee-id="1001" 이렇게 숫자로 변경 
     );
-    currentRoomType = chatMain.dataset.currentRoomType || null;  // 앞의 값 없으면 null 사용
   }
 
 
   
-  // 채팅방을 열었을 때 채팅방 목록을 상대 시간으로 바꾸는 코드 
+  // querySelectorAll은 조건에 맞는 모든 HTML 요소를 찾아 NodeList로 반환한다.
+  // .chat-room-time[data-sent-at]은 두 조건을 모두 만족하는 요소를 뜻한다.
   document.querySelectorAll(".chat-room-time[data-sent-at]")
     .forEach(timeElement => {
+      // dataset.sentAt은 HTML의 data-sent-at 값을 읽는 문법이다.
+      // textContent에 넣으면 해당 span 안의 화면 글자가 상대 시간으로 바뀐다.
       timeElement.textContent = formatRelativeRoomTime(
         timeElement.dataset.sentAt
       );
@@ -137,6 +183,16 @@ document.addEventListener("DOMContentLoaded", () => {
   setupMemberPicker("newChatDeptTree", "newChatMemberTableBody");
   setupMemberPicker("inviteChatDeptTree", "inviteChatMemberTableBody");
   setupTypingInput();
+
+  // 메뉴 밖을 클릭하면 펼쳐진 채팅방 메뉴를 닫는다.
+  // addEventListener는 지정한 요소(document)에 이벤트가 발생했을 때 실행할 함수를 등록하는 문법이다.
+  document.addEventListener("click", event => {
+    // event.target은 실제로 클릭한 HTML 요소다.
+    // closest(".chat-thread-menu")는 클릭한 요소 자신 또는 부모 중 메뉴 영역이 있는지 찾는다.
+    if (!event.target.closest(".chat-thread-menu")) {
+      closeChatThreadMenu();
+    }
+  });
 });
 
 // SockJS로 서버의 /ws-stomp에 연결하고 현재 방을 구독한다. 
@@ -184,9 +240,10 @@ function connectWebSocket() {
 
       // 현재 선택한 방이 있을 때만 메시지와 읽음 이벤트를 구독한다.
       if (currentRoomId) {
-        const topic = `/topic/room/${currentRoomId}`;
+        // 서버가 참여자 개인 큐로 보내므로 /user 접두어가 붙은 내 전용 주소를 구독한다.
+        const roomQueue = `/user/queue/rooms/${currentRoomId}`;
 
-        stompClient.subscribe(topic, (frame) => {
+        stompClient.subscribe(roomQueue, (frame) => {
           // ChatMessageController가 방송한 JSON 문자열을 객체로 바꾼다.
           const message = JSON.parse(frame.body);
 		  // 서버에서 받은 JSON 문자열을 JavaScript 객체로 바꾼다
@@ -195,14 +252,14 @@ function connectWebSocket() {
         });
 
 		// 현재 채팅방의 읽음 이벤트 주소를 구독한다.
-        stompClient.subscribe(`${topic}/read`, (frame) => {
+        stompClient.subscribe(`${roomQueue}/read`, (frame) => {
 			
 		// 서버가 보낸 읽음 정보를 JavaScript 객체로 바꾼 뒤 applyReadEvent()를 실행.
           applyReadEvent(JSON.parse(frame.body));
         });
 
 		// 현재 채팅방의 입력 중 이벤트 주소를 구독.
-        stompClient.subscribe(`${topic}/typing`, (frame) => {
+        stompClient.subscribe(`${roomQueue}/typing`, (frame) => {
 		
 		// 서버가 보낸 입력 중 정보를 객체로 바꾼 뒤 applyTypingEvent()를 실행함 
           applyTypingEvent(JSON.parse(frame.body));
@@ -231,6 +288,10 @@ function sendChatMessage(event) {
   const input = document.getElementById("chatMessageInput");
 
   if (!input || !currentRoomId) { // 두 값 중 하나라도 없으면 함수를 끝낸다
+    return;
+  }
+
+  if (input.disabled) {
     return;
   }
 
@@ -326,7 +387,7 @@ async function sendChatFile(fileInput) {
   const file = fileInput.files[0];
 // 사용자가 선택한 첫번째 파일
   
-  if (!file || !currentRoomId) {
+  if (!file || !currentRoomId || fileInput.disabled) {
     return;
   }
 
@@ -459,8 +520,8 @@ async function refreshUnreadBadges() {
   }
 }
 
-// 개인방은 1 또는 읽음, 그룹방은 읽지 않은 참여자 수만 표시한다.
-// 메시지 한 줄인 row와, 아직 읽지 않은 참여자 수 unreadMemberCount를 받아서 읽음 표시를 갱신
+// 내 메시지를 아직 읽지 않은 참여자 수가 1 이상일 때만 숫자를 표시한다.
+// unreadMemberCount가 0이면 숫자 요소를 제거해 "읽음" 같은 문구도 남지 않게 한다.
 function renderReadStatus(row, unreadMemberCount) {
 	// 현재 메시지 행 안에서 시간 표시가 있는 영역을 찾아 timeColumn에 저장.
   const timeColumn = row.querySelector(".chat-bubble-meta > div:last-child");
@@ -476,9 +537,9 @@ function renderReadStatus(row, unreadMemberCount) {
   // <span class="chat-bubble-read">1</span> 이게 있으면 readLabel에 저장되고, 없으면 null이 들어간다
   let readLabel = timeColumn.querySelector(".chat-bubble-read");
   
-  const statusText = currentRoomType === "DM" 
-    ? (unreadMemberCount > 0 ? "1" : "읽음") // 개인 채팅에서의 읽음 표시 
-    : (unreadMemberCount > 0 ? String(unreadMemberCount) : ""); // 그룹 채팅에서의 읽음 표시
+  const statusText = unreadMemberCount > 0
+    ? String(unreadMemberCount)
+    : "";
 
   if (!statusText) {
     readLabel?.remove();  // 다 읽은 경우 라벨을 없앤다.
@@ -649,8 +710,11 @@ function updateChatRoomList(roomEvent) {
 	  // 파일 메세지가 아니라면 일반 텍스트 메세지 내용을 그대로 미리보기에 표시
   }
 
-  // 채팅방 목록에서 시간 표시 영역을 찾았을 때만 실행
+  // 실시간 메시지로 방 목록을 갱신할 때도 같은 상대 시간 규칙을 적용한다.
   if (time) {
+    // dataset.sentAt에 최신 원본 시간을 저장해, 다음 계산에도 사용할 수 있게 한다.
+    // HTML 요소의 data-sent-at 속성에 원본 시간을 저장함.
+    // message.sentAt이 없으면 빈 문자열을 넣는다.
     time.dataset.sentAt = message.sentAt || "";
     time.textContent = formatRelativeRoomTime(message.sentAt);
   }
@@ -658,7 +722,7 @@ function updateChatRoomList(roomEvent) {
   // 현재 열지 않은 방에서 상대가 보낸 메시지일 때만 목록 뱃지를 하나 올린다.
   if (Number(roomEvent.roomId) !== currentRoomId // 새 메시지가 온 방이 현재 내가 보고 있는 방이 아닌지 확인
       && Number(message.senderId) !== currentEmployeeId) { // 내가 아닌지 확인 - 내가 보낸거라면 안 읽은거로 세면 안되니 배지를 올리지 않음.
-		// 현재 채팅방 목록 항목 안에서 안 읽은 숫자 배지를 찾아.
+		// 현재 채팅방 목록 항목 안에서 안 읽은 숫자 배지를 찾음.
     let unread = roomItem.querySelector(".chat-room-unread");
 
 	// 아직 안 읽은 메시지 배지가 화면에 없으면 실행.
@@ -708,6 +772,7 @@ function appendMessage(message) {
 
     systemRow.appendChild(systemText);
     messageList.appendChild(systemRow);
+    refreshChatInputAvailability();
     sendReadMessage();
     scrollMessagesToBottom();
     return;
@@ -738,13 +803,12 @@ function appendMessage(message) {
 
   // 상대방 메시지일 때만 왼쪽 아바타를 만든다.
   if (!isMine) {
-    const avatar = document.createElement("div");
-    avatar.className = "chat-room-avatar";
-    avatar.textContent = message.senderName
-      ? message.senderName.charAt(0)
-      : "시"; // 이름이 없으면 기본 글자인 "시"를 표시.
-
-    row.appendChild(avatar); // 만든 아바타를 메시지 행에 추가
+    // 메시지 말풍선 아바타에는 출근 점을 표시하지 않는다.
+    row.appendChild(createChatAvatar(
+      message.senderName,
+      message.senderProfileImg,
+      false
+    ));
   }
 
   const bubbleColumn = document.createElement("div");
@@ -795,6 +859,41 @@ function appendMessage(message) {
   }
 
   scrollMessagesToBottom();
+}
+
+// 상대가 나간 시스템 메시지를 받은 뒤 현재 참여자 수를 다시 확인해 입력창을 즉시 막는다.
+async function refreshChatInputAvailability() {
+  if (!currentRoomId) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/chat/room/${currentRoomId}/members`);
+    if (!response.ok) {
+      return;
+    }
+
+    const members = await response.json();
+    const canSendMessage = members.some(member =>
+      Number(member.employeeId) !== currentEmployeeId
+    );
+
+    if (canSendMessage) {
+      return;
+    }
+
+    const input = document.getElementById("chatMessageInput");
+    if (input) {
+      input.value = "";
+      input.disabled = true;
+      input.placeholder = "입력할 수 없는 채팅방입니다.";
+    }
+
+    document.querySelectorAll("[data-chat-send-control]")
+      .forEach(control => control.remove());
+  } catch (error) {
+    // 참여자 확인 요청 자체가 실패했을 때는 기존 입력 상태를 유지한다.
+  }
 }
 
 // TEXT는 말풍선, FILE은 다운로드 링크가 있는 파일 말풍선을 만든다.
@@ -970,6 +1069,178 @@ function openInviteChatModal() {
   openModal("modal-invite-chat");
 }
 
+
+
+
+
+
+// 햄버거 버튼을 눌렀을 때 메뉴를 열거나 닫는다.
+function toggleChatThreadMenu(event) {
+  // stopPropagation()은 버튼 클릭이 document의 바깥 클릭 감지까지 전달되지 않게 막는다.
+  // 이것이 없으면 버튼을 누른 직후 메뉴를 열고 다시 닫는 일이 생길 수 있다.
+  event.stopPropagation();
+
+  // getElementById는 HTML id로 요소 하나를 찾는다.
+  const menu = document.getElementById("chatThreadMenu");
+  const button = document.getElementById("chatThreadMenuButton");
+
+  // HTML이 없는 화면에서는 null이 될 수 있으므로 오류를 막기 위해 먼저 확인한다.
+  if (!menu || !button) {
+    return;
+  }
+
+  // classList.toggle("open")은 open 클래스가 없으면 추가하고, 있으면 제거한다.
+  // 반환값 isOpen은 클래스를 붙인 뒤 현재 메뉴가 열려 있으면 true다.
+  const isOpen = menu.classList.toggle("open");
+  // setAttribute는 HTML 속성 값을 바꾼다.
+  // String(true/false)로 바꾸어 aria 속성에 "true" 또는 "false" 문자열을 넣는다.
+  button.setAttribute("aria-expanded", String(isOpen));
+  // !isOpen은 불리언 값을 반대로 만든다. 메뉴가 열리면 aria-hidden은 false가 된다.
+  menu.setAttribute("aria-hidden", String(!isOpen));
+}
+
+// 메뉴 항목을 누르거나 메뉴 밖을 클릭했을 때 항상 닫힌 상태로 되돌린다.
+function closeChatThreadMenu() {
+  const menu = document.getElementById("chatThreadMenu");
+  const button = document.getElementById("chatThreadMenuButton");
+
+  if (!menu || !button) {
+    return;
+  }
+
+  // remove는 open 클래스를 확실히 제거한다. CSS display:none 규칙이 다시 적용된다.
+  menu.classList.remove("open");
+  button.setAttribute("aria-expanded", "false");
+  menu.setAttribute("aria-hidden", "true");
+}
+
+// 버튼을 누른 시점의 참여자를 다시 받아 목록 모달에 표시한다.
+// async 함수이므로 fetch와 같이 서버 응답을 기다리는 await 문법을 사용할 수 있다.
+async function openRoomMemberModal() {
+  // 현재 방 번호가 없으면 /chat 첫 화면이므로 조회할 방이 없다.
+  if (!currentRoomId) {
+    return;
+  }
+
+  // getElementById는 id가 roomMemberTableBody인 tbody 한 개를 찾는다.
+  const tableBody = document.getElementById("roomMemberTableBody");
+
+  // HTML에 모달 표가 없으면 이후 DOM 조작 시 오류가 나므로 먼저 끝낸다.
+  if (!tableBody) {
+    return;
+  }
+
+  // replaceChildren()은 tbody 안의 기존 행을 전부 지운다.
+  tableBody.replaceChildren();
+  // document.createElement("tr")은 JavaScript로 표 한 행을 만드는 문법이다.
+  const loadingRow = document.createElement("tr");
+  const loadingCell = document.createElement("td");
+  // colSpan = 4는 이 칸이 표의 네 열을 가로질러 차지한다는 뜻이다.
+  loadingCell.colSpan = 4;
+  loadingCell.textContent = "참여자를 불러오는 중입니다.";
+  loadingCell.style.textAlign = "center";
+  // appendChild는 만든 HTML 요소를 부모 요소의 마지막 자식으로 넣는다.
+  loadingRow.appendChild(loadingCell);
+  tableBody.appendChild(loadingRow);
+  // 데이터를 기다리는 동안에도 모달을 먼저 열어 로딩 문구를 보여 준다.
+  openModal("modal-room-members");
+
+  try {
+    // 백엔드 @GetMapping 주소로 GET 요청을 보낸다. ${currentRoomId}는 현재 방 번호를 URL에 넣는다.
+    const response = await fetch(`/chat/room/${currentRoomId}/members`);
+
+    // HTTP 403, 500 같은 실패 응답이면 JSON을 읽지 않고 catch로 오류를 넘긴다.
+    if (!response.ok) {
+      throw new Error("참여자 목록을 불러올 수 없습니다.");
+    }
+
+    // response.json()은 서버가 보낸 JSON 배열을 JavaScript의 members 배열로 바꾼다.
+    const members = await response.json();
+    tableBody.replaceChildren();
+
+    // forEach는 members 배열에서 직원 한 명(member)씩 꺼내 표 행을 반복 생성한다.
+    members.forEach(member => {
+      const row = document.createElement("tr");
+      const nameCell = document.createElement("td");
+      const memberInfo = document.createElement("div");
+      // 표의 이름 칸 안에서 프로필과 이름을 가로로 나란히 보이게 한다.
+      memberInfo.style.display = "flex";
+      memberInfo.style.alignItems = "center";
+      memberInfo.style.gap = "0.5rem";
+
+      // API가 준 workStatus가 WORKING인 참여자에게만 점을 붙인다.
+      memberInfo.appendChild(createChatAvatar(
+        member.employeeName,
+        member.profileImg,
+        member.workStatus === "WORKING",
+        32
+      ));
+
+      const name = document.createElement("strong");
+      // ||는 왼쪽 이름이 비어 있을 때 오른쪽 기본 문구를 사용한다.
+      // textContent를 사용하면 이름을 HTML 코드로 해석하지 않아 안전하게 일반 글자로 표시한다.
+      name.textContent = member.employeeName || "이름 없음";
+      memberInfo.appendChild(name);
+      nameCell.appendChild(memberInfo);
+
+      const departmentCell = document.createElement("td");
+      departmentCell.textContent = member.deptName || "관리자";
+
+      const positionCell = document.createElement("td");
+      const positionBadge = document.createElement("span");
+      // className은 CSS 클래스 이름을 넣는 속성이다. 기존 badge 디자인을 재사용한다.
+      positionBadge.className = "badge badge-primary";
+      positionBadge.textContent = member.positionName || "-";
+      positionCell.appendChild(positionBadge);
+
+      const statusCell = document.createElement("td");
+      const statusBadge = document.createElement("span");
+      // 조건 ? 참일때값 : 거짓일때값은 삼항 연산자다.
+      // ACTIVE면 초록 배지, 그 외 상태면 경고색 배지를 적용한다.
+      statusBadge.className = member.employeeStatus === "ACTIVE"
+        ? "badge badge-success"
+        : "badge badge-warning";
+      statusBadge.textContent = member.employeeStatus === "ACTIVE" ? "재직" : "비활성";
+      statusCell.appendChild(statusBadge);
+
+      row.appendChild(nameCell);
+      row.appendChild(departmentCell);
+      row.appendChild(positionCell);
+      row.appendChild(statusCell);
+      tableBody.appendChild(row);
+    });
+
+    // 방을 나가는 중인 특수 상황처럼 응답 배열이 비어 있으면 안내 행을 추가한다.
+    if (members.length === 0) {
+      const emptyRow = document.createElement("tr");
+      const emptyCell = document.createElement("td");
+      emptyCell.colSpan = 4;
+      emptyCell.textContent = "현재 참여자가 없습니다.";
+      emptyCell.style.textAlign = "center";
+      emptyRow.appendChild(emptyCell);
+      tableBody.appendChild(emptyRow);
+    }
+  } catch (error) {
+    // 네트워크 오류나 권한 오류가 나면 로딩 행 대신 오류 문구를 표에 표시한다.
+    tableBody.replaceChildren();
+    const errorRow = document.createElement("tr");
+    const errorCell = document.createElement("td");
+    errorCell.colSpan = 4;
+    errorCell.textContent = error.message;
+    errorCell.style.textAlign = "center";
+    errorRow.appendChild(errorCell);
+    tableBody.appendChild(errorRow);
+  }
+}
+
+
+
+
+
+
+
+
+
 // 선택한 초대 대상만 서버에 보내고, 서버가 만든 새 GROUP 방으로 이동한다.
 async function confirmInviteChat() {
   // 초대는 현재 열려 있는 방을 기준으로 하므로 방 번호가 없으면 요청할 수 없다.
@@ -1015,6 +1286,50 @@ async function confirmInviteChat() {
     // 초대는 기존 방을 수정하지 않고 새 GROUP 방을 만들므로 반환된 방 번호로 이동한다.
     window.location.href = `/chat/room/${result.roomId}`;
   } catch (error) {
+    showToast(error.message, "danger");
+  }
+}
+
+
+
+
+
+
+
+async function leaveChatRoom() {
+  // 현재 채팅방 번호가 없으면 /chat 첫 화면이므로 나가기 요청을 만들지 않는다.
+  if (!currentRoomId) {
+    return;
+  }
+
+  // confirm은 확인을 누르면 true, 취소를 누르면 false를 반환하는 브라우저 기본 확인창이다.
+  const confirmed = window.confirm(
+    "채팅방을 나가시겠습니까? 다시 참여하면 이전 대화 내용은 볼 수 없습니다."
+  );
+
+  // 사용자가 취소하면 서버에 아무 요청도 보내지 않고 함수를 끝낸다.
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    // fetch는 HTTP 요청을 보내는 함수다.
+    // 백엔드 @PostMapping 주소와 같은 URL로 POST 요청을 보내 참여자 삭제를 요청한다.
+    const response = await fetch(`/chat/room/${currentRoomId}/leave`, {
+      method: "POST"
+    });
+    // await는 서버 응답이 올 때까지 이 async 함수 안의 다음 줄 실행을 기다린다.
+    const result = await response.json();
+
+    // response.ok는 HTTP 200~299일 때 true다. 실패하면 서버가 보낸 message를 Error로 만든다.
+    if (!response.ok) {
+      throw new Error(result.message || "채팅방을 나갈 수 없습니다.");
+    }
+
+    // 서버가 준 redirectUrl로 이동한다. 값이 없을 때만 || 오른쪽의 /chat을 기본값으로 사용한다.
+    window.location.href = result.redirectUrl || "/chat";
+  } catch (error) {
+    // 네트워크 오류나 서버 오류는 공통 토스트로 사용자에게 보여 준다.
     showToast(error.message, "danger");
   }
 }
@@ -1078,6 +1393,14 @@ async function renameChatRoom(event) {
     showToast(error.message, "danger");
   }
 }
+
+
+
+
+
+
+
+
 
 // 선택한 직원 번호들을 POST /chat/room으로 보낸다.
 async function confirmNewChat() {

@@ -966,6 +966,13 @@
     .chat-room-avatar.group {
       background: linear-gradient(135deg, var(--color-secondary), var(--color-success));
     }
+    .chat-avatar-wrap {
+      /* 초록 점의 absolute 위치가 각 프로필을 기준으로 잡히게 한다. */
+      position: relative;
+      /* 이미지와 글자 아바타가 채팅 행에서 같은 크기로 유지되게 한다. */
+      display: flex;
+      flex-shrink: 0;
+    }
     .chat-online-dot {
       position: absolute;
       bottom: -1px;
@@ -1087,6 +1094,61 @@
       display: flex;
       align-items: center;
       gap: 0.45rem;
+    }
+    .chat-thread-menu {
+      /* absolute 메뉴 패널의 기준 위치를 이 메뉴 영역으로 고정한다. */
+      position: relative;
+    }
+    .chat-thread-menu-panel {
+      /* absolute는 일반 문서 흐름에서 빼고, 가장 가까운 relative 부모를 기준으로 위치를 잡는다. */
+      position: absolute;
+      /* 버튼 아래(top)·오른쪽(right)에 메뉴를 붙인다. calc()는 버튼 아래에 0.5rem 여백을 더한다. */
+      top: calc(100% + 0.5rem);
+      right: 0;
+      /* z-index가 높을수록 다른 화면 요소 위에 표시된다. */
+      z-index: 20;
+      /* 처음에는 메뉴를 숨긴다. JavaScript가 open 클래스를 붙일 때만 display:flex가 된다. */
+      display: none;
+      /* flex-direction: column은 메뉴 항목을 가로가 아니라 세로로 나열한다. */
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.15rem;
+      min-width: 132px;
+      padding: 0.35rem;
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-shadow: var(--shadow-md);
+    }
+    .chat-thread-menu-panel.open {
+      /* toggleChatThreadMenu()이 open을 붙인 상태에서만 메뉴를 표시한다. */
+      display: flex;
+    }
+    .chat-thread-menu-item {
+      /* width:100%로 메뉴 폭 전체를 클릭할 수 있게 하고, text-align:left로 글자를 왼쪽에 맞춘다. */
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      background: none;
+      border: 0;
+      border-radius: 5px;
+      color: var(--text-secondary);
+      font: inherit;
+      font-size: 0.85rem;
+      text-align: left;
+      cursor: pointer;
+    }
+    .chat-thread-menu-item:hover {
+      /* :hover는 마우스를 올렸을 때만 적용되는 CSS 의사 클래스다. */
+      background-color: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+    .chat-thread-leave-btn {
+      /* 나가기 항목은 위험한 동작이므로 CSS 변수의 빨간색을 사용한다. */
+      color: var(--color-danger);
+    }
+    .chat-thread-leave-btn:hover {
+      color: var(--color-danger);
+      background-color: rgba(248, 113, 113, 0.08);
     }
     .chat-thread-status {
       font-size: 0.75rem;

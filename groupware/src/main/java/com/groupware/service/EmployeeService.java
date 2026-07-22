@@ -73,14 +73,19 @@ public class EmployeeService {
 		return true;
 	}
 	
-	// 마이페이지 전화번호/이메일/프로필 사진 수정
-	public void updateContact(int employeeId, String employeePhone, String employeeEmail, MultipartFile profileImg) {
+	// 마이페이지 전화번호/이메일/생년월일/프로필 사진 수정
+	public void updateContact(int employeeId, String employeePhone, String employeeEmail, String birthDate,
+			MultipartFile profileImg) {
 		// null이면 "이번엔 사진 안 바꿈" 신호 - EmployeeMapper.xml의 <if test="profileImg != null">로 그대로 전달됨
 		String storedName = null;
 		if (profileImg != null && !profileImg.isEmpty()) {
 			storedName = saveProfileImg(profileImg);
 		}
-		employeeMapper.updateContact(employeeId, employeePhone, employeeEmail, storedName);
+		// <input type="date">를 비운 채 제출하면 빈 문자열("")이 오는데, DATE 컬럼에 그대로
+		// 넣으면 형식 오류가 나므로 여기서 null로 정리한다(profileImg와 달리 "값 없음 = 지움"
+		// 의미라서 항상 SET하되, null이면 BIRTH_DATE도 그대로 NULL로 저장/유지됨)
+		String normalizedBirthDate = (birthDate == null || birthDate.isBlank()) ? null : birthDate;
+		employeeMapper.updateContact(employeeId, employeePhone, employeeEmail, normalizedBirthDate, storedName);
 	}
 
 	// 파일을 UUID 이름으로 저장하고, DB에 넣을 "저장된 파일명"만 반환한다.

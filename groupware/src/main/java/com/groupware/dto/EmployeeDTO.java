@@ -24,6 +24,7 @@ public class EmployeeDTO {
 	private String profileImg;  
 	private String employeeStatus;	// ACTIVE / SUSPENDED
 	private String hireDate;
+	private String birthDate;		// 생년월일 - 계정 생성 시 미입력, 마이페이지에서 본인이 입력(NULL 가능)
 	private String createdAt;
 	
 	// 마이페이지에 사용할 필드
