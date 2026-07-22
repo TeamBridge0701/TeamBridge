@@ -1,6 +1,5 @@
 package com.groupware.service;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -107,51 +106,16 @@ public class DashboardService {
         resultMap.put("currentYear", today.getYear());
         resultMap.put("currentMonth", today.getMonthValue());
 
-        // 월간 근태 요약 - 상태별 건수 집계는 AttendanceService.getMonthlySummary()에 이미 있으니
-        // 여기선 그 결과를 그대로 꺼내 쓰기만 한다(대시보드에서 직접 세지 않음).
-        // "조퇴"는 getMonthlySummary 쪽 주석에 적어둔 이유로 통계 자체가 없어서 화면에서도 뺀다.
-        Map<String, Long> attendanceSummary = attendanceService.getMonthlySummary(
-                employeeId, today.getYear(), today.getMonthValue());
-        long normalCount = attendanceSummary.get("normal");
-        long lateCount = attendanceSummary.get("late");
-        long leaveCount = attendanceSummary.get("leave");
-        // "출근일수"는 출결 현황 페이지(attendance.js)와 같은 기준: 정상+지각+연차를 전부
-        // "그 날에 대해 근태 기록이 남아있다"는 의미로 합쳐서 센다
-        long presentDays = normalCount + lateCount + leaveCount;
-
-        // 출근율의 분모 = 이번 달 1일부터 "오늘"까지의 평일 수(주말만 제외, 아직 안 지난
-        // 날짜도 분모에서 뺌). 공휴일 제외는 지금 안 함 - COMPANY 카테고리 일정이 전부
-        // "쉬는 날"은 아니라서(전사 공지성 일정도 COMPANY로 등록될 수 있음), 공휴일을 구분할
-        // 표시(스키마 등)가 따로 정해지면 그때 반영하기로 함(2026-07-21 김우주 확인)
-        int workingDays = countWorkingDaysSoFar(today);
-        // workingDays가 0이면(이번 달 1일이 아직 안 지났을 때뿐이라 사실상 없는 케이스) 0으로
-        // 나누기 에러가 나니까 그럴 때만 0%로 처리
-        int attendanceRate = workingDays > 0 ? (int) Math.round(presentDays * 100.0 / workingDays) : 0;
-
-        resultMap.put("presentDays", presentDays);
-        resultMap.put("lateCount", lateCount);
-        resultMap.put("leaveCount", leaveCount);
-        resultMap.put("attendanceRate", attendanceRate);
+        // 월간 근태 요약(출근일수/지각/연차/출근율) - AttendanceService.getAttendanceSummary()로
+        // 계산을 통째로 옮김. AttendanceController(실시간 갱신)도 같은 메서드를 쓰므로
+        // 여기서 다시 계산하지 않고 그 결과만 그대로 꺼내 쓴다(2026-07-22 정리)
+        resultMap.putAll(attendanceService.getAttendanceSummary(employeeId, today));
 
         // 이번 달 생일자 - 생년월일을 아직 입력 안 한 직원은 EmployeeMapper.findBirthdaysInMonth
         // SQL 조건(BIRTH_DATE IS NOT NULL)에서 자연히 빠진다
         resultMap.put("birthdayEmployees", employeeMapper.findBirthdaysInMonth(today.getMonthValue()));
 
         return resultMap;
-    }
-
-    // 이번 달 1일부터 today까지 중 평일(월~금) 개수. 공휴일 제외는 아직 안 함(위 호출부 주석 참고)
-    private int countWorkingDaysSoFar(LocalDate today) {
-        int count = 0;
-        LocalDate date = today.withDayOfMonth(1);
-        while (!date.isAfter(today)) { // 1일부터 오늘까지 하루씩 검사
-            boolean isWeekend = date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY;
-            if (!isWeekend) {
-                count++;
-            }
-            date = date.plusDays(1);
-        }
-        return count;
     }
 
     // 미니 캘린더 그리드용 날짜 칸 목록 계산 - calendar.js의 buildCalendarWeeks()와 같은

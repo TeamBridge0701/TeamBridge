@@ -106,19 +106,21 @@
 								<i class="fa-solid fa-calendar-days" style="color: var(--color-primary);"></i> 근태 현황 (이번
 								달)
 							</h4>
-							<div
+							<!-- id="dashAttendanceRateRing": 출근/퇴근 직후 Attendance.js가 conic-gradient
+							     스타일 문자열을 새로 만들어서 이 요소의 style을 통째로 갈아끼움(새로고침 없이 갱신) -->
+							<div id="dashAttendanceRateRing"
 								th:style="'width: 88px; height: 88px; border-radius: 50%; background: conic-gradient(var(--color-primary) 0% ' + ${attendanceRate} + '%, var(--bg-tertiary) ' + ${attendanceRate} + '% 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;'">
 								<div
 									style="width: 66px; height: 66px; border-radius: 50%; background: var(--bg-secondary); display: flex; flex-direction: column; align-items: center; justify-content: center;">
-									<div style="font-size: 1rem; font-weight: 800;" th:text="|${attendanceRate}%|">95%</div>
+									<div style="font-size: 1rem; font-weight: 800;" id="dashAttendanceRateText" th:text="|${attendanceRate}%|">95%</div>
 									<div style="font-size: 0.6rem; color: var(--text-muted);">출근율</div>
 								</div>
 							</div>
 							<!-- "조퇴"는 ATTENDANCE_STATUS에 그런 값 자체가 없어서(NORMAL/LATE/LEAVE뿐) 항목 자체를 뺌 -->
 							<div class="commute-info-box" style="text-align: left;">
-								<div class="commute-row"><span>출근일수</span><span class="commute-val" th:text="|${presentDays}일|">20일</span></div>
-								<div class="commute-row"><span>지각</span><span class="commute-val" th:text="|${lateCount}회|">1회</span></div>
-								<div class="commute-row"><span>연차 사용</span><span class="commute-val" th:text="|${leaveCount}일|">2일</span></div>
+								<div class="commute-row"><span>출근일수</span><span class="commute-val" id="dashPresentDays" th:text="|${presentDays}일|">20일</span></div>
+								<div class="commute-row"><span>지각</span><span class="commute-val" id="dashLateCount" th:text="|${lateCount}회|">1회</span></div>
+								<div class="commute-row"><span>연차 사용</span><span class="commute-val" id="dashLeaveCount" th:text="|${leaveCount}일|">2일</span></div>
 							</div>
 						</div>
 					</div>

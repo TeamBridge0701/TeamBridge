@@ -429,6 +429,24 @@
     .badge-danger { background-color: rgba(248, 113, 113, 0.15); color: var(--color-danger); }
     .badge-muted { background-color: var(--bg-tertiary); color: var(--text-secondary); }
 
+    /* 출결현황 달력 전용 배지(정상출근/지각/휴가) - 위 .badge-*는 공지/결재 등 여러 화면이
+       같이 쓰는 공용 스타일이라 거기 색을 진하게 바꾸면 다른 화면에도 영향이 가서,
+       달력 배지만 따로 진한 색(흰 글씨 + 꽉 찬 배경)으로 뺐다. 특히 .badge-primary가
+       .cal-cell.today와 배경색(--bg-accent)이 겹쳐서 "오늘" 칸에서 휴가 배지가 거의
+       안 보이던 문제를 해결하기 위함 */
+    .attendance-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .attendance-badge-normal { background-color: var(--color-success); }
+    .attendance-badge-late { background-color: var(--color-warning); }
+    .attendance-badge-leave { background-color: var(--color-secondary); }
+
     /* 폼 */
     .form-group {
       margin-bottom: 1.25rem;
@@ -715,6 +733,15 @@
       overflow: hidden;
       position: relative;
     }
+    /* 지난달/다음달로 넘어가는 칸(요일 맞추려고 채운 여백) - opacity로만 흐리게 하면
+       배경(흰색)이 그대로 비쳐서 구분이 잘 안 되길래, 칸 배경 자체를 살짝 어두운
+       회색(--bg-tertiary)으로 바꾸고 날짜 숫자도 옅은 색으로 같이 처리 */
+    .cal-cell.other-month {
+      background-color: var(--bg-tertiary);
+    }
+    .cal-cell.other-month .cal-day-num {
+      color: var(--text-muted);
+    }
     .cal-cell-header {
       font-size: 0.75rem;
       font-weight: 700;
@@ -734,6 +761,13 @@
       align-items: center;
       justify-content: center;
     }
+    /* 요일별 색상 - 토요일은 파란색, 일요일은 빨간색(흔한 달력 관례).
+       공휴일도 빨간색으로 표시하고 싶다면 이 .sunday 클래스를 재사용하면 되는데,
+       지금은 그 날짜가 공휴일인지 판단할 데이터를 이 함수가 안 받고 있어서 미구현 상태 -
+       나중에 공휴일 목록을 같이 넘겨받게 되면 그때 여기에 조건을 추가하면 됨 */
+    .calendar-day-header.sunday, .cal-day-num.sunday { color: var(--color-danger); }
+    .calendar-day-header.saturday, .cal-day-num.saturday { color: var(--color-secondary); }
+    /* 오늘이면서 주말인 칸은 원(circle) 배경이 항상 우선 적용됨(선택자 우선순위가 더 높음) */
     /* 캘린더(calendar.js)가 .cal-event-layer 안에 grid-column/grid-row를 인라인
        스타일로 지정해서 배치하는 일정 막대 - <button> 기본 테두리/배경 초기화 필요 */
     .cal-event-bar {

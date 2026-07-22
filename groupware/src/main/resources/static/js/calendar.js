@@ -55,9 +55,12 @@ function generateCalendarGridHtml(year, month, customCellRenderer) {
   const prevLast = new Date(year, month - 1, 0).getDate(), startDay = first.getDay();
   const totalCells = Math.ceil((startDay + lastDate) / 7) * 7, today = new Date().toISOString().slice(0, 10);
 
-  // 요일 헤더 생성
+  // 요일 헤더 생성 - 일요일(0번째)은 빨간색, 토요일(6번째)은 파란색 글씨로 구분
   const headers = ['일', '월', '화', '수', '목', '금', '토']
-    .map(d => `<div class="calendar-day-header" style="text-align:center; font-weight:bold; padding:0.5rem 0;">${d}</div>`)
+    .map((d, idx) => {
+      const weekendClass = idx === 0 ? ' sunday' : idx === 6 ? ' saturday' : '';
+      return `<div class="calendar-day-header${weekendClass}" style="text-align:center; font-weight:bold; padding:0.5rem 0;">${d}</div>`;
+    })
     .join('');
 
   // 날짜 셀 그리드 생성
@@ -65,7 +68,13 @@ function generateCalendarGridHtml(year, month, customCellRenderer) {
     const dayNum = i - startDay + 1;
     const isOther = dayNum < 1 || dayNum > lastDate;
     const label = dayNum < 1 ? prevLast + dayNum : dayNum > lastDate ? dayNum - lastDate : dayNum;
-    
+    // 이번 칸이 무슨 요일인지(i는 항상 일요일=0부터 시작하는 배치라 7로 나눈 나머지가 곧 요일).
+    // 공휴일(관리자가 COMPANY로 등록한 일정)까지 빨간색 처리하는 건 아직 미구현 - 그날이
+    // 공휴일인지 이 함수가 알 방법이 없어서(일정 목록을 안 받음), 나중에 필요하면
+    // customCellRenderer처럼 별도로 넘겨받는 방식을 추가해야 함
+    const dayOfWeek = i % 7;
+    const weekendNumClass = dayOfWeek === 0 ? ' sunday' : dayOfWeek === 6 ? ' saturday' : '';
+
     let cellDate = '';
     if (dayNum < 1) {
         cellDate = `${year}-${String(month - 1).padStart(2, '0')}-${String(label).padStart(2, '0')}`;
@@ -80,7 +89,7 @@ function generateCalendarGridHtml(year, month, customCellRenderer) {
 
     return `
       <div class="calendar-day cal-cell${isOther ? ' other-month' : ''}${cellDate === today ? ' today' : ''}" data-date="${cellDate}">
-        <div class="cal-cell-header"><span class="day-number cal-day-num">${label}</span>${cellDate === today ? '<span style="font-size:0.6rem; color:var(--color-primary); font-weight:bold; margin-left:4px;">오늘</span>' : ''}</div>
+        <div class="cal-cell-header"><span class="day-number cal-day-num${weekendNumClass}">${label}</span>${cellDate === today ? '<span style="font-size:0.6rem; color:var(--color-primary); font-weight:bold; margin-left:4px;">오늘</span>' : ''}</div>
         <div class="event-list">${innerContent}</div>
       </div>`;
   });

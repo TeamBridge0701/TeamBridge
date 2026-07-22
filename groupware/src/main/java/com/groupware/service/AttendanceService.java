@@ -1,5 +1,6 @@
 package com.groupware.service;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -28,14 +29,22 @@ public class AttendanceService {
 		return attendanceMapper.selectTodayAttendance(employeeId, today);
 	}
 
-	// "지금 출근했는지 여부"(NONE 미출근/WORKING 근무중/DONE 퇴근완료) - 그날 지각/정상/연차인지
-	// (ATTENDANCE_STATUS: NORMAL/LATE/LEAVE)와는 다른 개념이라 헷갈리지 않게 별도 메서드로 분리.
-	// AttendanceController가 원래 인라인으로 계산하던 걸 여기로 옮겨서, 대시보드(MainController)도
-	// 같은 기준으로 재사용할 수 있게 함(2026-07-21 김우주 확인 - main.html이 attendanceStatus를
-	// 그대로 보여주던 걸 이걸로 교체)
+	// "지금 출근했는지 여부"(NONE 미출근/WORKING 근무중/DONE 퇴근완료/LEAVE 휴가중) - 그날
+	// 지각/정상/연차인지(ATTENDANCE_STATUS: NORMAL/LATE/LEAVE)와는 다른 개념이라 헷갈리지 않게
+	// 별도 메서드로 분리. AttendanceController가 원래 인라인으로 계산하던 걸 여기로 옮겨서,
+	// 대시보드(MainController)도 같은 기준으로 재사용할 수 있게 함(2026-07-21 김우주 확인 -
+	// main.html이 attendanceStatus를 그대로 보여주던 걸 이걸로 교체).
+	//
+	// LEAVE는 별도 분기로 먼저 처리한다 - 연차 승인 시 자동 생성되는 레코드
+	// (insertLeaveRecord)는 CHECK_IN_TIME/CHECK_OUT_TIME을 둘 다 안 채우고 ATTENDANCE_STATUS만
+	// 'LEAVE'로 넣는데, 이걸 그냥 checkOutTime==null로만 판단하면 "출근도 안 했는데 근무중"으로
+	// 잘못 나온다(2026-07-21 발견된 버그 - checkInTime을 아예 안 보고 있었음).
 	public String getCommuteStatus(AttendanceDTO todayAttendance) {
 		if (todayAttendance == null) {
 			return "NONE";
+		}
+		if ("LEAVE".equals(todayAttendance.getAttendanceStatus())) {
+			return "LEAVE";
 		}
 		return todayAttendance.getCheckOutTime() == null ? "WORKING" : "DONE";
 	}
@@ -43,6 +52,7 @@ public class AttendanceService {
 	// 위 상태 코드를 화면에 보여줄 한글 라벨로 변환(대시보드 "상태" 표시용)
 	public String getCommuteStatusLabel(AttendanceDTO todayAttendance) {
 		switch (getCommuteStatus(todayAttendance)) {
+			case "LEAVE": return "휴가중";
 			case "WORKING": return "근무중";
 			case "DONE": return "퇴근완료";
 			default: return "미출근";
@@ -109,6 +119,48 @@ public class AttendanceService {
 		summary.put("late", records.stream().filter(a -> "LATE".equals(a.getAttendanceStatus())).count());
 		summary.put("leave", records.stream().filter(a -> "LEAVE".equals(a.getAttendanceStatus())).count());
 		return summary;
+	}
+
+	// 이번 달 1일부터 today까지 중 평일(월~금) 개수. 원래 DashboardService에 private로
+	// 있던 걸 여기로 옮김 - AttendanceController(실시간 갱신)에서도 같은 계산이 필요해져서,
+	// "근태 관련 계산은 AttendanceService에 모은다" 원칙에 맞춰 이동함(2026-07-22).
+	// 공휴일 제외는 아직 안 함 - COMPANY 카테고리 일정 중 뭐가 진짜 공휴일인지 구분할 방법이
+	// 아직 없어서 보류 중(김우주 확인 사항, 나중에 처리 예정).
+	public int countWorkingDaysSoFar(LocalDate today) {
+		int count = 0;
+		LocalDate date = today.withDayOfMonth(1);
+		while (!date.isAfter(today)) { // 1일부터 오늘까지 하루씩 검사
+			boolean isWeekend = date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY;
+			if (!isWeekend) {
+				count++;
+			}
+			date = date.plusDays(1);
+		}
+		return count;
+	}
+
+	// 월간 근태 요약(출근일수/지각/연차/출근율)을 한 번에 계산 - AttendanceController(출근/퇴근
+	// 처리 직후 실시간 갱신용)와 DashboardService(페이지 최초 렌더링용) 둘 다 이 메서드
+	// 하나만 부르면 되도록 통일함. 계산 방식이 나중에 바뀌어도(공휴일 제외 등) 여기 한
+	// 곳만 고치면 실시간/초기렌더 둘 다 같이 반영됨(2026-07-22).
+	public Map<String, Object> getAttendanceSummary(int employeeId, LocalDate today) {
+		Map<String, Long> statusCounts = getMonthlySummary(employeeId, today.getYear(), today.getMonthValue());
+		long normalCount = statusCounts.get("normal");
+		long lateCount = statusCounts.get("late");
+		long leaveCount = statusCounts.get("leave");
+		// "출근일수"는 정상+지각+연차를 전부 "그 날에 대해 근태 기록이 남아있다"는 의미로 합쳐서 센다
+		long presentDays = normalCount + lateCount + leaveCount;
+
+		int workingDays = countWorkingDaysSoFar(today);
+		// workingDays가 0이면(이번 달 1일이 아직 안 지났을 때뿐) 0으로 나누기 에러 방지
+		int attendanceRate = workingDays > 0 ? (int) Math.round(presentDays * 100.0 / workingDays) : 0;
+
+		Map<String, Object> result = new HashMap<>();
+		result.put("presentDays", presentDays);
+		result.put("lateCount", lateCount);
+		result.put("leaveCount", leaveCount);
+		result.put("attendanceRate", attendanceRate);
+		return result;
 	}
 	
 	// 관리자 : 특정 날짜의 전 직원 출결 조회
