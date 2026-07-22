@@ -762,9 +762,8 @@
       justify-content: center;
     }
     /* 요일별 색상 - 토요일은 파란색, 일요일은 빨간색(흔한 달력 관례).
-       공휴일도 빨간색으로 표시하고 싶다면 이 .sunday 클래스를 재사용하면 되는데,
-       지금은 그 날짜가 공휴일인지 판단할 데이터를 이 함수가 안 받고 있어서 미구현 상태 -
-       나중에 공휴일 목록을 같이 넘겨받게 되면 그때 여기에 조건을 추가하면 됨 */
+       공휴일(IS_HOLIDAY)로 지정된 날짜도 요일과 무관하게 이 .sunday 클래스를
+       재사용해 빨간색으로 표시함 - calendar.js의 renderCalendarGrid() 참고 */
     .calendar-day-header.sunday, .cal-day-num.sunday { color: var(--color-danger); }
     .calendar-day-header.saturday, .cal-day-num.saturday { color: var(--color-secondary); }
     /* 오늘이면서 주말인 칸은 원(circle) 배경이 항상 우선 적용됨(선택자 우선순위가 더 높음) */
@@ -786,7 +785,10 @@
     }
     .cal-event-bar.personal { background-color: var(--color-secondary); }
     .cal-event-bar.team { background-color: var(--color-success); }
-    .cal-event-bar.company { background-color: var(--color-danger); }
+    /* 회사 일정은 기본 주황, 그 중 공휴일로 지정된 것만 빨강(.holiday)으로 구분 -
+       둘 다 --color-danger 하나만 쓰면 "그냥 회사 행사"와 "쉬는 날"이 안 갈렸음(2026-07-22) */
+    .cal-event-bar.company { background-color: var(--color-warning); }
+    .cal-event-bar.company.holiday { background-color: var(--color-danger); }
 
     /* 여러 날짜에 걸친 일정을 하루씩 끊지 않고 하나의 막대로 이어 붙이는
        월간 캘린더 전용 레이아웃(js/calendar.js의 renderCalendarGrid 참고).

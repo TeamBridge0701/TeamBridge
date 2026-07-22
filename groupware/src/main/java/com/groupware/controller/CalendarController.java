@@ -66,7 +66,11 @@ public class CalendarController {
 		if (existing == null) {
 			return ResponseEntity.notFound().build();
 		}
-		if (!calendarService.canModifyEvent(employee, existing)) {
+		// canModifyEvent는 "기존" 카테고리 기준으로 수정 권한을 보는 거라, 본인 소유
+		// PERSONAL 일정을 수정하는 요청 자체는 통과함. 그런데 그 요청의 eventCategory를
+		// "COMPANY"로 바꿔서 보내면(관리자가 아닌데도) 카테고리가 바뀌어버리는 구멍이 있어서,
+		// canCreateEvent로 "새로 제출된" 카테고리도 한 번 더 검증한다(2026-07-22 발견)
+		if (!calendarService.canModifyEvent(employee, existing) || !calendarService.canCreateEvent(employee, dto.getEventCategory())) {
 			return ResponseEntity.status(HttpStatus.FORBIDDEN)
 					.body(Map.of("success", false, "message", "이 일정을 수정할 권한이 없습니다."));
 		}

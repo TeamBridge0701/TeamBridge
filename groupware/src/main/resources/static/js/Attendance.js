@@ -62,31 +62,27 @@ const ATTENDANCE_STATUS_LABEL = { NORMAL: '정상출근', LATE: '지각', LEAVE:
 // 데이터를 불러와서 그려주는 공용 함수
 async function loadAttendanceData(year, month) {
     try {
-        // 백엔드에서 해당 월 출결 리스트 가져오기
-        const res = await fetch(`/attendance/monthly?year=${year}&month=${month}`);
-        const monthlyAttendanceList = await res.json();
-
-        // status별 카운트 및 총 출근일수 계산 (정상+지각+휴가 합산)
-        let normalCount = 0;
-        let lateCount = 0;
-        let leaveCount = 0;
-
-        monthlyAttendanceList.forEach(item => {
-            const status = item.attendanceStatus;
-            if (status === 'NORMAL') normalCount++;
-            else if (status === 'LATE') lateCount++;
-            else if (status === 'LEAVE') leaveCount++;
-        });
-
-        const totalPresentDays = normalCount + lateCount + leaveCount;
+        // 백엔드에서 해당 월 출결 데이터(원본 레코드 + 근무일 기준 집계) + 캘린더 일정
+        // (공휴일 표시용) 같이 가져오기. 정상/지각/연차 집계는 예전엔 여기서 원본 레코드를
+        // 받아 클라이언트가 직접 다시 셌는데, 그러면 주말/공휴일 필터링이 안 돼서 대시보드
+        // 카드 숫자와 어긋났다 - 이제 AttendanceController가 AttendanceService.getAttendanceSummary
+        // (대시보드와 동일 로직)로 미리 집계해서 내려주는 값을 그대로 쓴다(2026-07-22).
+        const [attRes, eventRes] = await Promise.all([
+            fetch(`/attendance/monthly?year=${year}&month=${month}`),
+            fetch(`/calendar/events?year=${year}&month=${month}`)
+        ]);
+        const attData = await attRes.json();
+        const monthlyAttendanceList = attData.records;
+        const monthlyEvents = eventRes.ok ? await eventRes.json() : [];
+        const holidayDates = typeof extractHolidayDates === 'function' ? extractHolidayDates(monthlyEvents) : new Set();
 
         const presentEl = document.getElementById('attPresentDays');
         const lateEl = document.getElementById('attLateDays');
         const leaveEl = document.getElementById('attLeaveDays');
 
-        if (presentEl) presentEl.textContent = totalPresentDays;
-        if (lateEl) lateEl.textContent = lateCount;
-        if (leaveEl) leaveEl.textContent = leaveCount;
+        if (presentEl) presentEl.textContent = attData.presentDays;
+        if (lateEl) lateEl.textContent = attData.lateCount;
+        if (leaveEl) leaveEl.textContent = attData.leaveCount;
 
         // calendar.js에 분리해 둔 공용 폼 생성 함수(generateCalendarGridHtml) 호출
         if (typeof generateCalendarGridHtml === 'function') {
@@ -123,7 +119,7 @@ async function loadAttendanceData(year, month) {
                         <div>퇴근 ${checkOut}</div>
                     </div>
                 `;
-            });
+            }, holidayDates);
         }
     } catch (err) {
         console.error("출결 캘린더 데이터 로드 실패", err);

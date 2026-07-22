@@ -15,6 +15,7 @@
                end_date AS endDate,
                event_category AS eventCategory,
                dept_id AS deptId,
+               is_holiday AS isHoliday,
                created_at AS createdAt
         FROM calendar_event
         WHERE (SUBSTR(start_date, 1, 7) = CONCAT(#{year}, '-', LPAD(#{month}, 2, '0'))
@@ -35,15 +36,25 @@
                end_date AS endDate,
                event_category AS eventCategory,
                dept_id AS deptId,
+               is_holiday AS isHoliday,
                created_at AS createdAt
         FROM calendar_event
         WHERE event_id = #{eventId}
     </select>
 
+    <!-- 출근율 계산용 - 그 달의 공휴일(IS_HOLIDAY=1인 COMPANY 일정)만 -->
+    <select id="selectHolidayDates" resultType="com.groupware.dto.CalendarEventDTO">
+        SELECT start_date AS startDate, end_date AS endDate
+        FROM calendar_event
+        WHERE event_category = 'COMPANY' AND is_holiday = 1
+          AND (SUBSTR(start_date, 1, 7) = CONCAT(#{year}, '-', LPAD(#{month}, 2, '0'))
+            OR SUBSTR(end_date, 1, 7) = CONCAT(#{year}, '-', LPAD(#{month}, 2, '0')))
+    </select>
+
     <!-- 새 일정 등록 -->
     <insert id="insertEvent" parameterType="com.groupware.dto.CalendarEventDTO" useGeneratedKeys="true" keyProperty="eventId">
-        INSERT INTO calendar_event (employee_id, event_title, start_date, end_date, event_category, dept_id, created_at)
-        VALUES (#{employeeId}, #{eventTitle}, #{startDate}, #{endDate}, #{eventCategory}, #{deptId}, NOW())
+        INSERT INTO calendar_event (employee_id, event_title, start_date, end_date, event_category, dept_id, is_holiday, created_at)
+        VALUES (#{employeeId}, #{eventTitle}, #{startDate}, #{endDate}, #{eventCategory}, #{deptId}, #{isHoliday}, NOW())
     </insert>
 
     <!-- 일정 수정 -->
@@ -53,7 +64,8 @@
             start_date = #{startDate},
             end_date = #{endDate},
             event_category = #{eventCategory},
-            dept_id = #{deptId}
+            dept_id = #{deptId},
+            is_holiday = #{isHoliday}
         WHERE event_id = #{eventId}
     </update>
 
