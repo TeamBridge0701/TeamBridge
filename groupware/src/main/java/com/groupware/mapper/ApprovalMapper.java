@@ -15,14 +15,29 @@ public interface ApprovalMapper {
 	int insertApproval(ApprovalDTO approval);
 
 	// 받은 결재함 - 나에게 배정된 단계이면서, 그 문서의 "지금 차례"(MIN(STEP_NO) WHERE WAIT)인 것만
-	List<ApprovalDTO> findInbox(@Param("employeeId") int employeeId);
+	List<ApprovalDTO> findInbox(@Param("employeeId") int employeeId, @Param("offset") int offset,
+			@Param("size") int size);
+
+	// 페이지네이션 총 건수 - findInbox와 조건(WHERE) 동일하게 유지
+	int countInbox(@Param("employeeId") int employeeId);
 
 	// 보낸 기안함 - 내가 기안한 문서 전체(진행중/승인/반려 모두 포함)
-	List<ApprovalDTO> findOutbox(@Param("drafterId") int drafterId);
+	List<ApprovalDTO> findOutbox(@Param("drafterId") int drafterId, @Param("offset") int offset,
+			@Param("size") int size);
+
+	// 페이지네이션 총 건수 - findOutbox와 조건(WHERE) 동일하게 유지
+	int countOutbox(@Param("drafterId") int drafterId);
+
+	// 대시보드 위젯 전용 - 보낸 기안함 중 특정 상태(PROGRESS 등)만 골라 센 건수
+	int countOutboxByStatus(@Param("drafterId") int drafterId, @Param("status") String status);
 
 	// 참조 문서함 - 내 부서 전체 참조 지정 OR 나 개인 참조 지정 OR 내가 결재선에 있지만
 	// 기안자는 아닌 문서 (Service에서 세 조건을 UNION으로 묶어 넘겨줌)
-	List<ApprovalDTO> findReferenceBox(@Param("employeeId") int employeeId, @Param("deptId") int deptId);
+	List<ApprovalDTO> findReferenceBox(@Param("employeeId") int employeeId, @Param("deptId") int deptId,
+			@Param("offset") int offset, @Param("size") int size);
+
+	// 페이지네이션 총 건수 - findReferenceBox와 조건(WHERE) 동일하게 유지
+	int countReferenceBox(@Param("employeeId") int employeeId, @Param("deptId") int deptId);
 
 	// 결재 상세 - 서식명/기안자 이름·부서·직급 조인 + 현재 대기 단계(currentStep) 계산
 	ApprovalDTO findDetail(@Param("approvalId") int approvalId);

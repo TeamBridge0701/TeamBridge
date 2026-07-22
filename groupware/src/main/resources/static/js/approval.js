@@ -150,16 +150,38 @@ function switchApprovalTab(tab) {
   document.querySelectorAll('.approval-tab-content').forEach(content => content.style.display = 'none');
   document.getElementById(`approval-view-${tab}`).style.display = 'block';
 
-  if (tab === 'inbox') renderInbox();
-  if (tab === 'outbox') renderOutbox();
-  if (tab === 'ref') renderReferenceBox();
+  if (tab === 'inbox') renderInbox(1);
+  if (tab === 'outbox') renderOutbox(1);
+  if (tab === 'ref') renderReferenceBox(1);
+}
+
+// 자료실(archive.html)과 같은 모양(5개 그룹 + ‹ ›)의 페이지 번호를 그린다. 다만 자료실은
+// <a href>로 화면 이동을 하지만, 전자결재는 탭 전체가 이미 fetch로 그려지는 구조라
+// 페이지 버튼도 이동 없이 renderFnName(페이지번호)를 다시 호출하는 버튼으로 만든다.
+function buildApprovalPaginationHtml(pageData, renderFnName) {
+  if (pageData.totalPages <= 1) return '';
+
+  let html = '<div style="display:flex; justify-content:center; align-items:center; gap:0.4rem; margin-top:1rem;">';
+  if (pageData.groupStart > 1) {
+    html += `<button type="button" class="btn btn-sm btn-secondary" style="min-width:2.2rem;" onclick="${renderFnName}(${pageData.groupStart - 1})">‹</button>`;
+  }
+  for (let p = pageData.groupStart; p <= pageData.groupEnd; p++) {
+    const activeClass = p === pageData.currentPage ? 'btn-primary' : 'btn-secondary';
+    html += `<button type="button" class="btn btn-sm ${activeClass}" style="min-width:2.2rem;" onclick="${renderFnName}(${p})">${p}</button>`;
+  }
+  if (pageData.groupEnd < pageData.totalPages) {
+    html += `<button type="button" class="btn btn-sm btn-secondary" style="min-width:2.2rem;" onclick="${renderFnName}(${pageData.groupEnd + 1})">›</button>`;
+  }
+  html += '</div>';
+  return html;
 }
 
 // "받은 결재함" 탭 - GET /approval/inbox (지금 내 차례인 문서만 서버가 이미 걸러서 내려줌)
-function renderInbox() {
-  fetch('/approval/inbox')
+function renderInbox(page) {
+  fetch(`/approval/inbox?page=${page || 1}`)
     .then(res => res.json())
-    .then(list => {
+    .then(pageData => {
+      const list = pageData.content;
       const html = list.map(a => `
         <tr class="clickable" onclick="viewApprovalDetail(${a.approvalId})">
           <td>#${a.approvalId}</td>
@@ -173,15 +195,17 @@ function renderInbox() {
       document.getElementById('inboxTableBody').innerHTML = html.length ? html : `
         <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">수신된 결재 요청 문서가 없습니다.</td></tr>
       `;
+      document.getElementById('inboxPagination').innerHTML = buildApprovalPaginationHtml(pageData, 'renderInbox');
     })
     .catch(() => showToast('받은 결재함을 불러오지 못했습니다.', 'danger'));
 }
 
 // "보낸 기안함" 탭 - GET /approval/outbox (내가 기안한 문서 전체)
-function renderOutbox() {
-  fetch('/approval/outbox')
+function renderOutbox(page) {
+  fetch(`/approval/outbox?page=${page || 1}`)
     .then(res => res.json())
-    .then(list => {
+    .then(pageData => {
+      const list = pageData.content;
       const html = list.map(a => `
         <tr class="clickable" onclick="viewApprovalDetail(${a.approvalId})">
           <td>#${a.approvalId}</td>
@@ -194,15 +218,17 @@ function renderOutbox() {
       document.getElementById('outboxTableBody').innerHTML = html.length ? html : `
         <tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">보낸 기안 문서가 없습니다.</td></tr>
       `;
+      document.getElementById('outboxPagination').innerHTML = buildApprovalPaginationHtml(pageData, 'renderOutbox');
     })
     .catch(() => showToast('보낸 기안함을 불러오지 못했습니다.', 'danger'));
 }
 
 // "참조 문서함" 탭 - GET /approval/reference (부서 참조/개인 참조/결재선 포함 중 하나라도 해당)
-function renderReferenceBox() {
-  fetch('/approval/reference')
+function renderReferenceBox(page) {
+  fetch(`/approval/reference?page=${page || 1}`)
     .then(res => res.json())
-    .then(list => {
+    .then(pageData => {
+      const list = pageData.content;
       const html = list.map(a => `
         <tr class="clickable" onclick="viewApprovalDetail(${a.approvalId})">
           <td>#${a.approvalId}</td>
@@ -216,6 +242,7 @@ function renderReferenceBox() {
       document.getElementById('refTableBody').innerHTML = html.length ? html : `
         <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">참조 수신된 결재 문서가 없습니다.</td></tr>
       `;
+      document.getElementById('refPagination').innerHTML = buildApprovalPaginationHtml(pageData, 'renderReferenceBox');
     })
     .catch(() => showToast('참조 문서함을 불러오지 못했습니다.', 'danger'));
 }
@@ -236,6 +263,15 @@ function viewApprovalDetail(id) {
       document.getElementById('mAppTitle').innerText = a.approvalTitle;
       document.getElementById('mAppDate').innerText = a.createdAt ? a.createdAt.substring(0, 10) : '';
       document.getElementById('mAppContent').innerText = a.approvalContent;
+
+      // 휴가 기간 - 연차휴가신청서만 값이 있음
+      const leaveRow = document.getElementById('mAppLeaveRow');
+      if (a.leaveStartDate && a.leaveEndDate) {
+        leaveRow.style.display = 'block';
+        document.getElementById('mAppLeavePeriod').innerText = `${a.leaveStartDate} ~ ${a.leaveEndDate}`;
+      } else {
+        leaveRow.style.display = 'none';
+      }
 
       // 금액 - 지출결의서만 값이 있음
       const amountRow = document.getElementById('mAppAmountRow');
