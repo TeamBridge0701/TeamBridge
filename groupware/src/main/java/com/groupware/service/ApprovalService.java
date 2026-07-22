@@ -7,6 +7,7 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -39,11 +40,18 @@ public class ApprovalService {
 	private static final int RANK_DEPT_HEAD = 1;
 	private static final int RANK_TEAM_LEAD = 2;
 
+	// 지출결의서 2차 승인자가 소속된 부서명 - 부서장/팀장이 아니라 "부서" 기준으로 후보를 고른다
+	// (2026-07-22 확정: 지출결의서는 1차 부서장 → 2차 재무관리팀, 다른 서식과 승인 구조가 다름)
+	private static final String FINANCE_DEPT_NAME = "재무관리팀";
+
 	// 휴가 기간을 받는 서식은 연차휴가신청서뿐 (ERD 2-11 - LEAVE_START/END_DATE는 이 서식 전용)
 	private static final String LEAVE_FORM_NAME = "연차휴가신청서";
 
 	// 금액을 받는 서식은 지출결의서뿐 (AMOUNT는 이 서식 전용)
 	private static final String EXPENSE_FORM_NAME = "지출결의서";
+
+	// 프로젝트품의서 - 1차 팀장 → 2차 부서장(기본), 기안자 직급에 따라 단계가 줄어든다(아래 writeApproval 참고)
+	private static final String PROJECT_FORM_NAME = "프로젝트품의서";
 
 	// 받은/보낸/참조 문서함 페이지네이션 - ArchiveService와 동일한 값(10건씩, 5페이지 그룹)
 	private static final int PAGE_SIZE = 10;
@@ -66,13 +74,26 @@ public class ApprovalService {
 		return approvalFormTypeMapper.findAll();
 	}
 
-	// 결재선 후보 - 1차 승인자(팀장)/최종 승인자(부서장) select 옵션
-	public List<EmployeeDTO> getTeamLeadCandidates() {
-		return employeeMapper.findByPositionRank(RANK_TEAM_LEAD);
+	// 결재선 후보 - 승인자(팀장/부서장) select 옵션. 기안자 본인은 자기 자신을 승인자로
+	// 선택할 수 없으므로 후보 목록에서 제외한다(예: 부서장이 기안하면 다른 부서장이 승인).
+	public List<EmployeeDTO> getTeamLeadCandidates(int drafterId) {
+		return employeeMapper.findByPositionRank(RANK_TEAM_LEAD).stream()
+				.filter(e -> e.getEmployeeId() != drafterId)
+				.collect(Collectors.toList());
 	}
 
-	public List<EmployeeDTO> getDeptHeadCandidates() {
-		return employeeMapper.findByPositionRank(RANK_DEPT_HEAD);
+	public List<EmployeeDTO> getDeptHeadCandidates(int drafterId) {
+		return employeeMapper.findByPositionRank(RANK_DEPT_HEAD).stream()
+				.filter(e -> e.getEmployeeId() != drafterId)
+				.collect(Collectors.toList());
+	}
+
+	// 지출결의서 2차(재무관리팀) 승인자 후보 - 부서명 기준 조회라 자기 자신이 그 부서
+	// 소속이어도(예: 재무관리팀 팀장이 본인 지출결의서를 기안) 제외해야 한다.
+	public List<EmployeeDTO> getFinanceApproverCandidates(int drafterId) {
+		return employeeMapper.findApproversByDeptName(FINANCE_DEPT_NAME).stream()
+				.filter(e -> e.getEmployeeId() != drafterId)
+				.collect(Collectors.toList());
 	}
 
 	// 참조 대상 선택 모달 - 부서 트리는 조직도(GET /org)가 쓰는 것과 같은 조회를 재사용
@@ -250,25 +271,55 @@ public class ApprovalService {
 		}
 	}
 
-	// 기안 등록 - APPROVAL 1건 + 서식의 결재 단계 수만큼 APPROVAL_LINE +
-	// 선택된 참조 대상 수만큼 APPROVAL_REFERENCE + 첨부파일(있으면)까지 한 트랜잭션으로 저장한다.
-	// 첨부파일은 휴가 신청서를 제외한 서식(지출결의서/프로젝트품의서)만 받는다.
+	// 기안 등록 - APPROVAL 1건 + 결재선(1~2단계) + 선택된 참조 대상 수만큼 APPROVAL_REFERENCE +
+	// 첨부파일(있으면)까지 한 트랜잭션으로 저장한다. 첨부파일은 휴가 신청서를 제외한
+	// 서식(지출결의서/프로젝트품의서)만 받는다.
+	//
+	// 결재선 구성(2026-07-22 확정) - 서식과 "기안자 자신의 직급"에 따라 아래처럼 갈린다.
+	// formType.getApprovalStepCount()(DB 컬럼)는 이 분기를 못 담아서 더 이상 안 쓴다.
+	// approval.js의 getApprovalSteps()와 반드시 같은 기준이어야 하며, 버튼 숨김은 보안이
+	// 아니므로 여기서 서버가 다시 몇 단계여야 하는지 독자적으로 판단한다.
+	//   - 연차휴가신청서: 항상 1단계. 기안자가 부서장이면 승인자=다른 부서장, 아니면 팀장.
+	//   - 지출결의서: 기안자가 부서장이면 1단계(승인자=재무관리팀), 아니면 2단계
+	//     (1차=부서장, 2차=재무관리팀).
+	//   - 프로젝트품의서: 기안자가 팀장·부서장이면 1단계(승인자=부서장 - 부서장이 기안하면
+	//     다른 부서장), 그 외(사원 등)는 2단계(1차=팀장, 2차=부서장).
 	@Transactional
-	public int writeApproval(int drafterId, int formTypeId, String approvalTitle, String approvalContent,
-			String leaveStartDate, String leaveEndDate, Long amount, int signer1Id, Integer signer2Id,
-			List<Integer> refDeptIds, List<Integer> refEmployeeIds, List<MultipartFile> files) {
+	public int writeApproval(int drafterId, int drafterPositionRank, int formTypeId, String approvalTitle,
+			String approvalContent, String leaveStartDate, String leaveEndDate, Long amount, Integer signer1Id,
+			Integer signer2Id, List<Integer> refDeptIds, List<Integer> refEmployeeIds, List<MultipartFile> files) {
 		ApprovalFormTypeDTO formType = approvalFormTypeMapper.findById(formTypeId);
 		if (formType == null) {
 			throw new IllegalArgumentException("존재하지 않는 결재 서식입니다.");
 		}
 		boolean isLeaveForm = LEAVE_FORM_NAME.equals(formType.getFormTypeName());
 		boolean isExpenseForm = EXPENSE_FORM_NAME.equals(formType.getFormTypeName());
+		boolean isProjectForm = PROJECT_FORM_NAME.equals(formType.getFormTypeName());
 		if (isLeaveForm) {
 			validateLeavePeriod(leaveStartDate, leaveEndDate);
 		}
 		if (isExpenseForm && amount == null) {
 			throw new IllegalArgumentException("지출결의서는 금액을 입력해야 합니다.");
 		}
+
+		boolean drafterIsDeptHead = drafterPositionRank == RANK_DEPT_HEAD;
+		boolean drafterIsTeamLead = drafterPositionRank == RANK_TEAM_LEAD;
+
+		// 부서장 본인의 연차휴가는 승인자를 아예 안 두고 참조자만 지정하는 예외(2026-07-22
+		// 팀 협의 확정) - 결재선이 없으니 등록 즉시 승인 완료 처리하고, 그 대신 참조 대상
+		// 지정을 필수로 강제한다(승인 절차가 없는 걸 참조로라도 알 수 있게).
+		boolean leaveNoApprover = isLeaveForm && drafterIsDeptHead;
+		if (leaveNoApprover) {
+			boolean hasReference = (refDeptIds != null && !refDeptIds.isEmpty())
+					|| (refEmployeeIds != null && !refEmployeeIds.isEmpty());
+			if (!hasReference) {
+				throw new IllegalArgumentException("참조 대상을 최소 1명 이상 지정해야 합니다.");
+			}
+		}
+
+		boolean singleStep = isLeaveForm
+				|| (isExpenseForm && drafterIsDeptHead)
+				|| (isProjectForm && (drafterIsDeptHead || drafterIsTeamLead));
 
 		ApprovalDTO approval = new ApprovalDTO();
 		approval.setDrafterId(drafterId);
@@ -280,12 +331,22 @@ public class ApprovalService {
 		approval.setAmount(isExpenseForm ? amount : null);
 		approvalMapper.insertApproval(approval); // useGeneratedKeys - approval.approvalId가 채워짐
 
-		insertLine(approval.getApprovalId(), 1, signer1Id);
-		if (formType.getApprovalStepCount() == 2) {
-			if (signer2Id == null) {
-				throw new IllegalArgumentException("이 서식은 최종 승인자(2차) 지정이 필요합니다.");
+		if (leaveNoApprover) {
+			// 결재선 없이 바로 승인 완료 - decideApproval을 거치지 않으므로 ATTENDANCE 반영도
+			// 여기서 직접 해준다(decideApproval의 최종 승인 분기와 동일한 처리).
+			approvalMapper.updateApprovalStatus(approval.getApprovalId(), "APPROVED");
+			reflectLeaveToAttendance(drafterId, leaveStartDate, leaveEndDate);
+		} else {
+			if (signer1Id == null) {
+				throw new IllegalArgumentException("승인자를 지정해야 합니다.");
 			}
-			insertLine(approval.getApprovalId(), 2, signer2Id);
+			insertLine(approval.getApprovalId(), 1, signer1Id);
+			if (!singleStep) {
+				if (signer2Id == null) {
+					throw new IllegalArgumentException("이 서식은 2차 승인자 지정이 필요합니다.");
+				}
+				insertLine(approval.getApprovalId(), 2, signer2Id);
+			}
 		}
 
 		insertReferences(approval.getApprovalId(), refDeptIds, refEmployeeIds);

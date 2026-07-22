@@ -40,11 +40,16 @@ public class ApprovalController {
 
 	// 전자결재 메인 화면 - 지금은 "결재 상신(기안)" 탭만 SSR로 채운다.
 	// 받은/보낸/참조 문서함은 역할구분.md 3-3 체크리스트 3번에서 fetch로 구현 예정.
+	// 승인자 후보(팀장/부서장/재무관리팀)는 기안자 본인을 제외해서 내려준다(자기 자신을
+	// 승인자로 못 고르게). drafterPositionRank는 서식별로 몇 단계·어느 후보 목록을 쓸지
+	// approval.js(getApprovalSteps)가 판단하는 데 쓴다(2026-07-22 확정 규칙 참고).
 	@GetMapping("/approval")
-	public String approval(Model model) {
+	public String approval(@ModelAttribute("employee") EmployeeDTO employee, Model model) {
 		model.addAttribute("formTypes", approvalService.getFormTypes());
-		model.addAttribute("teamLeadCandidates", approvalService.getTeamLeadCandidates());
-		model.addAttribute("deptHeadCandidates", approvalService.getDeptHeadCandidates());
+		model.addAttribute("teamLeadCandidates", approvalService.getTeamLeadCandidates(employee.getEmployeeId()));
+		model.addAttribute("deptHeadCandidates", approvalService.getDeptHeadCandidates(employee.getEmployeeId()));
+		model.addAttribute("financeCandidates", approvalService.getFinanceApproverCandidates(employee.getEmployeeId()));
+		model.addAttribute("drafterPositionRank", employee.getPositionRank());
 		return "approval/approval";
 	}
 
@@ -72,14 +77,15 @@ public class ApprovalController {
 			@RequestParam(value = "leaveStartDate", required = false) String leaveStartDate,
 			@RequestParam(value = "leaveEndDate", required = false) String leaveEndDate,
 			@RequestParam(value = "amount", required = false) Long amount,
-			@RequestParam("signer1Id") int signer1Id,
+			@RequestParam(value = "signer1Id", required = false) Integer signer1Id,
 			@RequestParam(value = "signer2Id", required = false) Integer signer2Id,
 			@RequestParam(value = "refDeptIds", required = false) List<Integer> refDeptIds,
 			@RequestParam(value = "refEmployeeIds", required = false) List<Integer> refEmployeeIds,
 			@RequestParam(value = "files", required = false) List<MultipartFile> files) {
 		try {
-			approvalService.writeApproval(employee.getEmployeeId(), formTypeId, approvalTitle, approvalContent,
-					leaveStartDate, leaveEndDate, amount, signer1Id, signer2Id, refDeptIds, refEmployeeIds, files);
+			approvalService.writeApproval(employee.getEmployeeId(), employee.getPositionRank(), formTypeId,
+					approvalTitle, approvalContent, leaveStartDate, leaveEndDate, amount, signer1Id, signer2Id,
+					refDeptIds, refEmployeeIds, files);
 		} catch (IllegalArgumentException e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
 		}

@@ -56,12 +56,22 @@
 
     <!-- [전자결재] 결재선 후보 - 특정 직급 서열의 ACTIVE 직원 전체, 부서명과 함께 -->
     <select id="findByPositionRank" resultType="com.groupware.dto.EmployeeDTO">
-        SELECT e.EMPLOYEE_ID, e.EMPLOYEE_NAME, e.EMPLOYEE_STATUS, d.DEPT_NAME, p.POSITION_NAME
+        SELECT e.EMPLOYEE_ID, e.EMPLOYEE_NAME, e.EMPLOYEE_STATUS, e.DEPT_ID, d.DEPT_NAME, p.POSITION_NAME
         FROM EMPLOYEE e
             LEFT JOIN DEPARTMENT d ON e.DEPT_ID = d.DEPT_ID
             JOIN `POSITION` p ON e.POSITION_ID = p.POSITION_ID
         WHERE e.EMPLOYEE_STATUS = 'ACTIVE' AND p.POSITION_RANK = #{positionRank}
         ORDER BY d.DEPT_NAME, e.EMPLOYEE_NAME
+    </select>
+
+    <!-- [전자결재] 지출결의서 2차(재무관리팀) 승인자 후보 - 특정 부서 소속이면서 부서장(1)/팀장(2)급만 -->
+    <select id="findApproversByDeptName" resultType="com.groupware.dto.EmployeeDTO">
+        SELECT e.EMPLOYEE_ID, e.EMPLOYEE_NAME, e.EMPLOYEE_STATUS, e.DEPT_ID, d.DEPT_NAME, p.POSITION_NAME
+        FROM EMPLOYEE e
+            JOIN DEPARTMENT d ON e.DEPT_ID = d.DEPT_ID
+            JOIN `POSITION` p ON e.POSITION_ID = p.POSITION_ID
+        WHERE e.EMPLOYEE_STATUS = 'ACTIVE' AND d.DEPT_NAME = #{deptName} AND p.POSITION_RANK IN (1, 2)
+        ORDER BY p.POSITION_RANK, e.EMPLOYEE_NAME
     </select>
 
     <!--

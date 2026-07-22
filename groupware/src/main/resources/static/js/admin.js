@@ -73,8 +73,12 @@ function renderAdminTable(members) {
   `;
 }
 
-// "계정 정지"/"정지 복구" 버튼에 연결
+// "계정 정지"/"정지 복구" 버튼에 연결 - PW 리셋(resetUserPassword)과 동일하게
+// 실행 전 확인창을 거친다(배포전_수정사항.md 3번 항목)
 function toggleUserStatus(employeeId, suspend) {
+    const confirmMessage = suspend ? '정말 이 계정을 정지하시겠습니까?' : '이 계정을 정지 해제(복구)하시겠습니까?';
+    if (!confirm(confirmMessage)) return;
+
     const url = suspend ? `/admin/member/suspend/${employeeId}` : `/admin/member/restore/${employeeId}`;
     fetch(url, { method: 'POST' })
         .then(res => res.text().then(message => {
