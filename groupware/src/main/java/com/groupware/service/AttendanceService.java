@@ -211,20 +211,30 @@ public class AttendanceService {
 	// 관리자가 직접 입력하는 식나이라 형식이 자유로울 수 있음 - DB(TIME 컬럼)에 이상한 값이
 	// 들어가기 전에 서버에서 한 번 더 검증(화면 input이 text라 브라우저가 형식을 안 막아줌)
 	private static final Pattern TIME_PATTERN = Pattern.compile("^([01]\\d|2[0-3]):[0-5]\\d$");
-	
-	public void saveAttendanceByAdmin(int employeeId, String workDate, String checkInTime, String checkOutTime,
-									String status) {
-		if (checkInTime != null && !checkInTime.isBlank() && !TIME_PATTERN.matcher(checkInTime).matches()) {
+
+	// 상태(정상/지각/휴가)를 관리자가 직접 select로 고르던 것을 제거하고, checkIn()과
+	// 동일한 규칙(09:00 초과=지각)으로 서버가 출근 시간만 보고 계산하도록 변경함
+	// (배포전_수정사항.md 1번 "출근 시간 수정 시 상태 자동 재계산").
+	//
+	// 휴가(LEAVE)는 이 화면에서 만들 수 없다 - 연차는 전자결재 승인 시
+	// ApprovalService.reflectLeaveToAttendance()가 반영하는 것으로 이미 정해져 있어서
+	// (관리자 수기 입력이 아니라 결재 절차를 거쳐야 함), 출근 시간이 없으면 LEAVE로
+	// 대신 채우지 않고 아예 저장을 막는다(2026-07-22 확인).
+	public void saveAttendanceByAdmin(int employeeId, String workDate, String checkInTime, String checkOutTime) {
+		if (checkInTime == null || checkInTime.isBlank()) {
+			throw new IllegalArgumentException("출근 시간을 입력해야 저장할 수 있습니다. 휴가는 전자결재(연차) 승인을 통해서만 반영됩니다.");
+		}
+		if (!TIME_PATTERN.matcher(checkInTime).matches()) {
 			throw new IllegalArgumentException("출근 시간 형식이 올바르지 않습니다. (예: 09:00)");
 		}
 		if (checkOutTime != null && !checkOutTime.isBlank() && !TIME_PATTERN.matcher(checkOutTime).matches()) {
 			throw new IllegalArgumentException("퇴근 시간 형식이 올바르지 않습니다. (예: 18:00)");
 	    }
-		
-		attendanceMapper.upsertAttendanceByAdmin(employeeId, workDate,
-				checkInTime == null || checkInTime.isBlank() ? null : checkInTime,
-				checkOutTime == null || checkOutTime.isBlank() ? null : checkOutTime,
-				status);
+
+		String normalizedCheckOut = checkOutTime == null || checkOutTime.isBlank() ? null : checkOutTime;
+		String status = LocalTime.parse(checkInTime).isAfter(LocalTime.of(9, 0, 0)) ? "LATE" : "NORMAL";
+
+		attendanceMapper.upsertAttendanceByAdmin(employeeId, workDate, checkInTime, normalizedCheckOut, status);
 	}
 
 }
