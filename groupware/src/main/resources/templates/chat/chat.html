@@ -71,12 +71,25 @@
 				     th:attr="data-room-id=${room.roomId},
 				              data-room-type=${room.roomType}">
 
-				    <!-- GROUP이면 group 클래스를 추가해서 그룹방 아바타 스타일을 적용한다. -->
-				    <div class="chat-room-avatar"
-				         th:classappend="${room.roomType == 'GROUP'} ? ' group' : ''"
-				         th:text="${#strings.isEmpty(room.displayName)
-				                   ? '채'
-				                   : #strings.substring(room.displayName, 0, 1)}">채</div>
+				    <!-- GROUP은 항상 "단", DM은 상대 프로필 사진 또는 이름 첫 글자를 표시한다. -->
+				    <div class="chat-room-avatar group"
+				         th:if="${room.roomType == 'GROUP'}">단</div>
+			    <!-- DM만 상대 프로필과 출근 점을 감싼다. GROUP은 위의 "단" 아바타만 사용한다. -->
+			    <div class="chat-avatar-wrap" th:if="${room.roomType != 'GROUP'}">
+			      <img class="chat-room-avatar chat-profile-image"
+			           th:if="${!#strings.isEmpty(room.displayProfileImg)}"
+			           th:src="@{'/uploads/profileImg/' + ${room.displayProfileImg}}"
+			           style="object-fit:cover;"
+			           alt="프로필 사진">
+			      <div class="chat-room-avatar"
+			           th:if="${#strings.isEmpty(room.displayProfileImg)}"
+			           th:text="${#strings.isEmpty(room.displayName)
+			                     ? '채'
+			                     : #strings.substring(room.displayName, 0, 1)}">채</div>
+			      <!-- displayWorkStatus가 WORKING일 때만 프로필 우측 하단 점을 만든다. -->
+			      <span class="chat-online-dot"
+			            th:if="${room.displayWorkStatus == 'WORKING'}"></span>
+			    </div>
 
 				    <div class="chat-room-info">
 				      <div class="chat-room-name-row">
@@ -128,8 +141,7 @@
 			  <div class="chat-main"
 			       id="chatMain"
 			       th:attr="data-current-employee-id=${employee.employeeId},
-			                data-current-room-id=${currentRoom != null ? currentRoom.roomId : ''},
-			                data-current-room-type=${currentRoom != null ? currentRoom.roomType : ''}">
+			                data-current-room-id=${currentRoom != null ? currentRoom.roomId : ''}">
 
 				  <!-- currentRoom이 있을 때만 채팅방 헤더를 출력한다. -->
 				  <div class="chat-thread-header"
@@ -141,14 +153,24 @@
 			                  tabindex=${currentRoom.roomType == 'GROUP'} ? 0 : null"
 			         th:onclick="${currentRoom.roomType == 'GROUP'} ? 'openRenameChatModal()' : null">
 
-				      <!-- 방 이름의 첫 글자를 아바타로 표시한다. -->
-				      <div class="chat-room-avatar"
-				           th:classappend="${currentRoom.roomType == 'GROUP'} ? ' group' : ''"
-				           th:text="${#strings.isEmpty(currentRoom.displayName)
-				                     ? '채'
-				                     : #strings.substring(currentRoom.displayName, 0, 1)}">
-				        채
-				      </div>
+				      <!-- GROUP은 항상 "단", DM은 상대 프로필 사진 또는 이름 첫 글자를 표시한다. -->
+				      <div class="chat-room-avatar group"
+				           th:if="${currentRoom.roomType == 'GROUP'}">단</div>
+			      <!-- DM 헤더도 목록과 같은 기준으로 상대의 출근 중 점을 보여 준다. -->
+			      <div class="chat-avatar-wrap" th:if="${currentRoom.roomType != 'GROUP'}">
+			        <img class="chat-room-avatar chat-profile-image"
+			             th:if="${!#strings.isEmpty(currentRoom.displayProfileImg)}"
+			             th:src="@{'/uploads/profileImg/' + ${currentRoom.displayProfileImg}}"
+			             style="object-fit:cover;"
+			             alt="프로필 사진">
+			        <div class="chat-room-avatar"
+			             th:if="${#strings.isEmpty(currentRoom.displayProfileImg)}"
+			             th:text="${#strings.isEmpty(currentRoom.displayName)
+			                       ? '채'
+			                       : #strings.substring(currentRoom.displayName, 0, 1)}">채</div>
+			        <span class="chat-online-dot"
+			              th:if="${currentRoom.displayWorkStatus == 'WORKING'}"></span>
+			      </div>
 
 				      <div>
 				        <!-- DM은 상대방 이름, GROUP은 그룹방 이름을 표시한다. -->
@@ -271,12 +293,19 @@
 			                    data-unread-member-count=${message.unreadMemberCount}">
 
 			        <!-- 상대방 메시지일 때만 왼쪽 아바타를 출력한다. -->
-			        <div class="chat-room-avatar"
-			             th:if="${message.senderId != employee.employeeId}"
-			             th:text="${#strings.isEmpty(message.senderName)
-			                       ? '시'
-			                       : #strings.substring(message.senderName, 0, 1)}">
-			          상
+			        <!-- 상대 메시지의 아바타를 감싼다. 내 메시지는 오른쪽 말풍선이라 아바타가 없다. -->
+			        <div class="chat-avatar-wrap"
+			             th:if="${message.senderId != employee.employeeId}">
+			          <img class="chat-room-avatar chat-profile-image"
+			               th:if="${!#strings.isEmpty(message.senderProfileImg)}"
+			               th:src="@{'/uploads/profileImg/' + ${message.senderProfileImg}}"
+			               style="object-fit:cover;"
+			               alt="프로필 사진">
+			          <div class="chat-room-avatar"
+			               th:if="${#strings.isEmpty(message.senderProfileImg)}"
+			               th:text="${#strings.isEmpty(message.senderName)
+			                         ? '시'
+			                         : #strings.substring(message.senderName, 0, 1)}">상</div>
 			        </div>
 
 			        <div class="chat-bubble-col">
@@ -321,14 +350,12 @@
 			                                 ? 'align-items:flex-end;'
 			                                 : 'align-items:flex-start;'">
 
-			              <!-- 내 메시지는 DM에서 1/읽음, GROUP에서 아직 읽지 않은 참여자 수를 표시한다. -->
+			              <!-- 내 메시지를 아직 읽지 않은 참여자가 있을 때만 그 인원 수를 표시한다. -->
 			              <span class="chat-bubble-read"
 			                    th:if="${message.senderId == employee.employeeId
-			                             and (currentRoom.roomType == 'DM' or message.unreadMemberCount > 0)}"
-			                    th:text="${currentRoom.roomType == 'DM'
-			                              ? (message.unreadMemberCount > 0 ? '1' : '읽음')
-			                              : message.unreadMemberCount}">
-			                읽음 상태
+			                             and message.unreadMemberCount > 0}"
+			                    th:text="${message.unreadMemberCount}">
+			                안 읽은 인원
 			              </span>
 
 			              <!--
@@ -355,6 +382,8 @@
 				    <!-- 파일은 HTTP multipart로 저장한 뒤 WebSocket 방송으로 같은 방에 표시한다. -->
 				    <button type="button"
 				            class="icon-btn"
+				            data-chat-send-control
+				            th:if="${canSendMessage}"
 				            onclick="document.getElementById('chatFileInput').click()"
 				            title="파일 첨부">
 				      <i class="fa-solid fa-paperclip"></i>
@@ -363,17 +392,21 @@
 				    <input type="file"
 				           id="chatFileInput"
 				           style="display:none;"
+				           th:disabled="${!canSendMessage}"
 				           onchange="sendChatFile(this)">
 
 				    <input type="text"
 				           id="chatMessageInput"
 				           class="form-control"
 				           maxlength="1000"
-				           placeholder="메시지를 입력하세요"
+				           th:disabled="${!canSendMessage}"
+			           th:placeholder="${canSendMessage ? '메시지를 입력하세요' : '입력할 수 없는 채팅방입니다.'}"
 				           autocomplete="off">
 
 				    <button type="submit"
 				            class="chat-send-btn"
+				            data-chat-send-control
+				            th:if="${canSendMessage}"
 				            title="메시지 전송">
 				      <i class="fa-solid fa-paper-plane"></i>
 				    </button>

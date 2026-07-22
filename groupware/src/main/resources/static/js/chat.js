@@ -8,9 +8,6 @@ let currentRoomId = null;
 // 내 메시지와 상대 메시지를 좌우로 구분할 때 사용한다.
 let currentEmployeeId = null;
 
-// DM/GROUP에 따라 메시지 옆 읽음 표시 규칙이 달라진다.
-let currentRoomType = null;
-
 // 입력 중 알림은 짧은 시간만 유지한다. 직원별 타이머를 따로 두어 여러 명도 처리한다.
 const typingRemoveTimers = new Map();
 let typingStopTimer = null;
@@ -21,6 +18,45 @@ const roomFilterState = {
   keyword: "",
   type: "all"
 };
+
+// 프로필 사진 유무와 출근 상태에 따라 채팅 전용 아바타를 만든다.
+// 목록 모달과 실시간 메시지가 같은 DOM 구조를 쓰도록 중복 생성을 한 함수로 모았다.
+function createChatAvatar(name, profileImg, showOnlineDot, size = null) {
+  // wrapper는 아바타와 우측 하단 점을 한 묶음으로 배치하는 부모 요소다.
+  const wrapper = document.createElement("div");
+  wrapper.className = "chat-avatar-wrap";
+
+  // 삼항 연산자: 사진 파일명이 있으면 img, 없으면 이름 첫 글자를 담을 div를 만든다.
+  const avatar = document.createElement(profileImg ? "img" : "div");
+  avatar.className = "chat-room-avatar";
+
+  // 참여자 목록 모달처럼 작은 아바타가 필요한 호출만 size를 전달한다.
+  if (size) {
+    avatar.style.width = `${size}px`;
+    avatar.style.height = `${size}px`;
+  }
+
+  if (profileImg) {
+    // encodeURIComponent는 파일명에 공백 같은 URL 특수 문자가 있어도 주소가 깨지지 않게 한다.
+    avatar.classList.add("chat-profile-image");
+    avatar.src = `/uploads/profileImg/${encodeURIComponent(profileImg)}`;
+    avatar.alt = "프로필 사진";
+    avatar.style.objectFit = "cover";
+  } else {
+    avatar.textContent = name ? name.charAt(0) : "시";
+  }
+
+  wrapper.appendChild(avatar);
+
+  // showOnlineDot이 true, 즉 WORKING일 때만 초록 점 요소를 추가한다.
+  if (showOnlineDot) {
+    const onlineDot = document.createElement("span");
+    onlineDot.className = "chat-online-dot";
+    wrapper.appendChild(onlineDot);
+  }
+
+  return wrapper;
+}
 
 
 // DB에서 받은 마지막 메시지 시간을 목록용 상대 시간 문자열로 바꾼다.
@@ -112,7 +148,6 @@ document.addEventListener("DOMContentLoaded", () => {
       chatMain.dataset.currentEmployeeId
 	  // html에서 값을 가져와 data-current-employee-id="1001" 이렇게 숫자로 변경 
     );
-    currentRoomType = chatMain.dataset.currentRoomType || null;  // 앞의 값 없으면 null 사용
   }
 
 
@@ -205,9 +240,10 @@ function connectWebSocket() {
 
       // 현재 선택한 방이 있을 때만 메시지와 읽음 이벤트를 구독한다.
       if (currentRoomId) {
-        const topic = `/topic/room/${currentRoomId}`;
+        // 서버가 참여자 개인 큐로 보내므로 /user 접두어가 붙은 내 전용 주소를 구독한다.
+        const roomQueue = `/user/queue/rooms/${currentRoomId}`;
 
-        stompClient.subscribe(topic, (frame) => {
+        stompClient.subscribe(roomQueue, (frame) => {
           // ChatMessageController가 방송한 JSON 문자열을 객체로 바꾼다.
           const message = JSON.parse(frame.body);
 		  // 서버에서 받은 JSON 문자열을 JavaScript 객체로 바꾼다
@@ -216,14 +252,14 @@ function connectWebSocket() {
         });
 
 		// 현재 채팅방의 읽음 이벤트 주소를 구독한다.
-        stompClient.subscribe(`${topic}/read`, (frame) => {
+        stompClient.subscribe(`${roomQueue}/read`, (frame) => {
 			
 		// 서버가 보낸 읽음 정보를 JavaScript 객체로 바꾼 뒤 applyReadEvent()를 실행.
           applyReadEvent(JSON.parse(frame.body));
         });
 
 		// 현재 채팅방의 입력 중 이벤트 주소를 구독.
-        stompClient.subscribe(`${topic}/typing`, (frame) => {
+        stompClient.subscribe(`${roomQueue}/typing`, (frame) => {
 		
 		// 서버가 보낸 입력 중 정보를 객체로 바꾼 뒤 applyTypingEvent()를 실행함 
           applyTypingEvent(JSON.parse(frame.body));
@@ -252,6 +288,10 @@ function sendChatMessage(event) {
   const input = document.getElementById("chatMessageInput");
 
   if (!input || !currentRoomId) { // 두 값 중 하나라도 없으면 함수를 끝낸다
+    return;
+  }
+
+  if (input.disabled) {
     return;
   }
 
@@ -347,7 +387,7 @@ async function sendChatFile(fileInput) {
   const file = fileInput.files[0];
 // 사용자가 선택한 첫번째 파일
   
-  if (!file || !currentRoomId) {
+  if (!file || !currentRoomId || fileInput.disabled) {
     return;
   }
 
@@ -480,8 +520,8 @@ async function refreshUnreadBadges() {
   }
 }
 
-// 개인방은 1 또는 읽음, 그룹방은 읽지 않은 참여자 수만 표시한다.
-// 메시지 한 줄인 row와, 아직 읽지 않은 참여자 수 unreadMemberCount를 받아서 읽음 표시를 갱신
+// 내 메시지를 아직 읽지 않은 참여자 수가 1 이상일 때만 숫자를 표시한다.
+// unreadMemberCount가 0이면 숫자 요소를 제거해 "읽음" 같은 문구도 남지 않게 한다.
 function renderReadStatus(row, unreadMemberCount) {
 	// 현재 메시지 행 안에서 시간 표시가 있는 영역을 찾아 timeColumn에 저장.
   const timeColumn = row.querySelector(".chat-bubble-meta > div:last-child");
@@ -497,9 +537,9 @@ function renderReadStatus(row, unreadMemberCount) {
   // <span class="chat-bubble-read">1</span> 이게 있으면 readLabel에 저장되고, 없으면 null이 들어간다
   let readLabel = timeColumn.querySelector(".chat-bubble-read");
   
-  const statusText = currentRoomType === "DM" 
-    ? (unreadMemberCount > 0 ? "1" : "읽음") // 개인 채팅에서의 읽음 표시 
-    : (unreadMemberCount > 0 ? String(unreadMemberCount) : ""); // 그룹 채팅에서의 읽음 표시
+  const statusText = unreadMemberCount > 0
+    ? String(unreadMemberCount)
+    : "";
 
   if (!statusText) {
     readLabel?.remove();  // 다 읽은 경우 라벨을 없앤다.
@@ -732,6 +772,7 @@ function appendMessage(message) {
 
     systemRow.appendChild(systemText);
     messageList.appendChild(systemRow);
+    refreshChatInputAvailability();
     sendReadMessage();
     scrollMessagesToBottom();
     return;
@@ -762,13 +803,12 @@ function appendMessage(message) {
 
   // 상대방 메시지일 때만 왼쪽 아바타를 만든다.
   if (!isMine) {
-    const avatar = document.createElement("div");
-    avatar.className = "chat-room-avatar";
-    avatar.textContent = message.senderName
-      ? message.senderName.charAt(0)
-      : "시"; // 이름이 없으면 기본 글자인 "시"를 표시.
-
-    row.appendChild(avatar); // 만든 아바타를 메시지 행에 추가
+    // 메시지 말풍선 아바타에는 출근 점을 표시하지 않는다.
+    row.appendChild(createChatAvatar(
+      message.senderName,
+      message.senderProfileImg,
+      false
+    ));
   }
 
   const bubbleColumn = document.createElement("div");
@@ -819,6 +859,41 @@ function appendMessage(message) {
   }
 
   scrollMessagesToBottom();
+}
+
+// 상대가 나간 시스템 메시지를 받은 뒤 현재 참여자 수를 다시 확인해 입력창을 즉시 막는다.
+async function refreshChatInputAvailability() {
+  if (!currentRoomId) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/chat/room/${currentRoomId}/members`);
+    if (!response.ok) {
+      return;
+    }
+
+    const members = await response.json();
+    const canSendMessage = members.some(member =>
+      Number(member.employeeId) !== currentEmployeeId
+    );
+
+    if (canSendMessage) {
+      return;
+    }
+
+    const input = document.getElementById("chatMessageInput");
+    if (input) {
+      input.value = "";
+      input.disabled = true;
+      input.placeholder = "입력할 수 없는 채팅방입니다.";
+    }
+
+    document.querySelectorAll("[data-chat-send-control]")
+      .forEach(control => control.remove());
+  } catch (error) {
+    // 참여자 확인 요청 자체가 실패했을 때는 기존 입력 상태를 유지한다.
+  }
 }
 
 // TEXT는 말풍선, FILE은 다운로드 링크가 있는 파일 말풍선을 만든다.
@@ -1087,11 +1162,26 @@ async function openRoomMemberModal() {
     members.forEach(member => {
       const row = document.createElement("tr");
       const nameCell = document.createElement("td");
+      const memberInfo = document.createElement("div");
+      // 표의 이름 칸 안에서 프로필과 이름을 가로로 나란히 보이게 한다.
+      memberInfo.style.display = "flex";
+      memberInfo.style.alignItems = "center";
+      memberInfo.style.gap = "0.5rem";
+
+      // API가 준 workStatus가 WORKING인 참여자에게만 점을 붙인다.
+      memberInfo.appendChild(createChatAvatar(
+        member.employeeName,
+        member.profileImg,
+        member.workStatus === "WORKING",
+        32
+      ));
+
       const name = document.createElement("strong");
       // ||는 왼쪽 이름이 비어 있을 때 오른쪽 기본 문구를 사용한다.
       // textContent를 사용하면 이름을 HTML 코드로 해석하지 않아 안전하게 일반 글자로 표시한다.
       name.textContent = member.employeeName || "이름 없음";
-      nameCell.appendChild(name);
+      memberInfo.appendChild(name);
+      nameCell.appendChild(memberInfo);
 
       const departmentCell = document.createElement("td");
       departmentCell.textContent = member.deptName || "관리자";

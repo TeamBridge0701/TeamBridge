@@ -966,6 +966,13 @@
     .chat-room-avatar.group {
       background: linear-gradient(135deg, var(--color-secondary), var(--color-success));
     }
+    .chat-avatar-wrap {
+      /* 초록 점의 absolute 위치가 각 프로필을 기준으로 잡히게 한다. */
+      position: relative;
+      /* 이미지와 글자 아바타가 채팅 행에서 같은 크기로 유지되게 한다. */
+      display: flex;
+      flex-shrink: 0;
+    }
     .chat-online-dot {
       position: absolute;
       bottom: -1px;

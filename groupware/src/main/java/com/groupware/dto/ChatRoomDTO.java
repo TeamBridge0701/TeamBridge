@@ -16,6 +16,11 @@ public class ChatRoomDTO {
 	
     // DM은 상대방 이름, GROUP은 ROOM_NAME을 화면에 표시한다.
     private String displayName;
+    // DM 상대방의 프로필 사진 파일명이다. GROUP 방은 아바타를 "단"으로 고정한다.
+    private String displayProfileImg;
+    // ChatMapper의 DISPLAY_WORK_STATUS 값을 받는다.
+    // GROUP은 "단" 아바타에 점을 표시하지 않으므로 null이고, DM 상대만 WORKING/OFFLINE 값을 가진다.
+    private String displayWorkStatus;
 
     // CHAT_MESSAGE 조회 결과로 채팅방 목록에 표시한다.
     private String lastMessage;

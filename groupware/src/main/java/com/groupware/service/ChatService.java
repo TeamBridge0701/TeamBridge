@@ -86,6 +86,16 @@ import lombok.RequiredArgsConstructor;
             public List<String> getRoomMemberEmployeeNos(int roomId) {
                 return chatMapper.findRoomMemberEmployeeNos(roomId);
             }
+
+            // 본인 외에 메시지를 실제로 받을 참여자가 한 명 이상 있어야 전송할 수 있다.
+            public boolean canSendMessage(int roomId, int employeeId) {
+                if (!isRoomMember(roomId, employeeId)) {
+                    return false;
+                }
+
+                return chatMapper.findRoomMemberIds(roomId).stream()
+                        .anyMatch(memberId -> memberId != employeeId);
+            }
 	    
             // ==================여기까자=============== 밑에 하나 더 
             
@@ -479,11 +489,7 @@ import lombok.RequiredArgsConstructor;
 	            int senderId,
 	            String content) {
 
-	        // WebSocket 주소를 조작해 다른 방에 메시지를 보내는 것을 막는다.
-	        if (!isRoomMember(roomId, senderId)) {
-	        	// 보내는 사람이 해당 채팅방의 참여자인지 확인한다.
-	            throw new IllegalArgumentException("채팅방 참여자가 아닙니다.");
-	        }
+                validateMessageSendAllowed(roomId, senderId);
 
 	        // 빈 메시지와 공백만 있는 메시지는 저장하지 않는다.
 	        if (content == null || content.isBlank()) {
@@ -532,9 +538,7 @@ import lombok.RequiredArgsConstructor;
                     int senderId,
                     MultipartFile file) throws IOException {
 
-                if (!isRoomMember(roomId, senderId)) {
-                    throw new IllegalArgumentException("채팅방 참여자가 아닙니다.");
-                }
+                validateMessageSendAllowed(roomId, senderId);
 
                 if (file == null || file.isEmpty()) {
                     throw new IllegalArgumentException("전송할 파일을 선택해주세요.");
@@ -618,6 +622,17 @@ import lombok.RequiredArgsConstructor;
                 }
 
                 return message;
+            }
+
+            // 텍스트와 파일 모두 같은 전송 조건을 사용해, 화면을 우회한 요청도 서버에서 막는다.
+            private void validateMessageSendAllowed(int roomId, int senderId) {
+                if (!isRoomMember(roomId, senderId)) {
+                    throw new IllegalArgumentException("채팅방 참여자가 아닙니다.");
+                }
+
+                if (!canSendMessage(roomId, senderId)) {
+                    throw new IllegalArgumentException("메시지를 보낼 수 없습니다.");
+                }
             }
 
             private String formatFileSize(long fileSize) {

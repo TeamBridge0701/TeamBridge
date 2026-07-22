@@ -26,7 +26,6 @@ public class ChatMessageDTO {
     // 발신자 이름 
 	private String senderProfileImg;
 	// 발신자 프로필 이미지 
-
     // FILE 메시지일 때만 채워지는 첨부파일 정보다.
     private ChatAttachmentDTO attachment;
     
