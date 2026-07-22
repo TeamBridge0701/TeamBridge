@@ -39,4 +39,8 @@ public class ApprovalDTO {
 	// canDecideApproval 결과를 그대로 채워줌). 실제 승인/반려 요청은 서버가 다시 검증하므로
 	// 이 값은 화면단 버튼 숨김용일 뿐 보안 경계가 아니다.
 	private boolean canDecide;
+
+	// 상세 조회(JSON) 응답에만 채워짐 - "회수하기" 버튼 노출 여부(canDecide와 동일하게
+	// 화면단 숨김용일 뿐, 실제 회수 요청은 서버가 canWithdrawApproval로 다시 검증한다)
+	private boolean canWithdraw;
 }

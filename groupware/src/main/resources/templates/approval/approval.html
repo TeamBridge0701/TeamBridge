@@ -201,6 +201,8 @@
           <button class="btn btn-danger" onclick="doApprovalDecision(false)">반려하기</button>
           <button class="btn btn-success" onclick="doApprovalDecision(true)">승인하기</button>
         </div>
+        <!-- 회수하기 - 기안자 본인이고 아직 아무도 결재하지 않았을 때만 서버가 canWithdraw를 true로 내려줌 -->
+        <button class="btn btn-danger" id="mAppWithdrawBtn" style="display:none;" onclick="doWithdrawApproval()">기안 회수하기</button>
         <button class="btn btn-secondary" onclick="closeModal()" id="mAppCloseBtn">닫기</button>
       </div>
     </div>

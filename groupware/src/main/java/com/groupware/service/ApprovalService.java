@@ -147,6 +147,31 @@ public class ApprovalService {
 						&& line.getApproverId() == employee.getEmployeeId());
 	}
 
+	// 기안 회수 가능 여부 - 기안자 본인 + 문서가 아직 진행중(PROGRESS) + 결재선의 모든 단계가
+	// 아직 WAIT(1차 결재자조차 승인/반려를 안 내린 상태)일 때만 허용한다. 한 단계라도 결정이
+	// 내려졌으면(APPROVED/REJECTED) 이미 결재가 진행된 것이므로 회수를 막는다.
+	// approval에는 이미 lines가 채워져 있어야 함(getApprovalDetail로 조회한 결과를 그대로 사용).
+	public boolean canWithdrawApproval(EmployeeDTO employee, ApprovalDTO approval) {
+		if (employee == null || approval == null) {
+			return false;
+		}
+		if (employee.getEmployeeId() != approval.getDrafterId()) {
+			return false;
+		}
+		if (!"PROGRESS".equals(approval.getApprovalStatus())) {
+			return false;
+		}
+		return approval.getLines() != null
+				&& approval.getLines().stream().allMatch(line -> "WAIT".equals(line.getLineStatus()));
+	}
+
+	// 기안 회수 - canWithdrawApproval로 이미 검증된 후 호출된다고 가정. 문서 상태만
+	// WITHDRAWN으로 바꾼다(결재선은 그대로 WAIT로 남지만, findInbox/findOutbox/findDetail이
+	// 이미 APPROVAL_STATUS = 'PROGRESS' 조건으로 걸러내므로 받은함/현재 단계 계산에서 자동 제외됨).
+	public void withdrawApproval(int approvalId) {
+		approvalMapper.updateApprovalStatus(approvalId, "WITHDRAWN");
+	}
+
 	// 승인/반려 처리 - canDecideApproval로 이미 검증된 후 호출된다고 가정(대상 문서와 현재
 	// 단계는 Controller가 미리 조회해서 넘겨줌 - notice/archive의 canModifyX 패턴과 동일).
 	// 반려면 즉시 문서 상태를 REJECTED로, 승인이면 남은 WAIT 단계가 없을 때만(=마지막 단계)

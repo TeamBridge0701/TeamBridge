@@ -61,6 +61,9 @@
 		1) 내 부서 전체가 참조 지정됨  2) 나 개인이 참조 지정됨
 		3) 내가 결재선(어느 단계든)에는 있지만 기안자는 아님(=지나갔거나 앞으로 올 차례를 지켜보는 경우)
 		기안자 본인 문서는 "보낸 기안함"에서 보이므로 여기서는 제외(DRAFTER_ID != 나)
+		WITHDRAWN(회수)은 반려/승인과 달리 "기안자 본인의 취소"라 참조자·결재자에게는 노출하지
+		않는다 - 반려/승인은 결재 이력이라 그대로 보이지만, 회수된 문서는 기안자만 보낸
+		기안함에서 볼 수 있으면 충분하다 (2026-07-21 확인).
 	-->
 	<select id="findReferenceBox" resultType="com.groupware.dto.ApprovalDTO">
 	    SELECT DISTINCT ap.*, ft.FORM_TYPE_NAME,
@@ -76,6 +79,7 @@
 	        LEFT JOIN DEPARTMENT d ON e.DEPT_ID = d.DEPT_ID
 	        LEFT JOIN `POSITION` p ON e.POSITION_ID = p.POSITION_ID
 	    WHERE ap.DRAFTER_ID != #{employeeId}
+	      AND ap.APPROVAL_STATUS != 'WITHDRAWN'
 	      AND ap.APPROVAL_ID IN (
 	          SELECT APPROVAL_ID FROM APPROVAL_REFERENCE WHERE DEPT_ID = #{deptId}
 	          UNION
