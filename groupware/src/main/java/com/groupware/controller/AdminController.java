@@ -106,7 +106,9 @@ public class AdminController {
 	private void notifyRoomSystemMessage(ChatMessageDTO systemMessage) {
 		int roomId = systemMessage.getRoomId();
 
-		for (String employeeNo : chatService.getRoomMemberEmployeeNos(roomId)) {
+		for (String employeeNo : chatService.getRoomMemberEmployeeNosForMessage(
+				roomId,
+				systemMessage.getMessageId())) {
 			messagingTemplate.convertAndSendToUser(
 					employeeNo,
 					"/queue/rooms/" + roomId,
@@ -118,7 +120,9 @@ public class AdminController {
 		roomEvent.put("roomId", roomId);
 		roomEvent.put("message", systemMessage);
 
-		for (String employeeNo : chatService.getRoomMemberEmployeeNos(roomId)) {
+		for (String employeeNo : chatService.getRoomMemberEmployeeNosForMessage(
+				roomId,
+				systemMessage.getMessageId())) {
 			messagingTemplate.convertAndSendToUser(
 					employeeNo,
 					"/queue/chat-rooms",

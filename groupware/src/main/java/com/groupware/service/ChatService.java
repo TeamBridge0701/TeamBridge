@@ -92,6 +92,15 @@ import lombok.RequiredArgsConstructor;
                 return chatMapper.findRoomMemberEmployeeNos(roomId);
             }
 
+            // 복구 직원에게 정지 기간 메시지가 다시 WebSocket으로 가지 않도록 메시지별 수신자를 구한다.
+            public List<String> getRoomMemberEmployeeNosForMessage(
+                    int roomId,
+                    int messageId) {
+                return chatMapper.findRoomMemberEmployeeNosForMessage(
+                        roomId,
+                        messageId);
+            }
+
             // 본인 외에 메시지를 실제로 받을 참여자가 한 명 이상 있어야 전송할 수 있다.
             public boolean canSendMessage(int roomId, int employeeId) {
                 if (!isRoomMember(roomId, employeeId)) {
@@ -113,6 +122,19 @@ import lombok.RequiredArgsConstructor;
                 for (ChatRoomDTO room : chatMapper.findRoomsByMember(employeeId)) {
                     int roomId = room.getRoomId();
 
+                    String content = "GROUP".equals(room.getRoomType())
+                            ? employeeName + "님이 비활성화되었습니다."
+                            : employeeName + "님 계정이 비활성화되었습니다.";
+                    ChatMessageDTO suspensionMessage = saveSystemMessage(
+                            roomId,
+                            content);
+
+                    // 정지 SYSTEM 메시지부터 복구 SYSTEM 메시지 전까지는 본인에게만 숨긴다.
+                    chatMapper.insertChatMemberSuspension(
+                            roomId,
+                            employeeId,
+                            suspensionMessage.getMessageId());
+
                     if ("GROUP".equals(room.getRoomType())) {
                         // GROUP은 참여자 행을 지우지 않는다. 그래야 비활성 상태도 목록에서 보이고,
                         // 계정을 복구했을 때 같은 방과 기존 기록을 이어서 사용할 수 있다.
@@ -121,18 +143,14 @@ import lombok.RequiredArgsConstructor;
                             continue;
                         }
 
-                        systemMessages.add(saveSystemMessage(
-                                roomId,
-                                employeeName + "님이 비활성화되었습니다."));
+                        systemMessages.add(suspensionMessage);
                         continue;
                     }
 
                     if ("DM".equals(room.getRoomType())
                             && !chatMapper.findRoomMemberIds(roomId).isEmpty()) {
                         // DM은 참여자 행과 이전 기록을 유지한다. 활성 상대만 남아 있으면 안내를 남긴다.
-                        systemMessages.add(saveSystemMessage(
-                                roomId,
-                                employeeName + "님 계정이 비활성화되었습니다."));
+                        systemMessages.add(suspensionMessage);
                     }
                 }
 
@@ -147,9 +165,16 @@ import lombok.RequiredArgsConstructor;
                 List<ChatMessageDTO> systemMessages = new ArrayList<>();
 
                 for (ChatRoomDTO room : chatMapper.findRoomsByMember(employeeId)) {
-                    systemMessages.add(saveSystemMessage(
+                    ChatMessageDTO restorationMessage = saveSystemMessage(
                             room.getRoomId(),
-                            employeeName + "님 계정이 복구되었습니다."));
+                            employeeName + "님 계정이 복구되었습니다.");
+
+                    // 복구 SYSTEM 메시지도 본인에게는 숨기고, 그 다음 메시지부터 다시 보이게 한다.
+                    chatMapper.closeOpenChatMemberSuspension(
+                            room.getRoomId(),
+                            employeeId,
+                            restorationMessage.getMessageId() + 1);
+                    systemMessages.add(restorationMessage);
                 }
 
                 return systemMessages;
@@ -184,7 +209,9 @@ import lombok.RequiredArgsConstructor;
 	        }
 
 		        // 참여자 검증이 끝난 뒤에만 해당 방의 메시지 이력을 조회한다.
-		        List<ChatMessageDTO> messages = chatMapper.findMessagesByRoomId(roomId);
+		        List<ChatMessageDTO> messages = chatMapper.findMessagesByRoomId(
+		                roomId,
+		                employeeId);
 		        String previousSentDateKey = null;
 
 		        // 최초 화면은 JavaScript가 다시 가공하지 않도록 표시용 값까지 서버에서 준비한다.
@@ -734,6 +761,14 @@ import lombok.RequiredArgsConstructor;
                 	// isRoomMember(...): 현재 직원이 그 방 참여자인지 확인
                 	// 파일 URL만 알아도 다른 사람이 받지 못하게 막는 핵심 권한 검사.
                     throw new IllegalArgumentException("첨부파일을 다운로드할 권한이 없습니다.");
+                }
+
+                // 복구된 직원은 URL을 알아도 정지 기간에 올라온 파일을 받을 수 없다.
+                if (chatMapper.countVisibleRoomMessage(
+                        attachment.getRoomId(),
+                        attachment.getMessageId(),
+                        employeeId) == 0) {
+                    throw new IllegalArgumentException("정지 기간의 첨부파일은 다운로드할 수 없습니다.");
                 }
 
                 return attachment;

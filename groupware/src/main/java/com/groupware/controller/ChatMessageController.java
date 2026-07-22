@@ -2,6 +2,7 @@ package com.groupware.controller;
 
 import java.security.Principal;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -173,7 +174,13 @@ public class ChatMessageController {
 
     // 방의 현재 참여자에게만 동일한 이벤트를 보낸다.
     private void notifyRoomMembers(String destination, int roomId, Object payload) {
-        for (String employeeNo : chatService.getRoomMemberEmployeeNos(roomId)) {
+        List<String> employeeNos = payload instanceof ChatMessageDTO message
+                ? chatService.getRoomMemberEmployeeNosForMessage(
+                        roomId,
+                        message.getMessageId())
+                : chatService.getRoomMemberEmployeeNos(roomId);
+
+        for (String employeeNo : employeeNos) {
             messagingTemplate.convertAndSendToUser(employeeNo, destination, payload);
         }
     }
@@ -206,7 +213,13 @@ public class ChatMessageController {
         roomEvent.put("message", message);
 
         // 해당 채팅방 참여자들의 사번 목록을 조회한다.
-        for (String employeeNo : chatService.getRoomMemberEmployeeNos(roomId)) {
+        List<String> employeeNos = message == null
+                ? chatService.getRoomMemberEmployeeNos(roomId)
+                : chatService.getRoomMemberEmployeeNosForMessage(
+                        roomId,
+                        message.getMessageId());
+
+        for (String employeeNo : employeeNos) {
 
             // 각 참여자의 개인 WebSocket 주소로 이벤트를 전송한다.
             // /user/queue/chat-rooms를 구독한 해당 직원만 이 이벤트를 받는다.

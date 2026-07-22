@@ -500,7 +500,13 @@ public class ChatController {
         roomEvent.put("message", message);
 
         // 채팅방에 참여한 사람들의 사번을 하나씩 반복한다
-        for (String employeeNo : chatService.getRoomMemberEmployeeNos(roomId)) {
+        List<String> employeeNos = message == null
+                ? chatService.getRoomMemberEmployeeNos(roomId)
+                : chatService.getRoomMemberEmployeeNosForMessage(
+                        roomId,
+                        message.getMessageId());
+
+        for (String employeeNo : employeeNos) {
         	
         	// 특정 로그인 사용자 한 명에게만 WebSocket 메시지를 보낼 때 쓰는 메서드
             messagingTemplate.convertAndSendToUser(
@@ -527,7 +533,13 @@ public class ChatController {
             String destination,
             int roomId,
             Object payload) {
-        for (String employeeNo : chatService.getRoomMemberEmployeeNos(roomId)) {
+        List<String> employeeNos = payload instanceof ChatMessageDTO message
+                ? chatService.getRoomMemberEmployeeNosForMessage(
+                        roomId,
+                        message.getMessageId())
+                : chatService.getRoomMemberEmployeeNos(roomId);
+
+        for (String employeeNo : employeeNos) {
             messagingTemplate.convertAndSendToUser(
                     employeeNo,
                     destination,
