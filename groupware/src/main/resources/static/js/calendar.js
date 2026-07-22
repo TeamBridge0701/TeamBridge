@@ -321,13 +321,39 @@ function setScheduleFormEditable(editable) {
   if ($('cEventSubmitBtn')) $('cEventSubmitBtn').style.display = editable ? '' : 'none';
 }
 
+// [새로 등록할 때만 사용] 이 사람이 애초에 등록할 수 없는 구분(카테고리)은 드롭다운에서
+// 아예 숨긴다 - 비활성화만 하면 회색으로 계속 보여서 "왜 계속 보이지?" 헷갈림.
+// 관리자 -> "회사 일정"만 남기고 나머지(개인/팀) 숨김
+// 일반 직원 -> "회사 일정"만 숨기고 나머지(개인/팀)는 그대로 보임
+// (실제 등록 가능 여부의 최종 차단은 항상 서버 CalendarService.canCreateEvent가 재검증함,
+// 여기는 어디까지나 "보여줄지 말지"만 정하는 화면단 판단, 2026-07-22)
+function hideUncreatableScheduleTypeOptions() {
+  const select = $('scheduleType');
+  if (!select) return;
+  // scheduleForm의 data-employee-role은 calendar.html이 th:data-*로 내려준 로그인 사용자
+  // 정보 - canModifyEventClient()도 같은 값을 이런 식으로 읽어서 쓰고 있음
+  const isAdmin = $('scheduleForm')?.dataset.employeeRole === 'ADMIN';
+
+  select.querySelectorAll('option').forEach(opt => {
+    opt.hidden = isAdmin ? opt.value !== 'COMPANY' : opt.value === 'COMPANY';
+  });
+}
+
 // 모달창 UI 제어
 function openScheduleModal(date = new Date().toISOString().slice(0, 10)) {
   editingScheduleId = null;
   $('calendarModalTitle').textContent = '새 일정 등록'; $('cEventSubmitBtn').textContent = '등록';
   $('scheduleStartDate').value = $('scheduleEndDate').value = date;
-  $('scheduleTitle').value = ''; $('scheduleType').value = 'PERSONAL';
-  toggleHolidayCheckboxVisibility(); // 기본값 PERSONAL이니 숨김 + 체크 해제
+  $('scheduleTitle').value = '';
+
+  hideUncreatableScheduleTypeOptions(); // 못 고르는 구분은 옵션 자체를 숨김
+
+  // 처음 선택되는 값도 맞춰줌 - 관리자는 "개인 일정"이 안 보이니, 안 보이는 값이 선택된
+  // 것처럼 남아있지 않게 여기서 미리 "회사 일정"으로 바꿔둔다(2026-07-22)
+  const isAdmin = $('scheduleForm')?.dataset.employeeRole === 'ADMIN';
+  $('scheduleType').value = isAdmin ? 'COMPANY' : 'PERSONAL';
+
+  toggleHolidayCheckboxVisibility(); // 방금 정한 기본값 기준으로 공휴일 체크박스도 맞춤
   if ($('cEventDeleteBtn')) $('cEventDeleteBtn').style.display = 'none';
   setScheduleFormEditable(true); // 새로 등록하는 것이므로 항상 입력 가능하게 초기화
   toggleModal('modal-calendar-write', true);
@@ -341,7 +367,25 @@ function openEditScheduleModal(id) {
   editingScheduleId = e.eventId;
   $('calendarModalTitle').textContent = '일정 수정'; $('cEventSubmitBtn').textContent = '수정';
   $('scheduleStartDate').value = e.startDate; $('scheduleEndDate').value = e.endDate;
-  $('scheduleTitle').value = e.eventTitle; $('scheduleType').value = e.eventCategory;
+  $('scheduleTitle').value = e.eventTitle;
+
+  // ① 등록할 때와 똑같은 규칙으로 우선 숨긴다 - 예를 들어 관리자면 "개인/팀"을 숨김
+  //   (여기까지만 하면, 관리자가 "회사 일정"을 수정하려고 열어도 회사 일정만 남아서 정확함.
+  //   문제는 "내가 원래 못 만드는 카테고리의 일정을 열람"하는 경우 - 예: 일반 직원이
+  //   관리자의 회사 일정을 클릭해서 봄. 이땐 "회사 일정" 옵션이 숨겨진 채라 지금 이 일정이
+  //   무슨 종류인지 화면에 표시가 안 되는 문제가 생김 -> 그래서 ②가 필요함)
+  hideUncreatableScheduleTypeOptions();
+
+  // ② "지금 열어본 이 일정"의 실제 카테고리 옵션만 예외로 다시 보이게 한다.
+  //   (관리자가 회사 일정을 열 때는 이미 안 숨겨져 있어서 사실상 변화 없음.
+  //    일반 직원이 회사 일정을 열 때는 여기서 딱 그 옵션만 되살아나서 "회사 일정"이라고
+  //    정확히 표시됨 - 어차피 이 경우 폼 전체가 잠겨서(canModify=false) 실제로 못 바꿈)
+  const currentCategoryOption = $('scheduleType')?.querySelector(`option[value="${e.eventCategory}"]`);
+  if (currentCategoryOption) currentCategoryOption.hidden = false;
+
+  // ③ 위에서 정리한 옵션들 중 실제 값으로 선택 표시
+  $('scheduleType').value = e.eventCategory;
+
   toggleHolidayCheckboxVisibility(); // 카테고리에 맞춰 체크박스 보이기/숨기기
   // COMPANY 일정이면 기존 공휴일 지정 여부를 그대로 보여줌(toggle 호출 이후에 값을 세팅해야,
   // COMPANY가 아닐 때 toggle이 강제로 꺼버리는 것과 순서가 안 꼬임)
