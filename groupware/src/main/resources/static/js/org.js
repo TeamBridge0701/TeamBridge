@@ -84,8 +84,9 @@ async function viewOrgMemberDetail(employeeId) {
   document.getElementById('mOrgPhone').textContent = employee.employeePhone || '-';
   // 없으면 -를 표시.
   document.getElementById('mOrgEmail').textContent = employee.employeeEmail || '-';
-  document.getElementById('mOrgStatus').textContent = employee.employeeStatus === 'ACTIVE'
-    ? '재직 중' : (employee.employeeStatus || '-');
+  document.getElementById('mOrgStatus').textContent = employee.employeeRole === 'ADMIN'
+    ? '-'
+    : (employee.employeeStatus === 'ACTIVE' ? '재직 중' : (employee.employeeStatus || '-'));
 
   const chatButton = document.getElementById('mOrgChatBtn');
   const currentEmployeeId = Number(orgTableBody.dataset.currentEmployeeId);
