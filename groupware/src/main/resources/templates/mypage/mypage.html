@@ -61,8 +61,10 @@ z<!DOCTYPE html>
 							<input type="file" id="myPhotoInput" accept="image/*" style="display:none;"
 								onchange="handleProfilePhotoSelect(this)">
 							<h2 id="myName" style="margin-top: 0.75rem;" th:text="${employee.employeeName}">홍길동</h2>
+							<!-- 관리자는 부서/직급이 없어서(바로 위 이름이 이미 "관리자"라 중복 방지) 이 줄 자체를 숨김 -->
 							<p style="color: var(--text-secondary); font-size: 0.85rem;" id="myDeptPosition"
-								th:text="${employee.deptName} + ' ' + ${employee.positionName}">개발팀 사원</p>
+								th:if="${employee.deptName != null}"
+								th:text="|${employee.deptName} ${employee.positionName}|">개발팀 사원</p>
 							<div style="margin-top: 1.5rem; text-align: left; font-size: 0.85rem;"
 								class="commute-info-box">
 								<div class="commute-row"><span>사번:</span><strong id="myId"
