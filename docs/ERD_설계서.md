@@ -1,18 +1,19 @@
-<<<<<<< HEAD
-> 작성일: 2026-07-05 · 버전: v0.6 (메일함 기능 제거로 MAIL/MAIL_RECIPIENT/MAIL_ATTACHMENT 3테이블 삭제, 조직도 상세는 채팅 연결로 대체) · ERD 다이어그램은 아래 테이블 설계를 바탕으로 직접 작성 예정 (`docs/ERD.mermaid`에 있던 초기 스케치는 현재 실제로 구현된 화면 기준으로 이 문서에서 다시 정리함)
+> 작성일: 2026-07-05 · 버전: v0.8 (메일함 기능 제거로 MAIL/MAIL_RECIPIENT/MAIL_ATTACHMENT 3테이블 삭제, 조직도 상세는 채팅 연결로 대체) · ERD 다이어그램은 아래 테이블 설계를 바탕으로 직접 작성 예정 (`docs/ERD.mermaid`에 있던 초기 스케치는 현재 실제로 구현된 화면 기준으로 이 문서에서 다시 정리함)
 >
-> v0.6 변경(2026-07-21, 김우주 담당 캘린더 백엔드 작업 중 결정, 팀장과 협의 후 반영):
+> v0.6 변경(2026-07-20, 정진국 담당 전자결재 백엔드 작업 중 결정): 지출결의서에 금액을 담을
+> 컬럼이 없던 걸 뒤늦게 발견해 `APPROVAL.AMOUNT` 추가, 지출결의서·프로젝트품의서 첨부파일용
+> `APPROVAL_FILE` 테이블 신설(2-11, 2-13-1 참고).
+>
+> v0.7 변경(2026-07-21, 김우주 담당 캘린더 백엔드 작업 중 결정, 팀장과 협의 후 반영):
 > **캘린더 TEAM(팀) 일정을 "등록자와 같은 부서만 CRUD 가능"하도록 스코프를 걸기로
 > 하면서 `CALENDAR_EVENT`에 `DEPT_ID` 컬럼 추가.** PERSONAL/COMPANY 일정은 NULL.
 > 등록 시점 부서로 고정 저장(`REPOSITORY.DEPT_ID`와 동일 원칙 — 등록자가 나중에
 > 부서를 옮겨도 이미 등록된 일정의 노출 범위는 안 바뀌게). 2-6, 3장 관계표, 5장
 > SQL에 반영.
-=======
-> 작성일: 2026-07-05 · 버전: v0.5 (메일함 기능 제거로 MAIL/MAIL_RECIPIENT/MAIL_ATTACHMENT 3테이블 삭제, 조직도 상세는 채팅 연결로 대체) · ERD 다이어그램은 아래 테이블 설계를 바탕으로 직접 작성 예정 (`docs/ERD.mermaid`에 있던 초기 스케치는 현재 실제로 구현된 화면 기준으로 이 문서에서 다시 정리함)
-> v0.6 변경(2026-07-20, 정진국 담당 전자결재 백엔드 작업 중 결정): 지출결의서에 금액을 담을
-> 컬럼이 없던 걸 뒤늦게 발견해 `APPROVAL.AMOUNT` 추가, 지출결의서·프로젝트품의서 첨부파일용
-> `APPROVAL_FILE` 테이블 신설(2-11, 2-13-1 참고).
->>>>>>> main
+>
+> v0.8 변경(2026-07-21, 정진국 담당 전자결재 백엔드 작업 중 결정): 기안 회수 기능 구현하며
+> `APPROVAL_STATUS`에 `WITHDRAWN` 값 추가(새 컬럼 아님, 기존 VARCHAR(10)에 값만 하나 늘어남).
+> 2-11 반영.
 >
 
 # ERD 설계서
@@ -338,6 +339,14 @@ APPROVAL을 항상 같이 갱신해야 하고, 하나라도 빠뜨리면 "받은
 방식으로, 지출결의서가 아니면 NULL입니다(서식별로 쓰는 컬럼이 다른 게
 이 테이블의 특징 - 서식이 더 늘어나면 이런 전용 컬럼 대신 별도 상세
 테이블로 분리하는 게 나을 수 있습니다).
+
+(2026-07-21 추가) 기획서 3.8에 원래 있던 "회수" 기능을 구현하면서
+APPROVAL_STATUS에 WITHDRAWN을 추가했습니다(새 컬럼이 아니라 기존
+VARCHAR(10) 컬럼에 값 하나가 늘어난 것). 회수는 기안자 본인이 첫 승인
+전(결재선 전체가 아직 WAIT)에만 가능하며, REJECTED/APPROVED와 달리
+"결재 이력"으로 취급하지 않으므로 참조 문서함·받은 결재함 조회에서는
+제외하고 기안자의 보낸 기안함에서만 보이게 했습니다(ApprovalMapper.xml
+findReferenceBox/findInbox 참고).
 ```
 
 | 컬럼명 | 타입 | 제약조건 | 설명 |
@@ -350,7 +359,7 @@ APPROVAL을 항상 같이 갱신해야 하고, 하나라도 빠뜨리면 "받은
 | LEAVE_START_DATE | DATE | NULLABLE | 휴가 시작일 (연차휴가신청서 전용) |
 | LEAVE_END_DATE | DATE | NULLABLE | 휴가 종료일 (연차휴가신청서 전용) |
 | AMOUNT | BIGINT | NULLABLE | 금액, 원 단위 (지출결의서 전용, v1.0 추가) |
-| APPROVAL_STATUS | VARCHAR(10) | NOT NULL, DEFAULT 'PROGRESS' | 상태 (PROGRESS 진행중 / APPROVED 승인 / REJECTED 반려) |
+| APPROVAL_STATUS | VARCHAR(10) | NOT NULL, DEFAULT 'PROGRESS' | 상태 (PROGRESS 진행중 / APPROVED 승인 / REJECTED 반려 / WITHDRAWN 회수, v0.8 추가) |
 | CREATED_AT | DATETIME | NOT NULL, DEFAULT NOW() | 기안일시 |
 
 > 현재 결재 단계가 필요하면 `SELECT MIN(STEP_NO) FROM APPROVAL_LINE WHERE APPROVAL_ID=? AND LINE_STATUS='WAIT'`로 구합니다. "받은 결재함"(내가 지금 승인해야 할 문서 목록)은 `APPROVAL_LINE.APPROVER_ID = :me AND LINE_STATUS='WAIT' AND STEP_NO = (그 문서의 MIN(STEP_NO) WHERE WAIT)` 조건으로 조회합니다.

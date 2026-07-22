@@ -118,7 +118,25 @@ public class ApprovalController {
 			return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
 		}
 		approval.setCanDecide(approvalService.canDecideApproval(employee, approval));
+		approval.setCanWithdraw(approvalService.canWithdrawApproval(employee, approval));
 		return ResponseEntity.ok(approval);
+	}
+
+	// 기안 회수 - 기안자 본인이 아직 아무도 결재하지 않은 문서만 회수 가능(canWithdrawApproval).
+	// 버튼 숨김은 보안이 아니므로 서버가 다시 검증한다.
+	@PostMapping("/approval/withdraw/{id}")
+	@ResponseBody
+	public ResponseEntity<String> withdraw(@ModelAttribute("employee") EmployeeDTO employee,
+			@PathVariable("id") int id) {
+		ApprovalDTO approval = approvalService.getApprovalDetail(id);
+		if (approval == null) {
+			return ResponseEntity.notFound().build();
+		}
+		if (!approvalService.canWithdrawApproval(employee, approval)) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).body("회수할 수 없는 문서입니다.");
+		}
+		approvalService.withdrawApproval(id);
+		return ResponseEntity.ok("결재가 회수되었습니다.");
 	}
 
 	// 승인 - 지금 대기 중인 단계 담당자만 가능(canDecideApproval). 의견은 선택 입력.
