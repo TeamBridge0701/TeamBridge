@@ -22,6 +22,9 @@ public interface ChatMapper {
 	ChatRoomDTO findRoomByIdAndMember(
             @Param("roomId") int roomId,
             @Param("employeeId") int employeeId);
+
+    // 정지 처리 시 DM과 GROUP을 구분해 처리할 수 있도록, 직원이 참여한 모든 방을 조회한다.
+    List<ChatRoomDTO> findRoomsByMember(@Param("employeeId") int employeeId);
 	
 	// 방에 저장된 이전 메시지를 오래된 순서대로 조회한다.
     List<ChatMessageDTO> findMessagesByRoomId(@Param("roomId") int roomId);

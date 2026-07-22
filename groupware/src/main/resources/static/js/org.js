@@ -95,8 +95,11 @@ async function viewOrgMemberDetail(employeeId) {
     birthDateRow.style.display = 'none';
   }
 
-  document.getElementById('mOrgStatus').textContent = employee.employeeStatus === 'ACTIVE'
-    ? '재직 중' : (employee.employeeStatus || '-');
+  // 휴가(LEAVE)는 계정 정지와 무관한 오늘 근태 상태이므로 "휴가 (재직)"으로 따로 표시한다.
+  const statusText = employee.employeeRole === 'ADMIN'
+    ? '-'
+    : (employee.workStatus === 'LEAVE' ? '휴가 (재직)' : '재직 중');
+  document.getElementById('mOrgStatus').textContent = statusText;
 
   const chatButton = document.getElementById('mOrgChatBtn');
   const currentEmployeeId = Number(orgTableBody.dataset.currentEmployeeId);

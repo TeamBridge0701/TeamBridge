@@ -40,9 +40,9 @@ import lombok.RequiredArgsConstructor;
 
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    // /topic/room/{roomId}와 읽음·입력 중 이벤트 주소만 방 참여자 여부를 검사한다.
-    private static final Pattern ROOM_TOPIC_PATTERN =
-            Pattern.compile("^/topic/room/(\\d+)(?:/(?:read|typing))?$");
+    // 이전 topic 주소와 현재 개인 큐 주소 모두에서 방 참여자·ACTIVE 상태를 검사한다.
+    private static final Pattern ROOM_DESTINATION_PATTERN =
+            Pattern.compile("^/(?:topic/room|user/queue/rooms)/(\\d+)(?:/(?:read|typing))?$");
 
     private final ChatService chatService;
     private final EmployeeMapper employeeMapper;
@@ -150,16 +150,25 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 // 예: /topic/room/3/read
                 String destination = accessor.getDestination();
 
-                // ROOM_TOPIC_PATTERN 정규표현식으로
-                // 현재 주소가 채팅방 topic 주소 형식인지 확인한다.
+                // ROOM_DESTINATION_PATTERN 정규표현식으로 현재 주소가 채팅방 메시지 주소인지 확인한다.
                 //
                 // destination이 null이면 빈 문자열을 넣어 Matcher 오류를 막는다.
-                Matcher matcher = ROOM_TOPIC_PATTERN.matcher(
+                Matcher matcher = ROOM_DESTINATION_PATTERN.matcher(
                         destination == null ? "" : destination);
 
-                // 채팅방 topic 형식이 아닌 주소라면 이 보안 검사 대상이 아니므로 통과시킨다.
-                // 예: /user/queue/chat-rooms 같은 개인 큐 주소
+                // 방 번호가 없는 목록 큐는 아래 로그인 직원 상태만 검사한다.
                 if (!matcher.matches()) {
+					if ("/user/queue/chat-rooms".equals(destination)) {
+						Principal listPrincipal = accessor.getUser();
+						EmployeeDTO listEmployee = listPrincipal == null
+								? null
+								: employeeMapper.findByEmployeeNo(listPrincipal.getName());
+
+						if (listEmployee == null
+								|| !"ACTIVE".equals(listEmployee.getEmployeeStatus())) {
+							throw new AccessDeniedException("활성 계정만 채팅을 구독할 수 있습니다.");
+						}
+					}
                     return message;
                 }
 

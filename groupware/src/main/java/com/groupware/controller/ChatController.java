@@ -61,6 +61,13 @@ public class ChatController {
 
         int employeeId = principal.getEmployeeDTO().getEmployeeId();
 
+        // 정지 계정은 채팅방 목록 자체를 조회할 수 없다.
+        if (!chatService.isActiveEmployee(employeeId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "활성 계정만 채팅을 사용할 수 있습니다.");
+        }
+
         // 로그인한 직원이 참여 중인 채팅방 목록을 조회해서 Thymeleaf 화면에 전달한다.
         model.addAttribute(
                 "rooms",
@@ -88,7 +95,13 @@ public class ChatController {
     @GetMapping("/chat/employees")
     @ResponseBody
     public ResponseEntity<List<EmployeeDTO>> getChatEmployees(
-            @RequestParam(value = "deptId", required = false) Integer deptId) {
+            @RequestParam(value = "deptId", required = false) Integer deptId,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+
+        if (!chatService.isActiveEmployee(
+                principal.getEmployeeDTO().getEmployeeId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
 
         // Mapper SQL이 EMPLOYEE_STATUS='ACTIVE' 조건을 적용하므로 정지·퇴사 직원은 반환되지 않는다.
         return ResponseEntity.ok(
@@ -146,10 +159,8 @@ public class ChatController {
         model.addAttribute("currentMemberIds", currentMemberIds);
         model.addAttribute(
                 "canSendMessage",
-                // 데이터나 정보가 끊임없이 '흐르는' 연속적인 통로 또는 이를 처리하기 위한 API
-                currentMemberIds.stream()
-                // .anyMatch() - Stream() 요소 중 단 하나라도 주어진 조건을 만족하는지 검사하는 메서드
-                        .anyMatch(memberId -> memberId != employeeId));
+                // 현재 ACTIVE 참여자 기준으로 상대가 한 명 이상 있을 때만 입력을 허용한다.
+                chatService.canSendMessage(roomId, employeeId));
 
         // Service에서 참여자 검증 후 조회한 이전 메시지를 화면에 전달한다.
         model.addAttribute(
@@ -282,8 +293,13 @@ public class ChatController {
     @GetMapping("/chat/unread-count")
     @ResponseBody
     public ResponseEntity<Map<String, Integer>> getUnreadMessageCount(
-    		
+	    	
             @AuthenticationPrincipal CustomUserDetails principal) {
+
+        if (!chatService.isActiveEmployee(
+                principal.getEmployeeDTO().getEmployeeId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
 
         int unreadCount = chatService.getMyUnreadMessageCount(
                 principal.getEmployeeDTO().getEmployeeId());

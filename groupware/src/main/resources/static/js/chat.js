@@ -1,6 +1,15 @@
 // 현재 WebSocket 연결 객체를 저장한다.
 let stompClient = null;
 
+// 연결이 끊겼을 때 중복 재시도를 만들지 않도록 타이머와 상태를 따로 보관한다.
+let webSocketReconnectTimer = null;
+let webSocketReconnectAttempt = 0;
+let isWebSocketConnecting = false;
+let hasWebSocketConnection = false;
+
+const WEBSOCKET_RECONNECT_INITIAL_DELAY = 1000;
+const WEBSOCKET_RECONNECT_MAX_DELAY = 10000;
+
 // 현재 화면에서 선택한 채팅방 번호다.
 let currentRoomId = null;
 
@@ -196,22 +205,33 @@ document.addEventListener("DOMContentLoaded", () => {
       closeChatThreadMenu();
     }
   });
+
+  // 페이지를 떠날 때는 의도적으로 연결을 끝내므로 재연결 타이머도 함께 취소한다.
+  window.addEventListener("beforeunload", disconnectWebSocket);
 });
 
 // SockJS로 서버의 /ws-stomp에 연결하고 현재 방을 구독한다. 
 // 쓰는 이유  ---> 브라우저나 네트워크 환경에서 일반 WebSocket 연결이 안 될 때도 대체 방식으로 연결을 유지하기 위해
 function connectWebSocket() {
+  // 이미 연결 중이거나 연결된 상태면 같은 방을 중복 구독하지 않는다.
+  if (isWebSocketConnecting || (stompClient && stompClient.connected)) {
+    return;
+  }
+
   // SockJS 또는 Stomp CDN 파일을 읽지 못했으면 연결하지 않는다.
   if (typeof SockJS === "undefined" || typeof Stomp === "undefined") {
     showToast("실시간 채팅 라이브러리를 불러오지 못했습니다.", "danger");
     return;
   }
 
+  isWebSocketConnecting = true;
+
   // WebSocketConfig의 registerStompEndpoints()에 등록한 주소다.
   const socket = new SockJS("/ws-stomp");
 
   // SockJS 연결을 STOMP 방식으로 사용한다.
-  stompClient = Stomp.over(socket);
+  const connectingClient = Stomp.over(socket);
+  stompClient = connectingClient;
   
   // SockJS 
   // → 서버와 연결을 만든다
@@ -224,16 +244,26 @@ function connectWebSocket() {
   
 
   // 브라우저 콘솔에 STOMP 통신 로그가 너무 많이 쌓이지 않게 한다.
-  stompClient.debug = null;
+  connectingClient.debug = null;
 
-  stompClient.connect(
-    {},
+  try {
+    connectingClient.connect(
+      {},
 
-    // 서버 연결 성공 시 실행된다.
-    () => {
+      // 서버 연결 성공 시 실행된다.
+      () => {
+		if (stompClient !== connectingClient) {
+		  return;
+		}
+
+		isWebSocketConnecting = false;
+		hasWebSocketConnection = true;
+		webSocketReconnectAttempt = 0;
+		clearTimeout(webSocketReconnectTimer);
+		webSocketReconnectTimer = null;
 		
 	  // 내 채팅방 목록이 변경됐다는 실시간 알림을 받는 구독 코드
-      stompClient.subscribe("/user/queue/chat-rooms", (frame) => {
+      connectingClient.subscribe("/user/queue/chat-rooms", (frame) => {
 	  // STOMP WebSocket에서 특정 주소를 구독하겠다는 뜻
         updateChatRoomList(JSON.parse(frame.body));
 		// frame.body의 JSON 문자열을 자바 스크립트 객체로 바꾼 뒤, 채팅방 목록을 갱신
@@ -246,7 +276,7 @@ function connectWebSocket() {
         // 서버가 참여자 개인 큐로 보내므로 /user 접두어가 붙은 내 전용 주소를 구독한다.
         const roomQueue = `/user/queue/rooms/${currentRoomId}`;
 
-        stompClient.subscribe(roomQueue, (frame) => {
+        connectingClient.subscribe(roomQueue, (frame) => {
           // ChatMessageController가 방송한 JSON 문자열을 객체로 바꾼다.
           const message = JSON.parse(frame.body);
 		  // 서버에서 받은 JSON 문자열을 JavaScript 객체로 바꾼다
@@ -255,14 +285,14 @@ function connectWebSocket() {
         });
 
 		// 현재 채팅방의 읽음 이벤트 주소를 구독한다.
-        stompClient.subscribe(`${roomQueue}/read`, (frame) => {
+        connectingClient.subscribe(`${roomQueue}/read`, (frame) => {
 			
 		// 서버가 보낸 읽음 정보를 JavaScript 객체로 바꾼 뒤 applyReadEvent()를 실행.
           applyReadEvent(JSON.parse(frame.body));
         });
 
 		// 현재 채팅방의 입력 중 이벤트 주소를 구독.
-        stompClient.subscribe(`${roomQueue}/typing`, (frame) => {
+        connectingClient.subscribe(`${roomQueue}/typing`, (frame) => {
 		
 		// 서버가 보낸 입력 중 정보를 객체로 바꾼 뒤 applyTypingEvent()를 실행함 
           applyTypingEvent(JSON.parse(frame.body));
@@ -271,13 +301,57 @@ function connectWebSocket() {
         // 화면에 이미 출력된 메시지까지 읽은 것으로 서버에 반영한다.
         sendReadMessage();
       }
-    },
+      },
 
-    // 연결 실패 시 실행된다.
-    () => {
-      showToast("실시간 채팅 연결에 실패했습니다.", "danger");
-    }
+      // 최초 연결 실패와 연결된 뒤의 SockJS 종료 모두 이 콜백으로 들어온다.
+      () => scheduleWebSocketReconnect(connectingClient)
+    );
+  } catch (error) {
+    scheduleWebSocketReconnect(connectingClient);
+  }
+}
+
+// SockJS/STOMP 연결이 끊기면 지수 간격으로 다시 연결한다.
+function scheduleWebSocketReconnect(disconnectedClient) {
+  // 이전 연결의 늦은 오류 콜백은 현재 살아 있는 새 연결을 끊지 않는다.
+  if (stompClient !== disconnectedClient) {
+    return;
+  }
+
+  stompClient = null;
+  isWebSocketConnecting = false;
+
+  if (webSocketReconnectTimer) {
+    return;
+  }
+
+  if (hasWebSocketConnection) {
+    showToast("실시간 연결이 끊겼습니다. 다시 연결합니다.", "warning");
+    hasWebSocketConnection = false;
+  } else if (webSocketReconnectAttempt === 0) {
+    showToast("실시간 채팅 서버에 연결하지 못했습니다. 다시 시도합니다.", "warning");
+  }
+
+  const delay = Math.min(
+    WEBSOCKET_RECONNECT_INITIAL_DELAY * (2 ** webSocketReconnectAttempt),
+    WEBSOCKET_RECONNECT_MAX_DELAY
   );
+  webSocketReconnectAttempt += 1;
+
+  webSocketReconnectTimer = setTimeout(() => {
+    webSocketReconnectTimer = null;
+    connectWebSocket();
+  }, delay);
+}
+
+// 화면을 떠날 때는 자동 재연결이 아닌 정상 종료로 처리한다.
+function disconnectWebSocket() {
+  clearTimeout(webSocketReconnectTimer);
+  webSocketReconnectTimer = null;
+
+  if (stompClient && stompClient.connected) {
+    stompClient.disconnect(() => {});
+  }
 }
 
 // 입력창에서 전송 버튼 또는 Enter로 호출된다.
@@ -443,51 +517,51 @@ function sendReadMessage() {
   stompClient.send(`/app/chat/${currentRoomId}/read`, {}, "{}");
 }
 
-// 다른 참여자가 이번에 새로 읽은 구간만 내 메시지의 안 읽은 인원 수에서 한 명씩 뺀다.
-// 다른 참여자의 읽음 이벤트를 받았을 때 화면에 반영하는 함수.
-// readEvent에는 서버가 보낸 읽음 정보가 들어 있다 
+// 읽음 수는 브라우저에서 추측해 빼지 않고 서버가 다시 계산한 값을 사용한다.
+// 여러 명이 거의 동시에 읽어도 그룹방 숫자가 0으로 잘못 내려가지 않게 한다.
 function applyReadEvent(readEvent) {
   if (Number(readEvent.readerId) === currentEmployeeId) {
-	// 읽음 이벤트를 발생시킨 사람이 나 자신인지 확인.
     refreshUnreadBadges();
+  }
+
+  // 읽음 처리한 본인 화면도 포함해 모든 참여자가 서버의 같은 숫자를 다시 받는다.
+  refreshReadStatuses();
+}
+
+// 현재 방의 메시지별 읽지 않은 ACTIVE 참여자 수를 서버에서 다시 가져온다.
+async function refreshReadStatuses() {
+  if (!currentRoomId) {
     return;
   }
 
-  // 상대방이 이전에 마지막으로 읽었던 메시지 번호를 숫자로 저장
-  const previousLastReadMessageId = Number(
-	// 	값이 없으면 0을 사용하라는 뜻.
-	//  ex) 처음 읽는 사람이라 이전 값이 없으면 : 0
-    readEvent.previousLastReadMessageId || 0
-  );
-  
-  // 상대방이 이번에 새로 읽은 마지막 메시지 번호를 숫자로 저장.
-  const lastReadMessageId = Number(readEvent.lastReadMessageId);
+  try {
+    const response = await fetch(`/chat/room/${currentRoomId}/messages`);
+    if (!response.ok) {
+      return;
+    }
 
-  // 화면에서 회원이 보낸 메시지 행을 모두 찾음 
-  document.querySelectorAll(".chat-row.out[data-message-id]")
-    .forEach(row => { // 찾은 메세지 행을 하나씩 반복 처리 
-      const messageId = Number(row.dataset.messageId);
-	  // 현재 메세지 행의 dataset-message-Id) 값을 가져와서 숫자로 바꾼다
+    const messages = await response.json();
+    const unreadCounts = new Map(messages.map(message => [
+      Number(message.messageId),
+      Number(message.unreadMemberCount || 0)
+    ]));
 
-      if (messageId <= previousLastReadMessageId
-		// 이미 이전에 읽었던 메시지 -> 다시 줄이면 안 됨
-          || messageId > lastReadMessageId) {
-		// 이번에도 아직 읽지 않은 메시지 -> 줄이면 안 됨
-        return;
-      }
+    document.querySelectorAll(".chat-row[data-message-id]")
+      .forEach(row => {
+        const unreadMemberCount = unreadCounts.get(
+          Number(row.dataset.messageId)
+        );
 
-	  // 해당 메시지의 안 읽은 참여자 수에서 한 명을 뺀다
-      const unreadMemberCount = Math.max(
-        0,
-        Number(row.dataset.unreadMemberCount || 0) - 1
-				// HTML에 저장된 안 읽은 참여자 수
-      );
+        if (unreadMemberCount == null) {
+          return;
+        }
 
-      row.dataset.unreadMemberCount = String(unreadMemberCount);
-	  								// HTML dataset 값은 문자열로 저장되므로 String()으로 바꾼다
-      renderReadStatus(row, unreadMemberCount);
-	  // 새 숫자를 화면에 표시함 
-    });
+        row.dataset.unreadMemberCount = String(unreadMemberCount);
+        renderReadStatus(row, unreadMemberCount);
+      });
+  } catch (error) {
+    // 네트워크가 잠시 끊긴 경우에는 다음 읽음 이벤트에서 다시 동기화한다.
+  }
 }
 
 // 채팅 화면 헤더와 좌측 메뉴에 로그인 사용자의 전체 안 읽은 메시지 수를 표시한다.
@@ -857,9 +931,8 @@ function appendMessage(message) {
   bubbleColumn.appendChild(bubbleMeta);
   row.appendChild(bubbleColumn);
 
-  if (isMine) {
-    renderReadStatus(row, Number(message.unreadMemberCount || 0));
-  }
+  // 발신자만이 아니라 같은 방의 모든 참여자가 현재 읽지 않은 인원 수를 본다.
+  renderReadStatus(row, Number(message.unreadMemberCount || 0));
 
   messageList.appendChild(row);
 
@@ -884,25 +957,72 @@ async function refreshChatInputAvailability() {
     }
 
     const members = await response.json();
+    // DM에 비활성 상대만 남은 경우에는 다른 참여자가 있어도 전송할 수 없다.
     const canSendMessage = members.some(member =>
       Number(member.employeeId) !== currentEmployeeId
+      && member.employeeStatus === "ACTIVE"
     );
 
+    const input = document.getElementById("chatMessageInput");
+    const fileInput = document.getElementById("chatFileInput");
+    const inputBar = input?.closest(".chat-input-bar");
+
     if (canSendMessage) {
+      // 계정 복구 SYSTEM 메시지를 받은 방은 새로고침 없이 다시 입력할 수 있게 한다.
+      if (input) {
+        input.disabled = false;
+        input.placeholder = "메시지를 입력하세요";
+      }
+      if (fileInput) {
+        fileInput.disabled = false;
+      }
+      addChatSendControls(inputBar);
       return;
     }
 
-    const input = document.getElementById("chatMessageInput");
     if (input) {
       input.value = "";
       input.disabled = true;
       input.placeholder = "입력할 수 없는 채팅방입니다.";
+    }
+    if (fileInput) {
+      fileInput.disabled = true;
     }
 
     document.querySelectorAll("[data-chat-send-control]")
       .forEach(control => control.remove());
   } catch (error) {
     // 참여자 확인 요청 자체가 실패했을 때는 기존 입력 상태를 유지한다.
+  }
+}
+
+// 서버 렌더링 시 숨겨졌던 파일·전송 버튼을 계정 복구 뒤에 다시 만든다.
+function addChatSendControls(inputBar) {
+  if (!inputBar) {
+    return;
+  }
+
+  if (!inputBar.querySelector(".chat-file-send-btn")) {
+    const fileButton = document.createElement("button");
+    fileButton.type = "button";
+    fileButton.className = "icon-btn chat-file-send-btn";
+    fileButton.dataset.chatSendControl = "";
+    fileButton.title = "파일 첨부";
+    fileButton.innerHTML = '<i class="fa-solid fa-paperclip"></i>';
+    fileButton.addEventListener("click", () => {
+      document.getElementById("chatFileInput")?.click();
+    });
+    inputBar.prepend(fileButton);
+  }
+
+  if (!inputBar.querySelector(".chat-send-btn")) {
+    const sendButton = document.createElement("button");
+    sendButton.type = "submit";
+    sendButton.className = "chat-send-btn";
+    sendButton.dataset.chatSendControl = "";
+    sendButton.title = "메시지 전송";
+    sendButton.innerHTML = '<i class="fa-solid fa-paper-plane"></i>';
+    inputBar.appendChild(sendButton);
   }
 }
 
