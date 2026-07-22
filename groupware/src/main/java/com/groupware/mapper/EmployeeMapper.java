@@ -20,6 +20,9 @@ public interface EmployeeMapper {
 	// @Param - xml에서 #{employeeId} 사용하여 붙임
 	EmployeeDTO findMyPageInfo(@Param("employeeId") int employeeId);
 
+	// 메인 대시보드 "이번 달 생일자" 위젯 - 재직 중이고 생년월일을 입력해둔 직원만 조회
+	List<EmployeeDTO> findBirthdaysInMonth(@Param("month") int month);
+
 	// 조직도 왼쪽 트리에 표시할 모든 부서를 조회한다.
 	List<DepartmentDTO> findDepartments();
 
@@ -42,9 +45,10 @@ public interface EmployeeMapper {
 	// newPassword는 Service에서 이미 BCrypt로 해싱된 값 - 여기선 그대로 저장만 함
 	int updatePassword(@Param("employeeId") int employeeId, @Param("newPassword") String newPassword);
 
-	// 마이페이지 전화번호/이메일/프로필 사진 수정
+	// 마이페이지 전화번호/이메일/생년월일/프로필 사진 수정
 	int updateContact(@Param("employeeId") int employeeId, @Param("employeePhone") String employeePhone,
-			@Param("employeeEmail") String employeeEmail, @Param("profileImg") String profileImg);
+			@Param("employeeEmail") String employeeEmail, @Param("birthDate") String birthDate,
+			@Param("profileImg") String profileImg);
 
 	// 관리자: 계정 목록 조회 - keyword는 이름 검색어(없으면 전체)
 	List<EmployeeDTO> findAll(@Param("keyword") String keyword);

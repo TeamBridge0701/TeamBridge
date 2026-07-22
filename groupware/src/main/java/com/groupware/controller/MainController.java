@@ -62,6 +62,7 @@ public class MainController {
         model.addAttribute("lateCount", dashboardData.get("lateCount"));
         model.addAttribute("leaveCount", dashboardData.get("leaveCount"));
         model.addAttribute("attendanceRate", dashboardData.get("attendanceRate"));
+        model.addAttribute("birthdayEmployees", dashboardData.get("birthdayEmployees"));
 
         // 기존에 이동하던 메인 페이지 뷰 이름 반환
         return "main";

@@ -18,6 +18,7 @@ import com.groupware.dto.CalendarEventDTO;
 import com.groupware.dto.EmployeeDTO;
 import com.groupware.dto.NoticeDTO;
 import com.groupware.mapper.DashboardMapper;
+import com.groupware.mapper.EmployeeMapper;
 
 @Service
 public class DashboardService {
@@ -38,15 +39,19 @@ public class DashboardService {
     private final CalendarService calendarService;
     // 월간 근태 요약도 출결 현황 페이지(AttendanceService.getMonthlyAttendance)를 그대로 재사용
     private final AttendanceService attendanceService;
+    // 이번 달 생일자 조회 - 새 서비스를 만들지 않고 조직도(EmployeeMapper)가 쓰는
+    // 매퍼에 조회 메서드만 하나 추가해서 재사용한다(다른 위젯들과 같은 재사용 원칙)
+    private final EmployeeMapper employeeMapper;
 
     public DashboardService(DashboardMapper dashboardMapper, NoticeService noticeService,
             ApprovalService approvalService, CalendarService calendarService,
-            AttendanceService attendanceService) {
+            AttendanceService attendanceService, EmployeeMapper employeeMapper) {
         this.dashboardMapper = dashboardMapper;
         this.noticeService = noticeService;
         this.approvalService = approvalService;
         this.calendarService = calendarService;
         this.attendanceService = attendanceService;
+        this.employeeMapper = employeeMapper;
     }
 
     // 대시보드 화면에 필요한 데이터 모음. employeeId만으로는 부서(deptId) 등을 알 수 없어서
@@ -127,6 +132,10 @@ public class DashboardService {
         resultMap.put("lateCount", lateCount);
         resultMap.put("leaveCount", leaveCount);
         resultMap.put("attendanceRate", attendanceRate);
+
+        // 이번 달 생일자 - 생년월일을 아직 입력 안 한 직원은 EmployeeMapper.findBirthdaysInMonth
+        // SQL 조건(BIRTH_DATE IS NOT NULL)에서 자연히 빠진다
+        resultMap.put("birthdayEmployees", employeeMapper.findBirthdaysInMonth(today.getMonthValue()));
 
         return resultMap;
     }

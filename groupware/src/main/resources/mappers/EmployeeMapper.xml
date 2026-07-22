@@ -25,6 +25,22 @@
 	    	LEFT JOIN POSITION p ON e.POSITION_ID = p.POSITION_ID
 	    WHERE e.EMPLOYEE_ID = #{employeeId}
 	</select>
+
+	<!--
+		메인 대시보드 "이번 달 생일자" 위젯 - 재직 중(ACTIVE)이고 생년월일을 입력해둔
+		직원만 대상. 연도는 안 따지고 월만 비교(매년 돌아오는 생일이라 MONTH()만 봄),
+		그 달 안에서는 며칠인지(DAY()) 순으로 정렬해서 이른 날짜가 먼저 보이게 함.
+	-->
+	<select id="findBirthdaysInMonth" resultType="com.groupware.dto.EmployeeDTO">
+	    SELECT e.*, d.DEPT_NAME, p.POSITION_NAME
+	    FROM EMPLOYEE e
+	    	LEFT JOIN DEPARTMENT d ON e.DEPT_ID = d.DEPT_ID
+	    	LEFT JOIN POSITION p ON e.POSITION_ID = p.POSITION_ID
+	    WHERE e.EMPLOYEE_STATUS = 'ACTIVE'
+	      AND e.BIRTH_DATE IS NOT NULL
+	      AND MONTH(e.BIRTH_DATE) = #{month}
+	    ORDER BY DAY(e.BIRTH_DATE)
+	</select>
 	
 	
 	
@@ -169,10 +185,16 @@
 	</update>
 
 	<!-- 마이페이지 전화번호/이메일/프로필 사진 수정 -->
+	<!--
+		profileImg와 birthDate는 서로 다른 규칙: profileImg는 null이면 "이번엔 안 바꿈"(기존 값 유지)
+		이라 <if>로 아예 SET 대상에서 빼지만, birthDate는 EmployeeService에서 이미 정리된 값을
+		그대로 전달받아 항상 SET한다(값이 없으면 진짜 NULL로 저장 - "생년월일을 지운다"는 뜻).
+	-->
 	<update id="updateContact">
 	    UPDATE EMPLOYEE
 	    SET EMPLOYEE_PHONE = #{employeePhone},
-	        EMPLOYEE_EMAIL = #{employeeEmail}
+	        EMPLOYEE_EMAIL = #{employeeEmail},
+	        BIRTH_DATE = #{birthDate}
 			<if test="profileImg != null"> <!-- 프로필 사진 없을 시 수정 안함 -->
 				, PROFILE_IMG = #{profileImg}
 			</if>

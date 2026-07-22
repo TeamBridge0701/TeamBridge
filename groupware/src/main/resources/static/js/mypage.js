@@ -50,6 +50,7 @@ function saveMyInfo(event) {
     const formData = new FormData();
     formData.append('employeePhone', document.getElementById('myPhone').value);
     formData.append('employeeEmail', document.getElementById('myEmail').value);
+    formData.append('birthDate', document.getElementById('myBirthDate').value);
     if (selectedProfileImgFile) {
         formData.append('profileImg', selectedProfileImgFile);
     }

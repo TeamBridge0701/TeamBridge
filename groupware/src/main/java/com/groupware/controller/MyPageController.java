@@ -47,10 +47,11 @@ public class MyPageController {
 	@ResponseBody
 	public ResponseEntity<String> updateContact(@AuthenticationPrincipal CustomUserDetails principal,
 			@RequestParam("employeePhone") String employeePhone, @RequestParam("employeeEmail") String employeeEmail,
+			@RequestParam(value = "birthDate", required = false) String birthDate,
 			@RequestParam(value = "profileImg", required = false) MultipartFile profileImg) {
 		try {
 			employeeService.updateContact(principal.getEmployeeDTO().getEmployeeId(), employeePhone, employeeEmail,
-					profileImg);
+					birthDate, profileImg);
 		} catch (IllegalArgumentException e) {
 			// 확장자 검증 실패(EmployeeService.saveProfileImg)만 사용자 잘못이라 400으로 응답.
 			// 디스크 저장 실패(RuntimeException)는 서버 쪽 문제라 여기선 안 잡고 그대로 전파해서 500이 되게 둠

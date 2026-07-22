@@ -69,7 +69,8 @@
 								class="commute-info-box">
 								<div class="commute-row"><span>사번:</span><strong id="myId"
 										th:text="${employee.employeeNo}">20260601</strong></div>
-								<div class="commute-row"><span>입사일:</span><strong id="myJoin"
+								<div class="commute-row" th:if="${employee.employeeRole != 'ADMIN'}">
+									<span>입사일:</span><strong id="myJoin"
 										th:text="${employee.hireDate}">2026-06-01</strong></div>
 								<div class="commute-row"><span>권한 수준:</span><strong id="myRole"
 										th:text="${employee.roleText}">일반 임직원</strong></div>
@@ -94,6 +95,12 @@
 									<label class="form-label" for="myEmail">이메일</label>
 									<input type="email" id="myEmail" class="form-control" required
 										th:value="${employee.employeeEmail}">
+								</div>
+
+								<div class="form-group">
+									<label class="form-label" for="myBirthDate">생년월일</label>
+									<input type="date" id="myBirthDate" class="form-control"
+										th:value="${employee.birthDate}">
 								</div>
 
 								<button type="submit" class="btn btn-primary" style="margin-top: 1rem;">정보 저장</button>

@@ -239,6 +239,31 @@
 						<!-- 날씨 위젯 -->
 						<div th:replace="~{fragments/weather :: weatherWidget}"></div>
 
+						<!-- 이번 달 생일자 - EmployeeDTO.birthDate가 "yyyy-MM-dd" 문자열로 오므로
+						     뒤 5자리(MM-dd)만 잘라서 보여준다(hireDate와 같은 방식) -->
+						<div class="card" style="padding: 1.25rem;">
+							<div class="card-header" style="margin-bottom: 0.75rem; padding-bottom: 0.5rem;">
+								<h4 class="card-title" style="font-size: 0.9rem;"><i class="fa-solid fa-cake-candles"
+										style="color: var(--color-accent);"></i> 이번 달 생일자</h4>
+							</div>
+							<div id="dashBirthdayList">
+								<div th:each="person : ${birthdayEmployees}"
+									style="display:flex; align-items:center; gap:0.6rem; padding:0.4rem 0; border-bottom:1px dashed var(--border-color);">
+									<span style="flex:1; font-size:0.85rem;">
+										<strong th:text="${person.employeeName}">홍길동</strong>
+										<span style="color:var(--text-muted); font-size:0.8rem;"
+											th:if="${person.deptName != null}" th:text="|· ${person.deptName}|">· 개발팀</span>
+									</span>
+									<span style="font-size:0.75rem; color:var(--text-muted); font-family:'Fira Code';"
+										th:text="${#strings.substring(person.birthDate, 5, 10)}">06-01</span>
+								</div>
+								<div th:if="${#lists.isEmpty(birthdayEmployees)}"
+									style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:0.75rem 0;">
+									이번 달 생일자가 없습니다.
+								</div>
+							</div>
+						</div>
+
 						<!-- 미니 캘린더 -->
 						<div class="card" style="padding: 1.25rem;">
 							<div class="card-header" style="margin-bottom: 0.75rem; padding-bottom: 0.5rem;">

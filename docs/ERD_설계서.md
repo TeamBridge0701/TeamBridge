@@ -15,6 +15,12 @@
 > `APPROVAL_STATUS`에 `WITHDRAWN` 값 추가(새 컬럼 아님, 기존 VARCHAR(10)에 값만 하나 늘어남).
 > 2-11 반영.
 >
+> v0.9 변경(2026-07-22, 김영훈 담당 메인 대시보드 "이번 달 생일자" 위젯 작업 중 결정):
+> 생일자를 표기하려면 생년월일 컬럼이 있어야 하는데 기존 `EMPLOYEE`에는 없었음 —
+> `EMPLOYEE.BIRTH_DATE` 컬럼 추가(DATE, NULL 허용). **계정 생성 시에는 입력하지 않고
+> (관리자 등록 화면에 입력란 없음), 본인이 마이페이지에서 직접 입력/수정**하는 것으로 확정
+> — 이미 있는 계정에도 값이 없는 상태가 정상이라 NOT NULL로 두면 안 됨. 2-3, 5장 SQL에 반영.
+>
 
 # ERD 설계서
 
@@ -138,6 +144,13 @@ POSITION_ID를 조인해서 실시간으로 판단하도록 설계했습니다.
 없어도 되어야 합니다. 그래서 두 컬럼을 NULLABLE로 두고, "일반 직원이면
 반드시 부서·직급이 있어야 하고, 관리자면 없어도 된다"는 규칙을 CHECK 제약으로
 강제합니다(가짜 부서 "IT기획팀", 가짜 직급 "관리자"를 억지로 만들지 않아도 됨).
+
+(2026-07-22 추가) 메인 대시보드 "이번 달 생일자" 위젯을 위해 BIRTH_DATE를
+추가했습니다. HIRE_DATE와 달리 NOT NULL로 두지 않은 이유는, 계정을 만드는
+시점(관리자 등록 화면)에는 생년월일을 입력받지 않고 본인이 마이페이지에서
+나중에 직접 입력하도록 정했기 때문입니다 - 그래서 기존 계정은 물론 방금
+만든 새 계정도 한동안 이 값이 비어 있는 게 정상이며, 대시보드 조회 쪽은
+BIRTH_DATE가 NULL인 직원을 자연히 건너뛰도록 조회 조건에 포함시킵니다.
 ```
 
 | 컬럼명 | 타입 | 제약조건 | 설명 |
@@ -154,6 +167,7 @@ POSITION_ID를 조인해서 실시간으로 판단하도록 설계했습니다.
 | PROFILE_IMG | VARCHAR(500) | NULLABLE | 프로필 사진 경로 |
 | EMPLOYEE_STATUS | VARCHAR(10) | NOT NULL, DEFAULT 'ACTIVE' | 재직 상태 (ACTIVE 재직 / SUSPENDED 정지) |
 | HIRE_DATE | DATE | NOT NULL | 입사일 |
+| BIRTH_DATE | DATE | NULLABLE | 생년월일 (계정 생성 시 미입력, 마이페이지에서 본인이 입력 - 대시보드 "이번 달 생일자" 조회용, v0.9 추가) |
 | CREATED_AT | DATETIME | NOT NULL, DEFAULT NOW() | 계정 생성일시 |
 | — | — | CHECK (EMPLOYEE_ROLE='ADMIN' OR (DEPT_ID IS NOT NULL AND POSITION_ID IS NOT NULL)) | 일반 직원은 부서·직급 필수, 관리자는 예외 허용 |
 
@@ -840,6 +854,11 @@ CREATE TABLE CHAT_ATTACHMENT (
 ALTER TABLE CALENDAR_EVENT
     ADD COLUMN DEPT_ID INT NULL,
     ADD CONSTRAINT FK_EVENT_DEPT FOREIGN KEY (DEPT_ID) REFERENCES DEPARTMENT(DEPT_ID);
+
+-- 메인 대시보드 "이번 달 생일자" 위젯을 위해 뒤늦게 추가했다(김영훈, v0.9).
+-- 계정 생성 시에는 입력하지 않고 본인이 마이페이지에서 직접 입력하므로 NULL 허용.
+ALTER TABLE EMPLOYEE
+    ADD COLUMN BIRTH_DATE DATE NULL AFTER HIRE_DATE;
 ```
 
 ---
