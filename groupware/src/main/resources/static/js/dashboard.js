@@ -2,19 +2,17 @@
 // dashboard.js - main.html(대시보드) 전용 로직
 // ===================================================================
 
-// 우측 상단 실시간 시계 - 서버 통신 없이 브라우저 자체 시계(new Date())만 쓰고,
-// 1초마다 화면 텍스트만 갱신한다(서버 부담 0). main.html 전용이라 여기 둠(2026-07-22)
+// 출근/퇴근 버튼 밑 실시간 시계 - 서버 통신 없이 브라우저 자체 시계(new Date())만 쓰고,
+// 1초마다 화면 텍스트만 갱신한다(서버 부담 0). 9시 지각 기준을 버튼 누르기 전에 바로 확인할
+// 수 있게 하려는 용도라 날짜 없이 시간만 보여줌. main.html 전용이라 여기 둠(2026-07-23)
 function updateDashboardClock() {
-  const dateEl = document.getElementById('dashClockDate');
-  const timeEl = document.getElementById('dashClockTime');
-  if (!dateEl || !timeEl) return; // 이 위젯이 없는 페이지에서도 안전하게(다른 화면과 공유 안 하지만 방어적으로)
+  const commuteClockEl = document.getElementById('dashCommuteClock');
+  if (!commuteClockEl) return; // 이 위젯이 없는 페이지에서도 안전하게
 
-  const days = ['일', '월', '화', '수', '목', '금', '토'];
   const now = new Date();
   const pad = n => String(n).padStart(2, '0'); // 한 자리 숫자 앞에 0 붙이기(9 -> 09)
 
-  dateEl.textContent = `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 (${days[now.getDay()]})`;
-  timeEl.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  commuteClockEl.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
