@@ -51,21 +51,10 @@
 			<main class="view-content">
 
 
-				<div style="margin-bottom: 1.25rem; display:flex; justify-content:space-between; align-items:center; padding-right: 1.5rem;">
-					<div>
-						<h2 style="font-size: 1.35rem;">안녕하세요, <span id="dashGreetingName" th:if="${employee != null}"
-								th:text="${employee.positionName != null ? (employee.employeeName + ' · ' + employee.positionName) : employee.employeeName}">홍길동 사원</span>님! 👋</h2>
-						<p style="font-size: 0.85rem; color: var(--text-secondary);">오늘도 즐거운 하루 되세요.</p>
-					</div>
-					<!-- 실시간 시계 위젯 - 서버와 통신 없이 브라우저 자체 시계만 씀
-					     (dashboard.js의 updateDashboardClock() 참고, 2026-07-22) -->
-					<div class="dash-clock-card">
-						<div class="dash-clock-label"><i class="fa-solid fa-clock"></i> 서울 시간</div>
-						<div class="dash-clock-time-panel">
-							<div id="dashClockTime" class="dash-clock-time"></div>
-						</div>
-						<div id="dashClockDate" class="dash-clock-date"></div>
-					</div>
+				<div style="margin-bottom: 1.25rem;">
+					<h2 style="font-size: 1.35rem;">안녕하세요, <span id="dashGreetingName" th:if="${employee != null}"
+							th:text="${employee.positionName != null ? (employee.employeeName + ' · ' + employee.positionName) : employee.employeeName}">홍길동 사원</span>님! 👋</h2>
+					<p style="font-size: 0.85rem; color: var(--text-secondary);">오늘도 즐거운 하루 되세요.</p>
 				</div>
 
 				<div class="grid-12">
@@ -90,6 +79,14 @@
 								style="width: 100%; margin-bottom: 1rem; transition: all 0.3s ease;">
 								상태 확인 중...
 							</button>
+
+							<!-- 출근/퇴근 버튼 밑에 현재 시각만 표시 - 9시 지각 기준을 버튼 누르기 전에
+							     바로 확인할 수 있게. dashboard.js의 updateDashboardClock()이 1초마다
+							     갱신함(날짜/라벨 없이 시간만, 2026-07-23) -->
+							<div class="commute-clock-display">
+								<i class="fa-solid fa-clock"></i>
+								<span id="dashCommuteClock"></span>
+							</div>
 
 							<div class="commute-info-box">
 								<div class="commute-row">
