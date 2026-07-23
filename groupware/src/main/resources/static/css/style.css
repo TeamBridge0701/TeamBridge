@@ -845,48 +845,24 @@
       border-bottom-right-radius: 0;
     }
 
-    /* 대시보드 우측 상단 실시간 시계 위젯(디지털) - 그라데이션 카드 + 시간 부분만 살짝
-       오목한(inset) "패널"을 둬서 실제 위젯 기기처럼 보이게 함. 서버 통신 없이 dashboard.js가
-       1초마다 텍스트만 갱신함 */
-    .dash-clock-card {
-      background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
-      border-radius: 18px;
-      padding: 1rem 1.75rem;
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.5rem;
-      min-width: 190px;
-      box-shadow: var(--shadow-lg);
-    }
-    .dash-clock-label {
-      font-size: 0.75rem;
-      font-weight: 700;
-      opacity: 0.9;
-      letter-spacing: 0.05em;
-      display: flex;
-      align-items: center;
-      gap: 0.35rem;
-    }
-    /* 시간 숫자를 감싸는 반투명 패널 - inset 그림자로 살짝 파인 느낌을 줘서
-       그냥 텍스트가 아니라 "디지털 디스플레이" 부품처럼 보이게 함 */
-    .dash-clock-time-panel {
-      background: rgba(255, 255, 255, 0.18);
-      border-radius: 10px;
-      padding: 0.35rem 1rem;
-      box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.2);
-    }
-    .dash-clock-time {
+    /* 출근/퇴근 버튼 밑 실시간 시계 - 그냥 텍스트만 있으면 허전해서, 옅은 배경 패널 +
+       포인트 색상 글씨 + 아이콘으로 존재감을 줌(2026-07-23) */
+    .commute-clock-display {
+      text-align: center;
       font-family: 'Fira Code';
-      font-size: 1.9rem;
-      font-weight: 800;
-      letter-spacing: 0.03em;
-      line-height: 1.2;
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--color-primary);
+      background: var(--bg-tertiary);
+      border-radius: 10px;
+      padding: 0.5rem 0;
+      margin-bottom: 1rem;
     }
-    .dash-clock-date {
-      font-size: 0.8rem;
-      opacity: 0.9;
+    .commute-clock-display i {
+      font-size: 1rem;
+      margin-right: 0.4rem;
+      opacity: 0.85;
     }
 
     /* 대시보드 미니 캘린더 위젯 */
