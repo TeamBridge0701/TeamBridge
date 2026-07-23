@@ -55,7 +55,9 @@
             <div id="approval-view-write" class="approval-tab-content">
               <div class="card">
                 <h3 style="margin-bottom: 1rem;">새 결재 상신</h3>
-                <div class="grid-3" style="margin-bottom: 1.5rem;">
+                <div th:class="${employee.positionRank == 1} ? 'grid-2' : 'grid-3'" style="margin-bottom: 1.5rem;">
+                  <!-- 부서장은 프로젝트품의서 카드가 숨겨져 카드가 2개뿐이라, grid-3로 두면
+                       오른쪽에 빈 칸이 생겨서 부서장 로그인일 때만 grid-2로 바꾼다. -->
                   <!-- 서식 카드 - DB(APPROVAL_FORM_TYPE)에서 조회한 3종을 그대로 반복 렌더링.
                        formTypeName(문자열)은 onclick 안에 따옴표로 직접 끼워넣지 않고 data 속성에
                        담아뒀다가 JS(initApprovalForm)에서 this.dataset로 읽는다 - 따옴표 중첩 문제 방지.
