@@ -101,8 +101,11 @@ public class ApprovalService {
 		return employeeMapper.findDepartments();
 	}
 
-	public List<EmployeeDTO> getRefEmployees(Integer deptId) {
-		return employeeMapper.findActiveEmployeesByDepartment(deptId);
+	// 참조 대상 후보 - 기안자 본인은 자기 문서를 참조로 지정해봤자 의미가 없으므로 제외한다.
+	public List<EmployeeDTO> getRefEmployees(Integer deptId, int drafterId) {
+		return employeeMapper.findActiveEmployeesByDepartment(deptId).stream()
+				.filter(e -> e.getEmployeeId() != drafterId)
+				.collect(Collectors.toList());
 	}
 
 	// 받은 결재함 - 지금 내 차례인 문서만 (ApprovalMapper.findInbox의 WHERE 조건 참고)
@@ -305,13 +308,19 @@ public class ApprovalService {
 		boolean drafterIsDeptHead = drafterPositionRank == RANK_DEPT_HEAD;
 		boolean drafterIsTeamLead = drafterPositionRank == RANK_TEAM_LEAD;
 
+		// 참조 대상에 기안자 본인이 섞여 들어와도 무시한다 - 화면단(getRefEmployees)에서
+		// 이미 후보에서 빼지만, API를 직접 두드리는 경우까지 막아야 서버 재검증이 의미가
+		// 있다(특히 아래 leaveNoApprover 검증을 "본인만 참조로 넣고 통과"로 우회 못 하게).
+		List<Integer> filteredRefEmployeeIds = refEmployeeIds == null ? null
+				: refEmployeeIds.stream().filter(id -> id != drafterId).collect(Collectors.toList());
+
 		// 부서장 본인의 연차휴가는 승인자를 아예 안 두고 참조자만 지정하는 예외(2026-07-22
 		// 팀 협의 확정) - 결재선이 없으니 등록 즉시 승인 완료 처리하고, 그 대신 참조 대상
 		// 지정을 필수로 강제한다(승인 절차가 없는 걸 참조로라도 알 수 있게).
 		boolean leaveNoApprover = isLeaveForm && drafterIsDeptHead;
 		if (leaveNoApprover) {
 			boolean hasReference = (refDeptIds != null && !refDeptIds.isEmpty())
-					|| (refEmployeeIds != null && !refEmployeeIds.isEmpty());
+					|| (filteredRefEmployeeIds != null && !filteredRefEmployeeIds.isEmpty());
 			if (!hasReference) {
 				throw new IllegalArgumentException("참조 대상을 최소 1명 이상 지정해야 합니다.");
 			}
@@ -349,7 +358,7 @@ public class ApprovalService {
 			}
 		}
 
-		insertReferences(approval.getApprovalId(), refDeptIds, refEmployeeIds);
+		insertReferences(approval.getApprovalId(), refDeptIds, filteredRefEmployeeIds);
 
 		// 휴가 신청서는 증빙 개념이 없어 첨부파일을 받지 않는다 (화면단 UI도 안 보여줌)
 		if (!isLeaveForm && files != null) {

@@ -60,11 +60,13 @@ public class ApprovalController {
 		return approvalService.getRefDepartments();
 	}
 
-	// 참조 대상 선택 모달의 우측 직원 표 - deptId 없으면 전체, 있으면 그 부서만
+	// 참조 대상 선택 모달의 우측 직원 표 - deptId 없으면 전체, 있으면 그 부서만.
+	// 기안자 본인은 참조 후보에서 제외한다(자기 문서를 자기가 참조할 이유가 없음).
 	@GetMapping("/approval/ref-employees")
 	@ResponseBody
-	public List<EmployeeDTO> refEmployees(@RequestParam(value = "deptId", required = false) Integer deptId) {
-		return approvalService.getRefEmployees(deptId);
+	public List<EmployeeDTO> refEmployees(@ModelAttribute("employee") EmployeeDTO employee,
+			@RequestParam(value = "deptId", required = false) Integer deptId) {
+		return approvalService.getRefEmployees(deptId, employee.getEmployeeId());
 	}
 
 	// 기안 등록 - 작성 자체는 전 직원에게 열려있음(기획서 3.8 "결재 작성·상신 | 직원").
