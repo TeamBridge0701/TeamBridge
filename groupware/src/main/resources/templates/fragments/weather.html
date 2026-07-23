@@ -17,7 +17,6 @@
 				<i class="fa-solid fa-cloud-sun" style="color: var(--color-accent);"></i>
 				<span id="wLocation">서울</span>
 			</h4>
-			<span style="font-size:0.75rem; color:var(--text-muted);" id="wDate">00월 00일 (요일)</span>
 		</div>
 
 		<div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">
@@ -39,16 +38,7 @@
 		<!-- [JavaScript] 실시간 데이터 요청 및 바인딩 스크립트 -->
 		<script>
 			document.addEventListener('DOMContentLoaded', function () {
-				// 1. 오늘의 날짜 및 요일 구하기 자동화
-				const days = ['일', '월', '화', '수', '목', '금', '토'];
-				const today = new Date();
-				const month = today.getMonth() + 1;
-				const date = today.getDate();
-				const dayName = days[today.getDay()];
-
-				document.getElementById('wDate').innerText = `${month}월 ${date}일 (${dayName}요일)`;
-
-				// 2. 날씨 데이터 조회 - OpenWeatherMap을 브라우저가 직접 부르지 않고, 서버(/weather,
+				// 날씨 데이터 조회 - OpenWeatherMap을 브라우저가 직접 부르지 않고, 서버(/weather,
 				// MainController)를 통해서만 부른다. API 키는 서버(application.properties)에만
 				// 있고 브라우저로는 절대 안 나간다(2026-07-22).
 				fetch('/weather')

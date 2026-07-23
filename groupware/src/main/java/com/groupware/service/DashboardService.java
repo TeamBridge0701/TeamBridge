@@ -3,8 +3,10 @@ package com.groupware.service;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -127,6 +129,21 @@ public class DashboardService {
         LocalDate gridStart = first.minusDays(startDay);
         int totalCells = (int) (Math.ceil((startDay + today.lengthOfMonth()) / 7.0) * 7);
 
+        // 공휴일(COMPANY + IS_HOLIDAY) 날짜 집합 - calendar.js의 extractHolidayDates()와 같은
+        // 개념. 미니 캘린더는 SSR이라 여기서 자바로 미리 계산해서 각 칸에 색상 정보로 얹어준다
+        // (일정 목록은 이미 monthEvents로 받아와 있어서 별도 DB 조회 없이 재사용, 2026-07-22)
+        Set<LocalDate> holidayDates = new HashSet<>();
+        for (CalendarEventDTO e : monthEvents) {
+            if ("COMPANY".equals(e.getEventCategory()) && e.isHoliday()) {
+                LocalDate d = LocalDate.parse(e.getStartDate());
+                LocalDate end = LocalDate.parse(e.getEndDate());
+                while (!d.isAfter(end)) {
+                    holidayDates.add(d);
+                    d = d.plusDays(1);
+                }
+            }
+        }
+
         List<Map<String, Object>> days = new ArrayList<>();
         for (int i = 0; i < totalCells; i++) {
             LocalDate cellDate = gridStart.plusDays(i);
@@ -138,12 +155,20 @@ public class DashboardService {
                     .map(CalendarEventDTO::getEventTitle)
                     .collect(Collectors.toList());
 
+            // i % 7 = 이번 칸의 요일(그리드가 항상 일요일=0부터 시작하는 배치라 7로 나눈 나머지가 곧 요일).
+            // 공휴일이면 요일과 상관없이 일요일과 같은 빨간색으로 통일(calendar.js와 동일 기준)
+            boolean isHoliday = holidayDates.contains(cellDate);
+            boolean sundayColor = i % 7 == 0 || isHoliday;
+            boolean saturdayColor = i % 7 == 6 && !isHoliday;
+
             Map<String, Object> day = new HashMap<>();
             day.put("day", cellDate.getDayOfMonth());
             day.put("otherMonth", cellDate.getMonthValue() != today.getMonthValue());
             day.put("isToday", cellDate.isEqual(today));
             day.put("hasEvent", !titlesOnThisDay.isEmpty());
             day.put("eventSummary", String.join(", ", titlesOnThisDay));
+            day.put("sundayColor", sundayColor);
+            day.put("saturdayColor", saturdayColor);
             days.add(day);
         }
         return days;

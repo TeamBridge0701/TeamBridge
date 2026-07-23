@@ -51,10 +51,21 @@
 			<main class="view-content">
 
 
-				<div style="margin-bottom: 1.25rem;">
-					<h2 style="font-size: 1.35rem;">안녕하세요, <span id="dashGreetingName" th:if="${employee != null}"
-							th:text="${employee.positionName != null ? (employee.employeeName + ' · ' + employee.positionName) : employee.employeeName}">홍길동 사원</span>님! 👋</h2>
-					<p style="font-size: 0.85rem; color: var(--text-secondary);">오늘도 즐거운 하루 되세요.</p>
+				<div style="margin-bottom: 1.25rem; display:flex; justify-content:space-between; align-items:center; padding-right: 1.5rem;">
+					<div>
+						<h2 style="font-size: 1.35rem;">안녕하세요, <span id="dashGreetingName" th:if="${employee != null}"
+								th:text="${employee.positionName != null ? (employee.employeeName + ' · ' + employee.positionName) : employee.employeeName}">홍길동 사원</span>님! 👋</h2>
+						<p style="font-size: 0.85rem; color: var(--text-secondary);">오늘도 즐거운 하루 되세요.</p>
+					</div>
+					<!-- 실시간 시계 위젯 - 서버와 통신 없이 브라우저 자체 시계만 씀
+					     (dashboard.js의 updateDashboardClock() 참고, 2026-07-22) -->
+					<div class="dash-clock-card">
+						<div class="dash-clock-label"><i class="fa-solid fa-clock"></i> 서울 시간</div>
+						<div class="dash-clock-time-panel">
+							<div id="dashClockTime" class="dash-clock-time"></div>
+						</div>
+						<div id="dashClockDate" class="dash-clock-date"></div>
+					</div>
 				</div>
 
 				<div class="grid-12">
@@ -275,21 +286,23 @@
 							</div>
 							<div id="dashMiniCalendar">
 								<div class="mini-cal-grid">
-									<div class="mini-cal-day-header">일</div>
+									<div class="mini-cal-day-header sunday">일</div>
 									<div class="mini-cal-day-header">월</div>
 									<div class="mini-cal-day-header">화</div>
 									<div class="mini-cal-day-header">수</div>
 									<div class="mini-cal-day-header">목</div>
 									<div class="mini-cal-day-header">금</div>
-									<div class="mini-cal-day-header">토</div>
+									<div class="mini-cal-day-header saturday">토</div>
 
 									<!-- miniCalendarDays: DashboardService.buildMiniCalendarDays()가 요일 맞춰
 									     미리 계산해둔 42(또는 35)칸. hasEvent인 칸만 클릭 시 그 날 일정 제목을 토스트로 보여줌.
 									     th:onclick엔 문자열을 못 넣어서(Thymeleaf 보안 제한), data-events 속성에
 									     문구를 담아두고 평범한(Thymeleaf 처리 안 받는) onclick이 그 값을 읽어서
-									     common.js의 showToast()를 호출하게 함 -->
+									     common.js의 showToast()를 호출하게 함.
+									     sundayColor/saturdayColor는 DashboardService가 미리 계산해둔 값(공휴일이면
+									     요일과 무관하게 sundayColor=true, calendar.js와 동일 기준, 2026-07-22) -->
 									<div th:each="day : ${miniCalendarDays}"
-										th:class="'mini-cal-day' + (${day.hasEvent} ? ' has-event' : '') + (${day.otherMonth} ? ' other-month' : '') + (${day.isToday} ? ' today' : '')"
+										th:class="'mini-cal-day' + (${day.hasEvent} ? ' has-event' : '') + (${day.otherMonth} ? ' other-month' : '') + (${day.isToday} ? ' today' : '') + (${day.sundayColor} ? ' sunday' : '') + (${day.saturdayColor} ? ' saturday' : '')"
 										th:text="${day.day}"
 										th:data-events="${day.hasEvent} ? (${day.day} + '일 일정: ' + ${day.eventSummary}) : null"
 										onclick="if (this.dataset.events) showToast(this.dataset.events, 'primary')">
