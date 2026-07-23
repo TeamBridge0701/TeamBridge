@@ -5,6 +5,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -60,6 +61,17 @@ public class AttendanceController {
 			Map<String, Object> response = getAttendanceData(employeeId);
 			response.put("success", false);
 			response.put("message", e.getMessage());
+			return response;
+		} catch (DataIntegrityViolationException e) {
+			// AttendanceService.checkIn()의 "이미 있는지 확인 -> 없으면 INSERT" 사이의 아주 좁은
+			// 틈으로 두 요청이 동시에 들어오면(예: 응답 오기 전에 또 클릭), 위 IllegalStateException
+			// 확인은 둘 다 통과해버리고 나중 INSERT가 ATTENDANCE.UQ_ATTENDANCE_DAY
+			// (EMPLOYEE_ID, WORK_DATE) UNIQUE 제약에 걸려서 이 예외가 난다. DB 제약 덕분에 중복
+			// 저장 자체는 안 되지만(데이터는 안전), 이 예외의 메시지는 SQL 내용이라 사용자에게
+			// 그대로 보여줄 수 없어서 문구를 직접 채운다(2026-07-22).
+			Map<String, Object> response = getAttendanceData(employeeId);
+			response.put("success", false);
+			response.put("message", "이미 오늘 출근 처리가 완료되었습니다.");
 			return response;
 		}
 		return getAttendanceData(employeeId);

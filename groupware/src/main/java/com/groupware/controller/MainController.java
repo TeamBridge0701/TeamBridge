@@ -1,5 +1,6 @@
 package com.groupware.controller;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -42,7 +44,17 @@ public class MainController {
 	@Value("${weather.api.city:Seoul}")
 	private String weatherCity;
 
-	private final RestTemplate restTemplate = new RestTemplate();
+	// 타임아웃 없는 기본 RestTemplate 대신, "몇 초 안에 응답 없으면 포기"하는 제한을 걸어둔
+	// RestTemplate을 직접 만들어서 씀 - OpenWeatherMap이 응답을 안 줘도 이 요청을 처리하던
+	// 서버 스레드가 무한정 붙잡혀 있지 않게 하기 위함(2026-07-22)
+	private final RestTemplate restTemplate = createWeatherRestTemplate();
+
+	private static RestTemplate createWeatherRestTemplate() {
+		SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+		factory.setConnectTimeout(Duration.ofSeconds(3)); // OpenWeatherMap 서버에 "연결"조차 3초 안에 안 되면 포기
+		factory.setReadTimeout(Duration.ofSeconds(3));    // 연결은 됐는데 "응답"이 3초 안에 안 오면 포기
+		return new RestTemplate(factory);
+	}
 
     // employee: GlobalModelAdvice가 모든 화면 요청마다 미리 만들어주는 로그인 사용자 정보
     // (Notice/Calendar 컨트롤러 등이 쓰는 것과 같은 파라미터). 오늘 일정 위젯이 캘린더 조회를
