@@ -18,12 +18,13 @@ INSERT INTO DEPARTMENT (DEPT_NAME) VALUES
 
 -- ------------------------------------
 -- 2. POSITION (POSITION_RANK: 1=부서장 … 5=사원)
+-- [기존 데이터 수정] 직급 4단계 명칭을 '주임'에서 '과장'으로 변경
 -- ------------------------------------
 INSERT INTO POSITION (POSITION_NAME, POSITION_RANK) VALUES
   ('부서장', 1),
   ('팀장',   2),
   ('대리',   3),
-  ('주임',   4),
+  ('과장',   4),
   ('사원',   5);
 
 -- ------------------------------------
@@ -55,6 +56,66 @@ VALUES
 -- 20260601   | 박사원   | 정상 로그인 확인용 (사원)
 -- 20260099   | 최정지   | 로그인 차단(SUSPENDED) 확인용 -> 로그인 시도하면 실패해야 정상
 -- 20260401   | 최재무   | 정상 로그인 확인용 (재무관리팀 부서장 - 지출결의서 2차 승인자 테스트용)
+
+
+
+
+-- ------------------------------------
+-- [이번 추가 데이터] 3-1. EMPLOYEE 추가 테스트 계정
+-- 기존 EMPLOYEE INSERT는 그대로 유지
+-- 기존 4개 부서에 부서장·팀장·대리·과장·사원 직급이 고르게 보이도록 추가
+-- 비밀번호는 모두 1234
+-- 사번·부서명·직급명으로 조회하므로 AUTO_INCREMENT ID가 달라도 실행 가능
+-- NOT EXISTS로 같은 사번이 이미 있으면 건너뛰어 재실행해도 중복되지 않음
+-- ------------------------------------
+INSERT INTO EMPLOYEE (
+    EMPLOYEE_NO, EMPLOYEE_PWD, EMPLOYEE_NAME,
+    DEPT_ID, POSITION_ID, EMPLOYEE_ROLE,
+    EMPLOYEE_PHONE, EMPLOYEE_EMAIL, EMPLOYEE_STATUS,
+    HIRE_DATE, BIRTH_DATE
+)
+SELECT
+    v.EMPLOYEE_NO,
+    '$2a$10$6mG/6wF8HO.a0UnKigjXYOtmblujqdx2pnmWlgT5DRiTzErqUXzq6',
+    v.EMPLOYEE_NAME,
+    d.DEPT_ID,
+    p.POSITION_ID,
+    'EMPLOYEE',
+    v.EMPLOYEE_PHONE,
+    v.EMPLOYEE_EMAIL,
+    'ACTIVE',
+    v.HIRE_DATE,
+    v.BIRTH_DATE
+FROM (
+    SELECT '20260301' EMPLOYEE_NO, '윤대리' EMPLOYEE_NAME, '개발팀' DEPT_NAME, '대리' POSITION_NAME, '010-1111-0301' EMPLOYEE_PHONE, 'dev301@groupware.com' EMPLOYEE_EMAIL, '2023-03-01' HIRE_DATE, '1995-03-14' BIRTH_DATE
+    UNION ALL SELECT '20260302', '한과장', '개발팀', '과장', '010-1111-0302', 'dev302@groupware.com', '2024-02-01', '1998-08-21'
+
+    UNION ALL SELECT '20260201', '오인사', '인사팀', '부서장', '010-2222-0201', 'hr201@groupware.com', '2020-01-15', '1984-01-09'
+    UNION ALL SELECT '20260202', '서팀장', '인사팀', '팀장',   '010-2222-0202', 'hr202@groupware.com', '2021-04-01', '1988-10-12'
+    UNION ALL SELECT '20260203', '문대리', '인사팀', '대리',   '010-2222-0203', 'hr203@groupware.com', '2023-01-02', '1994-05-18'
+    UNION ALL SELECT '20260204', '신과장', '인사팀', '과장',   '010-2222-0204', 'hr204@groupware.com', '2024-03-04', '1997-07-03'
+    UNION ALL SELECT '20260205', '민사원', '인사팀', '사원',   '010-2222-0205', 'hr205@groupware.com', '2026-01-05', '2000-12-24'
+
+    UNION ALL SELECT '20260311', '강영업', '영업팀', '부서장', '010-3333-0311', 'sales311@groupware.com', '2020-02-01', '1983-09-05'
+    UNION ALL SELECT '20260312', '유팀장', '영업팀', '팀장',   '010-3333-0312', 'sales312@groupware.com', '2021-05-03', '1987-06-11'
+    UNION ALL SELECT '20260313', '장대리', '영업팀', '대리',   '010-3333-0313', 'sales313@groupware.com', '2023-02-06', '1993-02-28'
+    UNION ALL SELECT '20260314', '임과장', '영업팀', '과장',   '010-3333-0314', 'sales314@groupware.com', '2024-04-01', '1998-11-20'
+    UNION ALL SELECT '20260315', '백사원', '영업팀', '사원',   '010-3333-0315', 'sales315@groupware.com', '2026-02-02', '2001-04-07'
+
+    UNION ALL SELECT '20260402', '송팀장', '재무관리팀', '팀장', '010-4444-0402', 'finance402@groupware.com', '2021-03-01', '1986-07-16'
+    UNION ALL SELECT '20260403', '조대리', '재무관리팀', '대리', '010-4444-0403', 'finance403@groupware.com', '2023-05-01', '1992-08-30'
+    UNION ALL SELECT '20260404', '남과장', '재무관리팀', '과장', '010-4444-0404', 'finance404@groupware.com', '2024-06-03', '1997-01-25'
+    UNION ALL SELECT '20260405', '배사원', '재무관리팀', '사원', '010-4444-0405', 'finance405@groupware.com', '2026-03-02', '2000-10-09'
+) v
+JOIN DEPARTMENT d ON d.DEPT_NAME = v.DEPT_NAME
+JOIN `POSITION` p ON p.POSITION_NAME = v.POSITION_NAME
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM EMPLOYEE e
+    WHERE e.EMPLOYEE_NO = v.EMPLOYEE_NO
+);
+
+
 
 -- ------------------------------------
 -- 4. NOTICE (공지사항 테스트 데이터 25건)
@@ -275,3 +336,151 @@ INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID)
 SELECT APPROVAL_ID, 2, 2 FROM APPROVAL WHERE APPROVAL_TITLE = '프로젝트품의서 상신 - 고객사 대응 프로세스 개선안' LIMIT 1;
 INSERT INTO APPROVAL_REFERENCE (APPROVAL_ID, EMPLOYEE_ID)
 SELECT APPROVAL_ID, 1 FROM APPROVAL WHERE APPROVAL_TITLE = '프로젝트품의서 상신 - 고객사 대응 프로세스 개선안' LIMIT 1;
+
+
+
+
+
+
+
+-- ------------------------------------
+-- [이번 추가 데이터] 10. CALENDAR_EVENT
+-- 2026년 공휴일 전체와 전사·팀·개인 일정 테스트 데이터
+-- 공휴일은 COMPANY + IS_HOLIDAY=1로 저장해 출결률 계산의 근무일 제외 대상으로 사용
+-- 전사·팀·개인 일정은 각각 10건이며, 전체 달력은 1월부터 12월까지 일정이 보이도록 구성
+-- NOT EXISTS 조건으로 같은 등록자·제목·시작일 일정은 재실행해도 중복되지 않음
+-- ------------------------------------
+INSERT INTO CALENDAR_EVENT (
+    EMPLOYEE_ID, EVENT_TITLE, START_DATE, END_DATE,
+    EVENT_CATEGORY, DEPT_ID, IS_HOLIDAY
+)
+SELECT
+    e.EMPLOYEE_ID,
+    v.EVENT_TITLE,
+    v.START_DATE,
+    v.END_DATE,
+    v.EVENT_CATEGORY,
+    d.DEPT_ID,
+    v.IS_HOLIDAY
+FROM (
+    -- 2026년 관공서 공휴일 20건: 설날·추석 연휴, 대체공휴일, 지방선거일 포함
+    SELECT 'admin' EMPLOYEE_NO, '신정' EVENT_TITLE, '2026-01-01' START_DATE, '2026-01-01' END_DATE, 'COMPANY' EVENT_CATEGORY, NULL DEPT_NAME, 1 IS_HOLIDAY
+    UNION ALL SELECT 'admin', '설날 연휴', '2026-02-16', '2026-02-16', 'COMPANY', NULL, 1
+    UNION ALL SELECT 'admin', '설날', '2026-02-17', '2026-02-17', 'COMPANY', NULL, 1
+    UNION ALL SELECT 'admin', '설날 연휴', '2026-02-18', '2026-02-18', 'COMPANY', NULL, 1
+    UNION ALL SELECT 'admin', '삼일절', '2026-03-01', '2026-03-01', 'COMPANY', NULL, 1
+    UNION ALL SELECT 'admin', '삼일절 대체공휴일', '2026-03-02', '2026-03-02', 'COMPANY', NULL, 1
+    UNION ALL SELECT 'admin', '어린이날', '2026-05-05', '2026-05-05', 'COMPANY', NULL, 1
+    UNION ALL SELECT 'admin', '부처님오신날', '2026-05-24', '2026-05-24', 'COMPANY', NULL, 1
+    UNION ALL SELECT 'admin', '부처님오신날 대체공휴일', '2026-05-25', '2026-05-25', 'COMPANY', NULL, 1
+    UNION ALL SELECT 'admin', '제9회 전국동시지방선거', '2026-06-03', '2026-06-03', 'COMPANY', NULL, 1
+    UNION ALL SELECT 'admin', '현충일', '2026-06-06', '2026-06-06', 'COMPANY', NULL, 1
+    UNION ALL SELECT 'admin', '광복절', '2026-08-15', '2026-08-15', 'COMPANY', NULL, 1
+    UNION ALL SELECT 'admin', '광복절 대체공휴일', '2026-08-17', '2026-08-17', 'COMPANY', NULL, 1
+    UNION ALL SELECT 'admin', '추석 연휴', '2026-09-24', '2026-09-24', 'COMPANY', NULL, 1
+    UNION ALL SELECT 'admin', '추석', '2026-09-25', '2026-09-25', 'COMPANY', NULL, 1
+    UNION ALL SELECT 'admin', '추석 연휴', '2026-09-26', '2026-09-26', 'COMPANY', NULL, 1
+    UNION ALL SELECT 'admin', '개천절', '2026-10-03', '2026-10-03', 'COMPANY', NULL, 1
+    UNION ALL SELECT 'admin', '개천절 대체공휴일', '2026-10-05', '2026-10-05', 'COMPANY', NULL, 1
+    UNION ALL SELECT 'admin', '한글날', '2026-10-09', '2026-10-09', 'COMPANY', NULL, 1
+    UNION ALL SELECT 'admin', '크리스마스', '2026-12-25', '2026-12-25', 'COMPANY', NULL, 1
+
+    -- 전사 일정 10건
+    UNION ALL SELECT 'admin', '2026년 경영전략 공유회', '2026-01-16', '2026-01-16', 'COMPANY', NULL, 0
+    UNION ALL SELECT 'admin', '전 직원 정보보안 교육', '2026-03-17', '2026-03-17', 'COMPANY', NULL, 0
+    UNION ALL SELECT 'admin', '상반기 전사 타운홀 미팅', '2026-04-17', '2026-04-17', 'COMPANY', NULL, 0
+    UNION ALL SELECT 'admin', '사내 체육대회', '2026-05-22', '2026-05-22', 'COMPANY', NULL, 0
+    UNION ALL SELECT 'admin', '2분기 경영실적 공유회', '2026-06-19', '2026-06-19', 'COMPANY', NULL, 0
+    UNION ALL SELECT 'admin', '하계 사내 문화의 날', '2026-07-24', '2026-07-24', 'COMPANY', NULL, 0
+    UNION ALL SELECT 'admin', '전사 업무환경 점검', '2026-08-28', '2026-08-28', 'COMPANY', NULL, 0
+    UNION ALL SELECT 'admin', '2026년 하반기 전사 워크숍', '2026-09-17', '2026-09-18', 'COMPANY', NULL, 0
+    UNION ALL SELECT 'admin', '전사 지식공유 세미나', '2026-11-13', '2026-11-13', 'COMPANY', NULL, 0
+    UNION ALL SELECT 'admin', '연말 성과 공유회', '2026-12-18', '2026-12-18', 'COMPANY', NULL, 0
+
+    -- 팀 일정 10건
+    UNION ALL SELECT '20260102', '개발팀 연간 개발 계획 회의', '2026-01-09', '2026-01-09', 'TEAM', '개발팀', 0
+    UNION ALL SELECT '20260202', '인사팀 상반기 채용 계획 회의', '2026-02-13', '2026-02-13', 'TEAM', '인사팀', 0
+    UNION ALL SELECT '20260312', '영업팀 고객 전략 회의', '2026-03-13', '2026-03-13', 'TEAM', '영업팀', 0
+    UNION ALL SELECT '20260402', '재무관리팀 세무 신고 사전 점검', '2026-04-10', '2026-04-10', 'TEAM', '재무관리팀', 0
+    UNION ALL SELECT '20260102', '개발팀 2분기 스프린트 계획 회의', '2026-05-15', '2026-05-15', 'TEAM', '개발팀', 0
+    UNION ALL SELECT '20260202', '인사팀 조직문화 워크숍', '2026-06-12', '2026-06-12', 'TEAM', '인사팀', 0
+    UNION ALL SELECT '20260312', '영업팀 상반기 실적 공유회', '2026-07-10', '2026-07-10', 'TEAM', '영업팀', 0
+    UNION ALL SELECT '20260402', '재무관리팀 월 마감 점검', '2026-08-28', '2026-08-28', 'TEAM', '재무관리팀', 0
+    UNION ALL SELECT '20260102', '개발팀 4분기 릴리스 점검', '2026-10-23', '2026-10-23', 'TEAM', '개발팀', 0
+    UNION ALL SELECT '20260312', '영업팀 연말 영업 전략 회의', '2026-11-20', '2026-11-20', 'TEAM', '영업팀', 0
+
+    -- 개인 일정 10건
+    UNION ALL SELECT '20260601', '개인 자격증 학습 계획', '2026-01-23', '2026-01-23', 'PERSONAL', NULL, 0
+    UNION ALL SELECT '20260203', '채용 박람회 참석', '2026-02-20', '2026-02-20', 'PERSONAL', NULL, 0
+    UNION ALL SELECT '20260313', '고객사 미팅', '2026-03-20', '2026-03-20', 'PERSONAL', NULL, 0
+    UNION ALL SELECT '20260403', '세무 교육 수강', '2026-04-22', '2026-04-22', 'PERSONAL', NULL, 0
+    UNION ALL SELECT '20260301', '개인 건강검진', '2026-05-15', '2026-05-15', 'PERSONAL', NULL, 0
+    UNION ALL SELECT '20260204', '노무 교육 수강', '2026-06-18', '2026-06-18', 'PERSONAL', NULL, 0
+    UNION ALL SELECT '20260314', '거래처 방문 준비', '2026-07-16', '2026-07-16', 'PERSONAL', NULL, 0
+    UNION ALL SELECT '20260404', '회계 자격 교육', '2026-09-10', '2026-09-10', 'PERSONAL', NULL, 0
+    UNION ALL SELECT '20260315', '영업 역량 교육', '2026-10-22', '2026-10-22', 'PERSONAL', NULL, 0
+    UNION ALL SELECT '20260405', '개인 재무 교육', '2026-12-11', '2026-12-11', 'PERSONAL', NULL, 0
+) v
+JOIN EMPLOYEE e ON e.EMPLOYEE_NO = v.EMPLOYEE_NO
+LEFT JOIN DEPARTMENT d ON d.DEPT_NAME = v.DEPT_NAME
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM CALENDAR_EVENT ce
+    WHERE ce.EMPLOYEE_ID = e.EMPLOYEE_ID
+      AND ce.EVENT_TITLE = v.EVENT_TITLE
+      AND ce.START_DATE = v.START_DATE
+);
+
+
+
+-- ------------------------------------
+-- [추가 테스트 데이터] 개발 일정
+-- 2026-07-05 ~ 2026-07-24 프로젝트 개발 진행 일정
+-- 전사 일정(COMPANY)으로 등록하며, 재실행해도 같은 일정은 중복 추가되지 않음
+-- ------------------------------------
+INSERT INTO CALENDAR_EVENT (
+    EMPLOYEE_ID, EVENT_TITLE, START_DATE, END_DATE,
+    EVENT_CATEGORY, DEPT_ID, IS_HOLIDAY
+)
+SELECT
+    e.EMPLOYEE_ID,
+    v.EVENT_TITLE,
+    v.START_DATE,
+    v.END_DATE,
+    'COMPANY',
+    NULL,
+    0
+FROM EMPLOYEE e
+JOIN (
+    SELECT '기획 & 스키마 확정' AS EVENT_TITLE,
+           '2026-07-05' AS START_DATE, '2026-07-05' AS END_DATE
+    UNION ALL
+    SELECT '17개 테이블 ERD 정규화',
+           '2026-07-06', '2026-07-08'
+    UNION ALL
+    SELECT '인프라 & Spring Security',
+           '2026-07-09', '2026-07-12'
+    UNION ALL
+    SELECT '기초 CRUD (공지/자료/마이페이지)',
+           '2026-07-13', '2026-07-16'
+    UNION ALL
+    SELECT '전자결재 & 실시간 채팅 로직',
+           '2026-07-17', '2026-07-19'
+    UNION ALL
+    SELECT '출퇴근 연동',
+           '2026-07-20', '2026-07-20'
+    UNION ALL
+    SELECT '통합 점검 및 PR 머지',
+           '2026-07-21', '2026-07-23'
+    UNION ALL
+    SELECT '프로덕션 배포',
+           '2026-07-24', '2026-07-24'
+) v
+WHERE e.EMPLOYEE_NO = 'admin'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM CALENDAR_EVENT ce
+      WHERE ce.EMPLOYEE_ID = e.EMPLOYEE_ID
+        AND ce.EVENT_TITLE = v.EVENT_TITLE
+        AND ce.START_DATE = v.START_DATE
+  );
