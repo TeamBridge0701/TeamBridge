@@ -1,6 +1,6 @@
 -- 개발/테스트용 초기 데이터
 -- 전제: 같은 폴더의 schema.sql을 먼저 실행해서 테이블이 생성돼 있어야 함
--- 모든 계정의 비밀번호는 "1234" (BCryptPasswordEncoder로 해시된 값, 아래 해시 그대로 사용)
+-- 모든 계정의 평문 비밀번호는 "Team1234" (BCrypt 해시만 DB에 저장)
 -- 팀원 각자 로컬 DB에 이 스크립트를 실행하면 동일한 계정으로 로그인 테스트 가능
 
 USE groupware;
@@ -8,8 +8,7 @@ USE groupware;
 -- ------------------------------------
 -- 1. DEPARTMENT
 -- ------------------------------------
--- 재무관리팀(4번째) - 지출결의서 2차 승인자(재무관리팀 부서장/팀장) 후보용
--- (2026-07-22, 정진국 담당 전자결재 결재선 개편 중 추가 - ApprovalService.FINANCE_DEPT_NAME 참고)
+-- 재무관리팀은 지출결의서 2차 승인자와 부서별 자료실·일정 테스트에 사용
 INSERT INTO DEPARTMENT (DEPT_NAME) VALUES
   ('개발팀'),
   ('인사팀'),
@@ -18,7 +17,7 @@ INSERT INTO DEPARTMENT (DEPT_NAME) VALUES
 
 -- ------------------------------------
 -- 2. POSITION (POSITION_RANK: 1=부서장 … 5=사원)
--- [기존 데이터 수정] 직급 4단계 명칭을 '주임'에서 '과장'으로 변경
+-- 조직도와 전자결재 결재선에서 동일한 직급 순서를 사용
 -- ------------------------------------
 INSERT INTO POSITION (POSITION_NAME, POSITION_RANK) VALUES
   ('부서장', 1),
@@ -29,96 +28,84 @@ INSERT INTO POSITION (POSITION_NAME, POSITION_RANK) VALUES
 
 -- ------------------------------------
 -- 3. EMPLOYEE
--- 비밀번호 원문은 전부 "1234" (아래는 BCrypt 해시값, 평문 아님)
+-- 관리자 1명 + 부서별 직원 초기 데이터
+-- 모든 계정의 평문 비밀번호는 Team1234
 -- ------------------------------------
-INSERT INTO EMPLOYEE
-  (EMPLOYEE_NO, EMPLOYEE_PWD, EMPLOYEE_NAME, DEPT_ID, POSITION_ID, EMPLOYEE_ROLE, EMPLOYEE_PHONE, EMPLOYEE_EMAIL, EMPLOYEE_STATUS, HIRE_DATE)
-VALUES
-  -- 관리자 계정: DEPT_ID/POSITION_ID는 NULL 허용(CK_EMPLOYEE_DEPT_POSITION 제약조건 참고)
-  ('admin',    '$2a$10$6mG/6wF8HO.a0UnKigjXYOtmblujqdx2pnmWlgT5DRiTzErqUXzq6', '관리자',   NULL, NULL, 'ADMIN',    '010-0000-0000', 'admin@groupware.com',    'ACTIVE', '2020-01-01'),
-  -- 개발팀 부서장
-  ('20260010', '$2a$10$6mG/6wF8HO.a0UnKigjXYOtmblujqdx2pnmWlgT5DRiTzErqUXzq6', '김부장',   1,    1,    'EMPLOYEE', '010-1111-0010', 'dept10@groupware.com',   'ACTIVE', '2020-03-01'),
-  -- 개발팀 팀장
-  ('20260102', '$2a$10$6mG/6wF8HO.a0UnKigjXYOtmblujqdx2pnmWlgT5DRiTzErqUXzq6', '이팀장',   1,    2,    'EMPLOYEE', '010-1111-0102', 'lead102@groupware.com',  'ACTIVE', '2021-06-15'),
-  -- 개발팀 사원
-  ('20260601', '$2a$10$6mG/6wF8HO.a0UnKigjXYOtmblujqdx2pnmWlgT5DRiTzErqUXzq6', '박사원',   1,    5,    'EMPLOYEE', '010-1111-0601', 'staff601@groupware.com', 'ACTIVE', '2026-01-05'),
-  -- 정지 계정 테스트용 (isEnabled()=false 경로 확인용)
-  ('20260099', '$2a$10$6mG/6wF8HO.a0UnKigjXYOtmblujqdx2pnmWlgT5DRiTzErqUXzq6', '최정지',   2,    5,    'EMPLOYEE', '010-2222-0099', 'susp099@groupware.com',  'SUSPENDED', '2022-09-01'),
-  -- 재무관리팀 부서장 - 지출결의서 2차 승인자 후보 테스트용 (DEPT_ID=4는 위 4번째 INSERT한 재무관리팀)
-  ('20260401', '$2a$10$6mG/6wF8HO.a0UnKigjXYOtmblujqdx2pnmWlgT5DRiTzErqUXzq6', '최재무',   4,    1,    'EMPLOYEE', '010-4444-0401', 'finance401@groupware.com', 'ACTIVE', '2022-02-01');
+SET @DEFAULT_EMPLOYEE_PWD =
+    '$2y$10$jZREwf97sueeI6sO8R0HUuBawU3vJ3UG2tu0WbH4P3Bd/8AwQlbX2';
 
--- ------------------------------------
--- 테스트 계정 목록 (비밀번호: Team1234)
--- ------------------------------------
--- admin      | 관리자   | ADMIN 로그인 확인용
--- 20260010   | 김부장   | 정상 로그인 확인용 (부서장)
--- 20260102   | 이팀장   | 정상 로그인 확인용 (팀장)
--- 20260601   | 박사원   | 정상 로그인 확인용 (사원)
--- 20260099   | 최정지   | 로그인 차단(SUSPENDED) 확인용 -> 로그인 시도하면 실패해야 정상
--- 20260401   | 최재무   | 정상 로그인 확인용 (재무관리팀 부서장 - 지출결의서 2차 승인자 테스트용)
-
-
-UPDATE EMPLOYEE
-SET EMPLOYEE_PWD = '$2y$10$jZREwf97sueeI6sO8R0HUuBawU3vJ3UG2tu0WbH4P3Bd/8AwQlbX2';
-
--- 비밀번호 변경 추가
-
-
-
--- ------------------------------------
--- [이번 추가 데이터] 3-1. EMPLOYEE 추가 테스트 계정
--- 기존 EMPLOYEE INSERT는 그대로 유지
--- 기존 4개 부서에 부서장·팀장·대리·과장·사원 직급이 고르게 보이도록 추가
--- 비밀번호는 모두 1234
--- 사번·부서명·직급명으로 조회하므로 AUTO_INCREMENT ID가 달라도 실행 가능
--- NOT EXISTS로 같은 사번이 이미 있으면 건너뛰어 재실행해도 중복되지 않음
--- ------------------------------------
 INSERT INTO EMPLOYEE (
     EMPLOYEE_NO, EMPLOYEE_PWD, EMPLOYEE_NAME,
     DEPT_ID, POSITION_ID, EMPLOYEE_ROLE,
     EMPLOYEE_PHONE, EMPLOYEE_EMAIL, EMPLOYEE_STATUS,
     HIRE_DATE, BIRTH_DATE
-)
-SELECT
-    v.EMPLOYEE_NO,
-    '$2a$10$6mG/6wF8HO.a0UnKigjXYOtmblujqdx2pnmWlgT5DRiTzErqUXzq6',
-    v.EMPLOYEE_NAME,
-    d.DEPT_ID,
-    p.POSITION_ID,
-    'EMPLOYEE',
-    v.EMPLOYEE_PHONE,
-    v.EMPLOYEE_EMAIL,
-    'ACTIVE',
-    v.HIRE_DATE,
-    v.BIRTH_DATE
-FROM (
-    SELECT '20260301' EMPLOYEE_NO, '윤대리' EMPLOYEE_NAME, '개발팀' DEPT_NAME, '대리' POSITION_NAME, '010-1111-0301' EMPLOYEE_PHONE, 'dev301@groupware.com' EMPLOYEE_EMAIL, '2023-03-01' HIRE_DATE, '1995-03-14' BIRTH_DATE
-    UNION ALL SELECT '20260302', '한과장', '개발팀', '과장', '010-1111-0302', 'dev302@groupware.com', '2024-02-01', '1998-08-21'
+) VALUES
+    -- 관리자 계정: DEPT_ID/POSITION_ID는 NULL 허용
+    ('admin',    @DEFAULT_EMPLOYEE_PWD, '관리자', NULL, NULL, 'ADMIN',
+     '010-0000-0000', 'admin@groupware.com', 'ACTIVE', '2020-01-01', NULL),
 
-    UNION ALL SELECT '20260201', '오인사', '인사팀', '부서장', '010-2222-0201', 'hr201@groupware.com', '2020-01-15', '1984-01-09'
-    UNION ALL SELECT '20260202', '서팀장', '인사팀', '팀장',   '010-2222-0202', 'hr202@groupware.com', '2021-04-01', '1988-10-12'
-    UNION ALL SELECT '20260203', '문대리', '인사팀', '대리',   '010-2222-0203', 'hr203@groupware.com', '2023-01-02', '1994-05-18'
-    UNION ALL SELECT '20260204', '신과장', '인사팀', '과장',   '010-2222-0204', 'hr204@groupware.com', '2024-03-04', '1997-07-03'
-    UNION ALL SELECT '20260205', '민사원', '인사팀', '사원',   '010-2222-0205', 'hr205@groupware.com', '2026-01-05', '2000-12-24'
+    -- 개발팀: 부서장·팀장·대리·과장·사원 조직도 및 결재선 테스트용
+    ('20260010', @DEFAULT_EMPLOYEE_PWD, '김부장', 1, 1, 'EMPLOYEE',
+     '010-1111-0010', 'dept10@groupware.com', 'ACTIVE', '2020-03-01', NULL),
+    ('20260102', @DEFAULT_EMPLOYEE_PWD, '이팀장', 1, 2, 'EMPLOYEE',
+     '010-1111-0102', 'lead102@groupware.com', 'ACTIVE', '2021-06-15', NULL),
+    ('20260601', @DEFAULT_EMPLOYEE_PWD, '박사원', 1, 5, 'EMPLOYEE',
+     '010-1111-0601', 'staff601@groupware.com', 'ACTIVE', '2026-01-05', NULL),
+    -- 정지 계정: Security의 비활성 계정 로그인 차단 확인용
+    ('20260099', @DEFAULT_EMPLOYEE_PWD, '최정지', 2, 5, 'EMPLOYEE',
+     '010-2222-0099', 'susp099@groupware.com', 'SUSPENDED', '2022-09-01', NULL),
+    -- 재무관리팀 부서장: 지출결의서 2차 승인자 테스트용
+    ('20260401', @DEFAULT_EMPLOYEE_PWD, '최재무', 4, 1, 'EMPLOYEE',
+     '010-4444-0401', 'finance401@groupware.com', 'ACTIVE', '2022-02-01', NULL),
 
-    UNION ALL SELECT '20260311', '강영업', '영업팀', '부서장', '010-3333-0311', 'sales311@groupware.com', '2020-02-01', '1983-09-05'
-    UNION ALL SELECT '20260312', '유팀장', '영업팀', '팀장',   '010-3333-0312', 'sales312@groupware.com', '2021-05-03', '1987-06-11'
-    UNION ALL SELECT '20260313', '장대리', '영업팀', '대리',   '010-3333-0313', 'sales313@groupware.com', '2023-02-06', '1993-02-28'
-    UNION ALL SELECT '20260314', '임과장', '영업팀', '과장',   '010-3333-0314', 'sales314@groupware.com', '2024-04-01', '1998-11-20'
-    UNION ALL SELECT '20260315', '백사원', '영업팀', '사원',   '010-3333-0315', 'sales315@groupware.com', '2026-02-02', '2001-04-07'
+    -- 개발팀: 대리·과장을 포함한 직급별 조직도와 부서 채팅방 인원 구성 테스트용
+    ('20260301', @DEFAULT_EMPLOYEE_PWD, '윤대리', 1, 3, 'EMPLOYEE',
+     '010-1111-0301', 'dev301@groupware.com', 'ACTIVE', '2023-03-01', '1995-03-14'),
+    ('20260302', @DEFAULT_EMPLOYEE_PWD, '한과장', 1, 4, 'EMPLOYEE',
+     '010-1111-0302', 'dev302@groupware.com', 'ACTIVE', '2024-02-01', '1998-08-21'),
 
-    UNION ALL SELECT '20260402', '송팀장', '재무관리팀', '팀장', '010-4444-0402', 'finance402@groupware.com', '2021-03-01', '1986-07-16'
-    UNION ALL SELECT '20260403', '조대리', '재무관리팀', '대리', '010-4444-0403', 'finance403@groupware.com', '2023-05-01', '1992-08-30'
-    UNION ALL SELECT '20260404', '남과장', '재무관리팀', '과장', '010-4444-0404', 'finance404@groupware.com', '2024-06-03', '1997-01-25'
-    UNION ALL SELECT '20260405', '배사원', '재무관리팀', '사원', '010-4444-0405', 'finance405@groupware.com', '2026-03-02', '2000-10-09'
-) v
-JOIN DEPARTMENT d ON d.DEPT_NAME = v.DEPT_NAME
-JOIN `POSITION` p ON p.POSITION_NAME = v.POSITION_NAME
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM EMPLOYEE e
-    WHERE e.EMPLOYEE_NO = v.EMPLOYEE_NO
-);
+    -- 인사팀: 직급별 조직도 및 부서 채팅방 테스트용
+    ('20260201', @DEFAULT_EMPLOYEE_PWD, '오인사', 2, 1, 'EMPLOYEE',
+     '010-2222-0201', 'hr201@groupware.com', 'ACTIVE', '2020-01-15', '1984-01-09'),
+    ('20260202', @DEFAULT_EMPLOYEE_PWD, '서팀장', 2, 2, 'EMPLOYEE',
+     '010-2222-0202', 'hr202@groupware.com', 'ACTIVE', '2021-04-01', '1988-10-12'),
+    ('20260203', @DEFAULT_EMPLOYEE_PWD, '문대리', 2, 3, 'EMPLOYEE',
+     '010-2222-0203', 'hr203@groupware.com', 'ACTIVE', '2023-01-02', '1994-05-18'),
+    ('20260204', @DEFAULT_EMPLOYEE_PWD, '신과장', 2, 4, 'EMPLOYEE',
+     '010-2222-0204', 'hr204@groupware.com', 'ACTIVE', '2024-03-04', '1997-07-03'),
+    ('20260205', @DEFAULT_EMPLOYEE_PWD, '민사원', 2, 5, 'EMPLOYEE',
+     '010-2222-0205', 'hr205@groupware.com', 'ACTIVE', '2026-01-05', '2000-12-24'),
+
+    -- 영업팀: 직급별 조직도 및 부서 채팅방 테스트용
+    ('20260311', @DEFAULT_EMPLOYEE_PWD, '강영업', 3, 1, 'EMPLOYEE',
+     '010-3333-0311', 'sales311@groupware.com', 'ACTIVE', '2020-02-01', '1983-09-05'),
+    ('20260312', @DEFAULT_EMPLOYEE_PWD, '유팀장', 3, 2, 'EMPLOYEE',
+     '010-3333-0312', 'sales312@groupware.com', 'ACTIVE', '2021-05-03', '1987-06-11'),
+    ('20260313', @DEFAULT_EMPLOYEE_PWD, '장대리', 3, 3, 'EMPLOYEE',
+     '010-3333-0313', 'sales313@groupware.com', 'ACTIVE', '2023-02-06', '1993-02-28'),
+    ('20260314', @DEFAULT_EMPLOYEE_PWD, '임과장', 3, 4, 'EMPLOYEE',
+     '010-3333-0314', 'sales314@groupware.com', 'ACTIVE', '2024-04-01', '1998-11-20'),
+    ('20260315', @DEFAULT_EMPLOYEE_PWD, '백사원', 3, 5, 'EMPLOYEE',
+     '010-3333-0315', 'sales315@groupware.com', 'ACTIVE', '2026-02-02', '2001-04-07'),
+
+    -- 재무관리팀: 지출결의서와 부서 채팅방 테스트용
+    ('20260402', @DEFAULT_EMPLOYEE_PWD, '송팀장', 4, 2, 'EMPLOYEE',
+     '010-4444-0402', 'finance402@groupware.com', 'ACTIVE', '2021-03-01', '1986-07-16'),
+    ('20260403', @DEFAULT_EMPLOYEE_PWD, '조대리', 4, 3, 'EMPLOYEE',
+     '010-4444-0403', 'finance403@groupware.com', 'ACTIVE', '2023-05-01', '1992-08-30'),
+    ('20260404', @DEFAULT_EMPLOYEE_PWD, '남과장', 4, 4, 'EMPLOYEE',
+     '010-4444-0404', 'finance404@groupware.com', 'ACTIVE', '2024-06-03', '1997-01-25'),
+    ('20260405', @DEFAULT_EMPLOYEE_PWD, '배사원', 4, 5, 'EMPLOYEE',
+     '010-4444-0405', 'finance405@groupware.com', 'ACTIVE', '2026-03-02', '2000-10-09');
+
+-- 테스트 계정 목록: 정지 계정을 포함한 모든 계정의 저장 비밀번호는 Team1234
+-- 다른 부서들과 연결되어 있는 기본 계정들이므로 우선순위로 추가 
+-- admin      | 관리자   | ADMIN 로그인 확인용
+-- 20260010   | 김부장   | 개발팀 부서장
+-- 20260102   | 이팀장   | 개발팀 팀장
+-- 20260601   | 박사원   | 개발팀 사원
+-- 20260099   | 최정지   | SUSPENDED 로그인 차단 확인용
+-- 20260401   | 최재무   | 재무관리팀 부서장
 
 
 
@@ -255,72 +242,90 @@ INSERT INTO ARCHIVE (REPO_ID, WRITER_ID, ARCHIVE_TITLE, ARCHIVE_CONTENT, CREATED
   (3, 5, '인사팀 급여 정산 체크리스트', '월별 급여 정산 시 확인해야 할 체크리스트입니다.\n정산 전 반드시 대조 확인 바랍니다.', '2026-07-14 11:00:00');
 
 -- ------------------------------------
--- 9. APPROVAL (전자결재 테스트 데이터) - 진행중/승인/반려, 1단계/2단계 서식을 골고루 섞음
+-- 8. APPROVAL (전자결재 테스트 데이터) - 진행중/승인/반려, 1단계/2단계 서식을 골고루 섞음
 -- EMPLOYEE_ID: 2=김부장(부서장), 3=이팀장(팀장), 4=박사원(사원) - 위 EMPLOYEE INSERT 순서 기준
--- FORM_TYPE_ID/APPROVAL_ID를 하드코딩하지 않고 이름/제목으로 찾아서 넣음
--- (이미 전자결재 테스트를 해봐서 ID가 1부터 시작하지 않는 로컬 DB에서도 안전하게 실행됨)
+-- APPROVAL_ID는 제목으로 조회하고, FORM_TYPE_ID는 서식명으로 조회해 결재선에 연결
 -- ------------------------------------
 
--- D1. 연차휴가신청서 - 진행중(1차 승인 대기) : 이팀장 로그인 시 "받은 결재함"에 떠야 함
-INSERT INTO APPROVAL (DRAFTER_ID, FORM_TYPE_ID, APPROVAL_TITLE, APPROVAL_CONTENT, LEAVE_START_DATE, LEAVE_END_DATE)
-SELECT 4, FORM_TYPE_ID, '연차휴가신청서 상신 - 여름휴가 사용의 건',
-       '하반기 개인 휴가 연차 사용을 기안합니다.\n사유: 여름 휴가\n업무 대행자: 이팀장',
-       '2026-08-03', '2026-08-05'
-FROM APPROVAL_FORM_TYPE WHERE FORM_TYPE_NAME = '연차휴가신청서';
+-- D1~D6. 결재 문서 6건을 서식명으로 조회해 한 번에 등록한다.
+INSERT INTO APPROVAL (
+    DRAFTER_ID, FORM_TYPE_ID, APPROVAL_TITLE, APPROVAL_CONTENT,
+    LEAVE_START_DATE, LEAVE_END_DATE, AMOUNT, APPROVAL_STATUS
+)
+SELECT
+    v.DRAFTER_ID,
+    f.FORM_TYPE_ID,
+    v.APPROVAL_TITLE,
+    v.APPROVAL_CONTENT,
+    v.LEAVE_START_DATE,
+    v.LEAVE_END_DATE,
+    v.AMOUNT,
+    v.APPROVAL_STATUS
+FROM (
+    -- D1. 연차휴가신청서: 진행중, 이팀장 1차 승인 대기
+    SELECT 4 AS DRAFTER_ID, '연차휴가신청서' AS FORM_TYPE_NAME,
+           '연차휴가신청서 상신 - 여름휴가 사용의 건' AS APPROVAL_TITLE,
+           '하반기 개인 휴가 연차 사용을 기안합니다.\n사유: 여름 휴가\n업무 대행자: 이팀장' AS APPROVAL_CONTENT,
+           '2026-08-03' AS LEAVE_START_DATE, '2026-08-05' AS LEAVE_END_DATE,
+           NULL AS AMOUNT, 'PROGRESS' AS APPROVAL_STATUS
+    UNION ALL
+    -- D2. 지출결의서: 1차 승인 완료, 김부장 2차 승인 대기
+    SELECT 4, '지출결의서', '지출결의서 상신 - 사무용품 구매 비용 정산',
+           '팀 공용 사무용품(프린터 토너, A4용지 등) 구매 비용 정산 요청입니다.\n첨부: 결제 영수증',
+           NULL, NULL, 85000, 'PROGRESS'
+    UNION ALL
+    -- D3. 프로젝트품의서: 최종 승인 완료
+    SELECT 4, '프로젝트품의서', '프로젝트품의서 상신 - 사내 알림 시스템 고도화',
+           '제목: 사내 알림 시스템 고도화\n구체 사양:\n- 웹 푸시 알림 도입\n- 결재/채팅 알림 통합\n소요 월 예산: 200,000원 상당',
+           NULL, NULL, NULL, 'APPROVED'
+    UNION ALL
+    -- D4. 지출결의서: 1차 반려
+    SELECT 4, '지출결의서', '지출결의서 상신 - 팀 회식비 정산',
+           '팀 회식비 정산 요청입니다.\n일시: 2026-07-10\n장소: 사내 인근 식당',
+           NULL, NULL, 132000, 'REJECTED'
+    UNION ALL
+    -- D5. 연차휴가신청서: 최종 승인 완료
+    SELECT 2, '연차휴가신청서', '연차휴가신청서 상신 - 하계 휴가 사용의 건',
+           '하계 휴가 연차 사용을 기안합니다.\n사유: 여름 휴가\n업무 대행자: 이팀장',
+           '2026-07-27', '2026-07-29', NULL, 'APPROVED'
+    UNION ALL
+    -- D6. 프로젝트품의서: 진행중, admin 개인 참조
+    SELECT 4, '프로젝트품의서', '프로젝트품의서 상신 - 고객사 대응 프로세스 개선안',
+           '제목: 고객사 대응 프로세스 개선안\n구체 사양:\n- 문의 접수 채널 일원화\n- 대응 SLA 수립\n소요 월 예산: 없음',
+           NULL, NULL, NULL, 'PROGRESS'
+) v
+JOIN APPROVAL_FORM_TYPE f ON f.FORM_TYPE_NAME = v.FORM_TYPE_NAME;
 
-INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID)
-SELECT APPROVAL_ID, 1, 3 FROM APPROVAL WHERE APPROVAL_TITLE = '연차휴가신청서 상신 - 여름휴가 사용의 건' LIMIT 1;
 
--- D2. 지출결의서 - 1차(팀장) 승인 완료, 2차(부서장) 대기 : 김부장 로그인 시 "받은 결재함"에 떠야 함
-INSERT INTO APPROVAL (DRAFTER_ID, FORM_TYPE_ID, APPROVAL_TITLE, APPROVAL_CONTENT, AMOUNT)
-SELECT 4, FORM_TYPE_ID, '지출결의서 상신 - 사무용품 구매 비용 정산',
-       '팀 공용 사무용품(프린터 토너, A4용지 등) 구매 비용 정산 요청입니다.\n첨부: 결제 영수증',
-       85000
-FROM APPROVAL_FORM_TYPE WHERE FORM_TYPE_NAME = '지출결의서';
 
-INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID, LINE_STATUS, LINE_COMMENT, DECIDED_AT)
-SELECT APPROVAL_ID, 1, 3, 'APPROVED', '승인합니다.', '2026-07-18 10:00:00'
-FROM APPROVAL WHERE APPROVAL_TITLE = '지출결의서 상신 - 사무용품 구매 비용 정산' LIMIT 1;
-INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID)
-SELECT APPROVAL_ID, 2, 2 FROM APPROVAL WHERE APPROVAL_TITLE = '지출결의서 상신 - 사무용품 구매 비용 정산' LIMIT 1;
 
--- D3. 프로젝트품의서 - 최종 승인 완료 (박사원의 "보낸 기안함"에서 승인완료 배지 확인용)
-INSERT INTO APPROVAL (DRAFTER_ID, FORM_TYPE_ID, APPROVAL_TITLE, APPROVAL_CONTENT, APPROVAL_STATUS)
-SELECT 4, FORM_TYPE_ID, '프로젝트품의서 상신 - 사내 알림 시스템 고도화',
-       '제목: 사내 알림 시스템 고도화\n구체 사양:\n- 웹 푸시 알림 도입\n- 결재/채팅 알림 통합\n소요 월 예산: 200,000원 상당',
-       'APPROVED'
-FROM APPROVAL_FORM_TYPE WHERE FORM_TYPE_NAME = '프로젝트품의서';
-
-INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID, LINE_STATUS, LINE_COMMENT, DECIDED_AT)
-SELECT APPROVAL_ID, 1, 3, 'APPROVED', '내용 확인했습니다.', '2026-07-11 09:30:00'
-FROM APPROVAL WHERE APPROVAL_TITLE = '프로젝트품의서 상신 - 사내 알림 시스템 고도화' LIMIT 1;
-INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID, LINE_STATUS, LINE_COMMENT, DECIDED_AT)
-SELECT APPROVAL_ID, 2, 2, 'APPROVED', '진행하세요.', '2026-07-12 14:00:00'
-FROM APPROVAL WHERE APPROVAL_TITLE = '프로젝트품의서 상신 - 사내 알림 시스템 고도화' LIMIT 1;
-
--- D4. 지출결의서 - 1차(팀장)에서 반려됨 (반려 사유 화면 확인용)
-INSERT INTO APPROVAL (DRAFTER_ID, FORM_TYPE_ID, APPROVAL_TITLE, APPROVAL_CONTENT, AMOUNT, APPROVAL_STATUS)
-SELECT 4, FORM_TYPE_ID, '지출결의서 상신 - 팀 회식비 정산',
-       '팀 회식비 정산 요청입니다.\n일시: 2026-07-10\n장소: 사내 인근 식당',
-       132000, 'REJECTED'
-FROM APPROVAL_FORM_TYPE WHERE FORM_TYPE_NAME = '지출결의서';
-
-INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID, LINE_STATUS, LINE_COMMENT, DECIDED_AT)
-SELECT APPROVAL_ID, 1, 3, 'REJECTED', '영수증 첨부가 누락되었습니다. 첨부 후 다시 상신 바랍니다.', '2026-07-11 11:00:00'
-FROM APPROVAL WHERE APPROVAL_TITLE = '지출결의서 상신 - 팀 회식비 정산' LIMIT 1;
-INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID)
-SELECT APPROVAL_ID, 2, 2 FROM APPROVAL WHERE APPROVAL_TITLE = '지출결의서 상신 - 팀 회식비 정산' LIMIT 1;
-
--- D5. 연차휴가신청서 - 이미 최종 승인 완료(휴가 반영 결과가 ATTENDANCE에도 있어야 자연스러움)
-INSERT INTO APPROVAL (DRAFTER_ID, FORM_TYPE_ID, APPROVAL_TITLE, APPROVAL_CONTENT, LEAVE_START_DATE, LEAVE_END_DATE, APPROVAL_STATUS)
-SELECT 2, FORM_TYPE_ID, '연차휴가신청서 상신 - 하계 휴가 사용의 건',
-       '하계 휴가 연차 사용을 기안합니다.\n사유: 여름 휴가\n업무 대행자: 이팀장',
-       '2026-07-27', '2026-07-29', 'APPROVED'
-FROM APPROVAL_FORM_TYPE WHERE FORM_TYPE_NAME = '연차휴가신청서';
-
-INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID, LINE_STATUS, LINE_COMMENT, DECIDED_AT)
-SELECT APPROVAL_ID, 1, 3, 'APPROVED', '승인합니다. 편히 다녀오세요.', '2026-07-20 09:00:00'
-FROM APPROVAL WHERE APPROVAL_TITLE = '연차휴가신청서 상신 - 하계 휴가 사용의 건' LIMIT 1;
+-- 위 결재 문서의 결재선 10건을 제목으로 조회해 한 번에 등록한다.
+INSERT INTO APPROVAL_LINE (
+    APPROVAL_ID, STEP_NO, APPROVER_ID,
+    LINE_STATUS, LINE_COMMENT, DECIDED_AT
+)
+SELECT
+    a.APPROVAL_ID,
+    v.STEP_NO,
+    v.APPROVER_ID,
+    v.LINE_STATUS,
+    v.LINE_COMMENT,
+    v.DECIDED_AT
+FROM (
+    SELECT '연차휴가신청서 상신 - 여름휴가 사용의 건' AS APPROVAL_TITLE,
+           1 AS STEP_NO, 3 AS APPROVER_ID, 'WAIT' AS LINE_STATUS,
+           NULL AS LINE_COMMENT, NULL AS DECIDED_AT
+    UNION ALL SELECT '지출결의서 상신 - 사무용품 구매 비용 정산', 1, 3, 'APPROVED', '승인합니다.', '2026-07-18 10:00:00'
+    UNION ALL SELECT '지출결의서 상신 - 사무용품 구매 비용 정산', 2, 2, 'WAIT', NULL, NULL
+    UNION ALL SELECT '프로젝트품의서 상신 - 사내 알림 시스템 고도화', 1, 3, 'APPROVED', '내용 확인했습니다.', '2026-07-11 09:30:00'
+    UNION ALL SELECT '프로젝트품의서 상신 - 사내 알림 시스템 고도화', 2, 2, 'APPROVED', '진행하세요.', '2026-07-12 14:00:00'
+    UNION ALL SELECT '지출결의서 상신 - 팀 회식비 정산', 1, 3, 'REJECTED', '영수증 첨부가 누락되었습니다. 첨부 후 다시 상신 바랍니다.', '2026-07-11 11:00:00'
+    UNION ALL SELECT '지출결의서 상신 - 팀 회식비 정산', 2, 2, 'WAIT', NULL, NULL
+    UNION ALL SELECT '연차휴가신청서 상신 - 하계 휴가 사용의 건', 1, 3, 'APPROVED', '승인합니다. 편히 다녀오세요.', '2026-07-20 09:00:00'
+    UNION ALL SELECT '프로젝트품의서 상신 - 고객사 대응 프로세스 개선안', 1, 3, 'WAIT', NULL, NULL
+    UNION ALL SELECT '프로젝트품의서 상신 - 고객사 대응 프로세스 개선안', 2, 2, 'WAIT', NULL, NULL
+) v
+JOIN APPROVAL a ON a.APPROVAL_TITLE = v.APPROVAL_TITLE;
 
 -- 위 문서가 실제로 최종 승인됐다면 결재 로직상 ATTENDANCE에도 반영돼야 하므로,
 -- 그 결과를 미리 만들어 둠 (ApprovalService.decideApproval이 실제로 하는 것과 동일한 결과)
@@ -329,16 +334,7 @@ INSERT INTO ATTENDANCE (EMPLOYEE_ID, WORK_DATE, ATTENDANCE_STATUS) VALUES
   (2, '2026-07-28', 'LEAVE'),
   (2, '2026-07-29', 'LEAVE');
 
--- D6. 프로젝트품의서 - 진행중 + 참조 대상 지정(admin 개인 참조) : admin 로그인 시 "참조 문서함"에 떠야 함
-INSERT INTO APPROVAL (DRAFTER_ID, FORM_TYPE_ID, APPROVAL_TITLE, APPROVAL_CONTENT)
-SELECT 4, FORM_TYPE_ID, '프로젝트품의서 상신 - 고객사 대응 프로세스 개선안',
-       '제목: 고객사 대응 프로세스 개선안\n구체 사양:\n- 문의 접수 채널 일원화\n- 대응 SLA 수립\n소요 월 예산: 없음'
-FROM APPROVAL_FORM_TYPE WHERE FORM_TYPE_NAME = '프로젝트품의서';
-
-INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID)
-SELECT APPROVAL_ID, 1, 3 FROM APPROVAL WHERE APPROVAL_TITLE = '프로젝트품의서 상신 - 고객사 대응 프로세스 개선안' LIMIT 1;
-INSERT INTO APPROVAL_LINE (APPROVAL_ID, STEP_NO, APPROVER_ID)
-SELECT APPROVAL_ID, 2, 2 FROM APPROVAL WHERE APPROVAL_TITLE = '프로젝트품의서 상신 - 고객사 대응 프로세스 개선안' LIMIT 1;
+-- D6 참조자: admin 개인 참조 문서함 확인용
 INSERT INTO APPROVAL_REFERENCE (APPROVAL_ID, EMPLOYEE_ID)
 SELECT APPROVAL_ID, 1 FROM APPROVAL WHERE APPROVAL_TITLE = '프로젝트품의서 상신 - 고객사 대응 프로세스 개선안' LIMIT 1;
 
@@ -349,10 +345,10 @@ SELECT APPROVAL_ID, 1 FROM APPROVAL WHERE APPROVAL_TITLE = '프로젝트품의�
 
 
 -- ------------------------------------
--- [이번 추가 데이터] 10. CALENDAR_EVENT
--- 2026년 공휴일 전체와 전사·팀·개인 일정 테스트 데이터
+-- 9. CALENDAR_EVENT
+-- 2026년 공휴일·전사·팀·개인·개발 일정 테스트 데이터
 -- 공휴일은 COMPANY + IS_HOLIDAY=1로 저장해 출결률 계산의 근무일 제외 대상으로 사용
--- 전사·팀·개인 일정은 각각 10건이며, 전체 달력은 1월부터 12월까지 일정이 보이도록 구성
+-- 전사·팀·개인 일정은 각각 10건이고, 개발 일정은 8건이며, 전체 달력은 1월부터 12월까지 보이도록 구성
 -- NOT EXISTS 조건으로 같은 등록자·제목·시작일 일정은 재실행해도 중복되지 않음
 -- ------------------------------------
 INSERT INTO CALENDAR_EVENT (
@@ -425,6 +421,16 @@ FROM (
     UNION ALL SELECT '20260404', '회계 자격 교육', '2026-09-10', '2026-09-10', 'PERSONAL', NULL, 0
     UNION ALL SELECT '20260315', '영업 역량 교육', '2026-10-22', '2026-10-22', 'PERSONAL', NULL, 0
     UNION ALL SELECT '20260405', '개인 재무 교육', '2026-12-11', '2026-12-11', 'PERSONAL', NULL, 0
+
+    -- 개발 일정 8건: 2026-07-05 ~ 2026-07-24 프로젝트 진행 흐름 확인용
+    UNION ALL SELECT 'admin', '기획 & 스키마 확정', '2026-07-05', '2026-07-05', 'COMPANY', NULL, 0
+    UNION ALL SELECT 'admin', '17개 테이블 ERD 정규화', '2026-07-06', '2026-07-08', 'COMPANY', NULL, 0
+    UNION ALL SELECT 'admin', '인프라 & Spring Security', '2026-07-09', '2026-07-12', 'COMPANY', NULL, 0
+    UNION ALL SELECT 'admin', '기초 CRUD (공지/자료/마이페이지)', '2026-07-13', '2026-07-16', 'COMPANY', NULL, 0
+    UNION ALL SELECT 'admin', '전자결재 & 실시간 채팅 로직', '2026-07-17', '2026-07-19', 'COMPANY', NULL, 0
+    UNION ALL SELECT 'admin', '출퇴근 연동', '2026-07-20', '2026-07-20', 'COMPANY', NULL, 0
+    UNION ALL SELECT 'admin', '통합 점검 및 PR 머지', '2026-07-21', '2026-07-23', 'COMPANY', NULL, 0
+    UNION ALL SELECT 'admin', '프로덕션 배포', '2026-07-24', '2026-07-24', 'COMPANY', NULL, 0
 ) v
 JOIN EMPLOYEE e ON e.EMPLOYEE_NO = v.EMPLOYEE_NO
 LEFT JOIN DEPARTMENT d ON d.DEPT_NAME = v.DEPT_NAME
@@ -435,57 +441,3 @@ WHERE NOT EXISTS (
       AND ce.EVENT_TITLE = v.EVENT_TITLE
       AND ce.START_DATE = v.START_DATE
 );
-
-
-
--- ------------------------------------
--- [추가 테스트 데이터] 개발 일정
--- 2026-07-05 ~ 2026-07-24 프로젝트 개발 진행 일정
--- 전사 일정(COMPANY)으로 등록하며, 재실행해도 같은 일정은 중복 추가되지 않음
--- ------------------------------------
-INSERT INTO CALENDAR_EVENT (
-    EMPLOYEE_ID, EVENT_TITLE, START_DATE, END_DATE,
-    EVENT_CATEGORY, DEPT_ID, IS_HOLIDAY
-)
-SELECT
-    e.EMPLOYEE_ID,
-    v.EVENT_TITLE,
-    v.START_DATE,
-    v.END_DATE,
-    'COMPANY',
-    NULL,
-    0
-FROM EMPLOYEE e
-JOIN (
-    SELECT '기획 & 스키마 확정' AS EVENT_TITLE,
-           '2026-07-05' AS START_DATE, '2026-07-05' AS END_DATE
-    UNION ALL
-    SELECT '17개 테이블 ERD 정규화',
-           '2026-07-06', '2026-07-08'
-    UNION ALL
-    SELECT '인프라 & Spring Security',
-           '2026-07-09', '2026-07-12'
-    UNION ALL
-    SELECT '기초 CRUD (공지/자료/마이페이지)',
-           '2026-07-13', '2026-07-16'
-    UNION ALL
-    SELECT '전자결재 & 실시간 채팅 로직',
-           '2026-07-17', '2026-07-19'
-    UNION ALL
-    SELECT '출퇴근 연동',
-           '2026-07-20', '2026-07-20'
-    UNION ALL
-    SELECT '통합 점검 및 PR 머지',
-           '2026-07-21', '2026-07-23'
-    UNION ALL
-    SELECT '프로덕션 배포',
-           '2026-07-24', '2026-07-24'
-) v
-WHERE e.EMPLOYEE_NO = 'admin'
-  AND NOT EXISTS (
-      SELECT 1
-      FROM CALENDAR_EVENT ce
-      WHERE ce.EMPLOYEE_ID = e.EMPLOYEE_ID
-        AND ce.EVENT_TITLE = v.EVENT_TITLE
-        AND ce.START_DATE = v.START_DATE
-  );
