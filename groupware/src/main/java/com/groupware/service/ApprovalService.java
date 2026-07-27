@@ -330,6 +330,51 @@ public class ApprovalService {
 				|| (isExpenseForm && drafterIsDeptHead)
 				|| (isProjectForm && (drafterIsDeptHead || drafterIsTeamLead));
 
+		// signer1Id/signer2Id가 실제로 이 서식+기안자 조합에 맞는 자격을 가진 사람인지
+		// 검증한다(2026-07-27 감사 결과 반영 - 김영훈 지적, 정진국 확인 후 조치).
+		// 화면(getApprovalSteps)이 후보 목록을 걸러서 보여주는 것과 별개로, API를 직접
+		// 두드리면 그 필터를 우회할 수 있으므로 서버가 저장 직전에 반드시 다시 확인해야
+		// 한다. 아래 각 후보 목록(getTeamLeadCandidates 등)은 이미 기안자 본인을 제외한
+		// 상태로 내려오므로, 이 검증 하나로 "자격 없는 직원 지정"과 "본인을 승인자로
+		// 지정" 두 문제를 동시에 막는다. DB에 아무것도 쓰기 전에 먼저 검증해서, 잘못된
+		// 값이면 애초에 APPROVAL 행조차 생기지 않게 한다.
+		if (!leaveNoApprover) {
+			List<EmployeeDTO> signer1Candidates;
+			List<EmployeeDTO> signer2Candidates = null;
+			if (isLeaveForm) {
+				signer1Candidates = getDeptHeadCandidates(drafterId);
+			} else if (isExpenseForm) {
+				if (drafterIsDeptHead) {
+					signer1Candidates = getFinanceApproverCandidates(drafterId);
+				} else {
+					signer1Candidates = getDeptHeadCandidates(drafterId);
+					signer2Candidates = getFinanceApproverCandidates(drafterId);
+				}
+			} else {
+				if (drafterIsDeptHead || drafterIsTeamLead) {
+					signer1Candidates = getDeptHeadCandidates(drafterId);
+				} else {
+					signer1Candidates = getTeamLeadCandidates(drafterId);
+					signer2Candidates = getDeptHeadCandidates(drafterId);
+				}
+			}
+
+			if (signer1Id == null) {
+				throw new IllegalArgumentException("승인자를 지정해야 합니다.");
+			}
+			validateApprover(signer1Id, signer1Candidates, "1차 승인자");
+
+			if (!singleStep) {
+				if (signer2Id == null) {
+					throw new IllegalArgumentException("이 서식은 2차 승인자 지정이 필요합니다.");
+				}
+				if (signer2Id.equals(signer1Id)) {
+					throw new IllegalArgumentException("1차 승인자와 2차 승인자는 서로 다른 사람이어야 합니다.");
+				}
+				validateApprover(signer2Id, signer2Candidates, "2차 승인자");
+			}
+		}
+
 		ApprovalDTO approval = new ApprovalDTO();
 		approval.setDrafterId(drafterId);
 		approval.setFormTypeId(formTypeId);
@@ -346,14 +391,8 @@ public class ApprovalService {
 			approvalMapper.updateApprovalStatus(approval.getApprovalId(), "APPROVED");
 			reflectLeaveToAttendance(drafterId, leaveStartDate, leaveEndDate);
 		} else {
-			if (signer1Id == null) {
-				throw new IllegalArgumentException("승인자를 지정해야 합니다.");
-			}
 			insertLine(approval.getApprovalId(), 1, signer1Id);
 			if (!singleStep) {
-				if (signer2Id == null) {
-					throw new IllegalArgumentException("이 서식은 2차 승인자 지정이 필요합니다.");
-				}
 				insertLine(approval.getApprovalId(), 2, signer2Id);
 			}
 		}
@@ -407,6 +446,15 @@ public class ApprovalService {
 		fileDto.setFilePath(targetPath.toString());
 		fileDto.setFileSize(file.getSize());
 		approvalFileMapper.insertApprovalFile(fileDto);
+	}
+
+	// approverId가 candidates 목록(이미 기안자 본인 제외 + 해당 자격자만 필터링된 목록)에
+	// 실제로 있는지 확인한다. 없으면 자격 없는 직원이거나 본인을 지정한 것이므로 막는다.
+	private void validateApprover(int approverId, List<EmployeeDTO> candidates, String stepLabel) {
+		boolean valid = candidates.stream().anyMatch(c -> c.getEmployeeId() == approverId);
+		if (!valid) {
+			throw new IllegalArgumentException(stepLabel + "로 지정할 수 없는 직원입니다.");
+		}
 	}
 
 	private void insertLine(int approvalId, int stepNo, int approverId) {
