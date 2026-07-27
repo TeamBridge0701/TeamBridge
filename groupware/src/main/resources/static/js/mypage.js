@@ -3,12 +3,29 @@
 // 프로필 이미지 추가/변경 시 사용
 let selectedProfileImgFile = null;
 
+// 비밀번호 복잡도 정책(2026-07-27 팀 확정): 8자 이상 + 영문/숫자/특수문자 중 2종류 이상.
+// 서버(EmployeeService.isValidPasswordComplexity)와 반드시 같은 규칙이어야 한다 -
+// 여기는 사용자 편의(빠른 피드백)용일 뿐이고, 실제 방어선은 서버 쪽이다.
+function isValidPasswordComplexity(password) {
+    if (password.length < 8) return false;
+    let typeCount = 0;
+    if (/[a-zA-Z]/.test(password)) typeCount++;
+    if (/[0-9]/.test(password)) typeCount++;
+    if (/[^a-zA-Z0-9]/.test(password)) typeCount++;
+    return typeCount >= 2;
+}
+
 // 비밀번호 변경 폼 제출 - 새로고침 없이 fetch로 POST /mypage/password 호출 후 결과를 토스트로 표시
 function changeMyPassword(event) {
     event.preventDefault();
 
     const currentPassword = document.getElementById('currentPw').value;
     const newPassword = document.getElementById('newPw').value;
+
+    if (!isValidPasswordComplexity(newPassword)) {
+        showToast('비밀번호는 8자 이상, 영문·숫자·특수문자 중 2종류 이상을 포함해야 합니다.', 'danger');
+        return;
+    }
 
     const formData = new FormData();
     formData.append('currentPassword', currentPassword);
