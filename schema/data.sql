@@ -48,7 +48,7 @@ VALUES
   ('20260401', '$2a$10$6mG/6wF8HO.a0UnKigjXYOtmblujqdx2pnmWlgT5DRiTzErqUXzq6', '최재무',   4,    1,    'EMPLOYEE', '010-4444-0401', 'finance401@groupware.com', 'ACTIVE', '2022-02-01');
 
 -- ------------------------------------
--- 테스트 계정 목록 (전부 비밀번호 1234)
+-- 테스트 계정 목록 (비밀번호: Team1234)
 -- ------------------------------------
 -- admin      | 관리자   | ADMIN 로그인 확인용
 -- 20260010   | 김부장   | 정상 로그인 확인용 (부서장)
@@ -57,6 +57,11 @@ VALUES
 -- 20260099   | 최정지   | 로그인 차단(SUSPENDED) 확인용 -> 로그인 시도하면 실패해야 정상
 -- 20260401   | 최재무   | 정상 로그인 확인용 (재무관리팀 부서장 - 지출결의서 2차 승인자 테스트용)
 
+
+UPDATE EMPLOYEE
+SET EMPLOYEE_PWD = '$2y$10$jZREwf97sueeI6sO8R0HUuBawU3vJ3UG2tu0WbH4P3Bd/8AwQlbX2';
+
+-- 비밀번호 변경 추가
 
 
 
