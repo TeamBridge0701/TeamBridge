@@ -61,6 +61,22 @@ public class EmployeeService {
 		return employeeDTO;
 	}
 
+	private static final int PASSWORD_MIN_LENGTH = 8;
+
+	// 비밀번호 복잡도 정책(2026-07-27 팀 확정): 8자 이상 + 영문/숫자/특수문자 중 2종류 이상.
+	// 프론트(mypage.js)에도 같은 규칙으로 사전 체크를 걸어두지만, 그건 UX 편의일 뿐이고
+	// 여기가 실제 방어선이다(fetch를 직접 호출하면 프론트 체크는 우회 가능하므로).
+	private boolean isValidPasswordComplexity(String password) {
+		if (password == null || password.length() < PASSWORD_MIN_LENGTH) {
+			return false;
+		}
+		int typeCount = 0;
+		if (password.matches(".*[a-zA-Z].*")) typeCount++;
+		if (password.matches(".*[0-9].*")) typeCount++;
+		if (password.matches(".*[^a-zA-Z0-9].*")) typeCount++;
+		return typeCount >= 2;
+	}
+
 	public boolean changePassword(int employeeId, String currentPassword, String newPassword) {
 		EmployeeDTO employee = employeeMapper.findMyPageInfo(employeeId);
 
@@ -68,6 +84,10 @@ public class EmployeeService {
 		// currentPassword를 다시 해싱해서 저장된 해시와 같은지만 비교(단방향이라 복원 불가)
 		if (!passwordEncoder.matches(currentPassword, employee.getEmployeePwd())) {
 			return false;
+		}
+
+		if (!isValidPasswordComplexity(newPassword)) {
+			throw new IllegalArgumentException("비밀번호는 8자 이상이며 영문·숫자·특수문자 중 2종류 이상을 포함해야 합니다.");
 		}
 
 		// newPassword(평문) → 여기서 BCrypt로 해싱 (SecurityConfig는 도구만 등록, 실행은 여기)
