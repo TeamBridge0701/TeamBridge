@@ -37,10 +37,15 @@ public class MyPageController {
 	@ResponseBody
 	public ResponseEntity<String> changePassword(@AuthenticationPrincipal CustomUserDetails principal,
 			@RequestParam("currentPassword") String currentPassword, @RequestParam("newPassword") String newPassword) {
-		boolean success = employeeService.changePassword(principal.getEmployeeDTO().getEmployeeId(), currentPassword,
-				newPassword);
-
-		return success ? ResponseEntity.ok("비밀번호가 변경되었습니다.") : ResponseEntity.badRequest().body("현재 비밀번호가 일치하지 않습니다.");
+		try {
+			boolean success = employeeService.changePassword(principal.getEmployeeDTO().getEmployeeId(),
+					currentPassword, newPassword);
+			return success ? ResponseEntity.ok("비밀번호가 변경되었습니다.")
+					: ResponseEntity.badRequest().body("현재 비밀번호가 일치하지 않습니다.");
+		} catch (IllegalArgumentException e) {
+			// 새 비밀번호가 복잡도 정책(EmployeeService.isValidPasswordComplexity)을 못 지킨 경우
+			return ResponseEntity.badRequest().body(e.getMessage());
+		}
 	}
 
 	@PostMapping("/mypage/update")
