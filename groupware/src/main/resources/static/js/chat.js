@@ -298,7 +298,9 @@ function connectWebSocket() {
           applyTypingEvent(JSON.parse(frame.body));
         });
 
-        // 화면에 이미 출력된 메시지까지 읽은 것으로 서버에 반영한다.
+        // 첫 화면은 서버가 읽음 커서를 저장하기 전의 숫자로 렌더링될 수 있다.
+        // 구독이 완료된 뒤 최신 읽음 수를 다시 받아 새로고침 없이 맞춘다.
+        refreshReadStatuses();
         sendReadMessage();
       }
       },
