@@ -21,6 +21,16 @@
 > (관리자 등록 화면에 입력란 없음), 본인이 마이페이지에서 직접 입력/수정**하는 것으로 확정
 > — 이미 있는 계정에도 값이 없는 상태가 정상이라 NOT NULL로 두면 안 됨. 2-3, 5장 SQL에 반영.
 >
+> v0.10 변경(2026-07-28, 김우주 담당 파트 문서 점검): `CALENDAR_EVENT.IS_HOLIDAY`
+> 컬럼(공휴일 여부, TINYINT(1) NOT NULL DEFAULT 0)이 실제 `schema.sql`에는 있는데
+> 2-6 테이블 설명과 5장 SQL 양쪽 다 문서화가 빠져 있던 걸 발견해 추가. 이 컬럼은
+> `AttendanceService.getHolidayDatesInMonth()`(출근율 계산의 공휴일 판정)와
+> `DashboardService`의 미니 캘린더 공휴일 표시가 실제로 의존하는 값이라 누락 영향이
+> 컸음. 겸사겸사 5장 SQL도 `schema.sql`의 실제 형태(`CALENDAR_EVENT`의 `DEPT_ID`·
+> `IS_HOLIDAY`, `EMPLOYEE`의 `BIRTH_DATE`를 `ALTER TABLE`이 아니라 `CREATE TABLE`
+> 시점부터 포함)에 맞춰 동기화. 근거: `schema/schema.sql`, `CalendarEventDTO.java`,
+> `AttendanceService.java`.
+>
 
 # ERD 설계서
 
@@ -245,6 +255,14 @@ REPOSITORY.DEPT_ID와 같은 이유로, 조회할 때마다 EMPLOYEE 테이블�
 조회·수정·삭제 권한은 이 DEPT_ID가 로그인한 사람의 DEPT_ID와 같은지로
 판단하며(관리자는 DEPT_ID가 없으므로 팀 일정을 만들거나 건드릴 수 없음),
 회사 일정은 관리자만, 개인 일정은 작성자 본인만 CRUD 가능합니다.
+
+(2026-07-28 문서 보강, v0.10) IS_HOLIDAY는 COMPANY 카테고리 일정 중에서도
+"실제로 쉬는 날"인지 표시하는 컬럼입니다(schema.sql엔 있었지만 이 문서에
+반영이 빠져 있었음). 국가 공휴일·대체공휴일·회사 지정 휴일을 이 체크
+하나로 다 처리하고, 어떤 종류인지는 EVENT_TITLE에 자유롭게 적습니다(예:
+"광복절 대체공휴일") — 셋을 시스템에서 다르게 취급할 이유가 없어서 컬럼을
+따로 안 나눴습니다. 대시보드 미니 캘린더의 공휴일 색 표시와 출근율 계산
+(분모에서 공휴일 제외)이 이 값을 그대로 씁니다.
 ```
 
 | 컬럼명 | 타입 | 제약조건 | 설명 |
@@ -256,6 +274,7 @@ REPOSITORY.DEPT_ID와 같은 이유로, 조회할 때마다 EMPLOYEE 테이블�
 | END_DATE | DATE | NOT NULL | 일정 종료일 (하루짜리 일정은 START_DATE와 동일) |
 | EVENT_CATEGORY | VARCHAR(10) | NOT NULL | 구분 (PERSONAL 개인 / TEAM 팀 / COMPANY 회사) |
 | DEPT_ID | INT | FK(DEPARTMENT), NULLABLE | TEAM 일정의 소속 부서(등록 시점 값으로 고정, PERSONAL/COMPANY는 NULL) |
+| IS_HOLIDAY | TINYINT(1) | NOT NULL, DEFAULT 0 | 공휴일 여부(COMPANY 일정에만 의미, 관리자가 등록 시 체크. v0.10 추가 — 기존에 문서 누락) |
 | CREATED_AT | DATETIME | NOT NULL, DEFAULT NOW() | 등록일시 |
 | — | — | CHECK (END_DATE >= START_DATE) | 종료일이 시작일보다 빠를 수 없음 |
 
@@ -630,6 +649,7 @@ CREATE TABLE EMPLOYEE (
     PROFILE_IMG    VARCHAR(500) NULL,
     EMPLOYEE_STATUS VARCHAR(10) NOT NULL DEFAULT 'ACTIVE',    -- ACTIVE / SUSPENDED
     HIRE_DATE      DATE         NOT NULL,
+    BIRTH_DATE     DATE         NULL,        -- 본인이 마이페이지에서 입력, 이번 달 생일자 조회용(v0.9)
     CREATED_AT     DATETIME     NOT NULL DEFAULT NOW(),
     CONSTRAINT PK_EMPLOYEE         PRIMARY KEY (EMPLOYEE_ID),
     CONSTRAINT UQ_EMPLOYEE_NO      UNIQUE      (EMPLOYEE_NO),
@@ -673,7 +693,7 @@ CREATE TABLE NOTICE (
                                 REFERENCES  EMPLOYEE(EMPLOYEE_ID)
 );
 
--- ⑥ CALENDAR_EVENT — EMPLOYEE 참조
+-- ⑥ CALENDAR_EVENT — EMPLOYEE, DEPARTMENT 참조
 CREATE TABLE CALENDAR_EVENT (
     EVENT_ID       INT          AUTO_INCREMENT,
     EMPLOYEE_ID    INT          NOT NULL,
@@ -681,10 +701,14 @@ CREATE TABLE CALENDAR_EVENT (
     START_DATE     DATE         NOT NULL,
     END_DATE       DATE         NOT NULL,   -- 하루짜리 일정은 START_DATE와 동일
     EVENT_CATEGORY VARCHAR(10)  NOT NULL,   -- PERSONAL / TEAM / COMPANY
+    DEPT_ID        INT          NULL,       -- TEAM 일정만 등록 시점 부서 ID 저장(v0.7)
+    IS_HOLIDAY     TINYINT(1)   NOT NULL DEFAULT 0,  -- 공휴일 여부(v0.10, 기존 문서 누락)
     CREATED_AT     DATETIME     NOT NULL DEFAULT NOW(),
     CONSTRAINT PK_CALENDAR_EVENT PRIMARY KEY (EVENT_ID),
     CONSTRAINT FK_EVENT_EMPLOYEE FOREIGN KEY (EMPLOYEE_ID)
                                  REFERENCES  EMPLOYEE(EMPLOYEE_ID),
+    CONSTRAINT FK_EVENT_DEPT     FOREIGN KEY (DEPT_ID)
+                                 REFERENCES  DEPARTMENT(DEPT_ID),
     CONSTRAINT CK_EVENT_DATE_RANGE CHECK (END_DATE >= START_DATE)
 );
 
@@ -850,17 +874,13 @@ CREATE TABLE CHAT_ATTACHMENT (
     CONSTRAINT UQ_CHATATTACH_MESSAGE UNIQUE      (MESSAGE_ID)
 );
 
--- CALENDAR_EVENT는 처음엔 DEPT_ID 없이 만들었다가, TEAM 일정을 "같은 부서만
--- CRUD 가능"하게 스코프를 걸기로 하면서 뒤늦게 컬럼을 추가했다(김우주,
--- 팀장과 협의 후 반영). PERSONAL/COMPANY 일정은 NULL로 둔다.
-ALTER TABLE CALENDAR_EVENT
-    ADD COLUMN DEPT_ID INT NULL,
-    ADD CONSTRAINT FK_EVENT_DEPT FOREIGN KEY (DEPT_ID) REFERENCES DEPARTMENT(DEPT_ID);
-
--- 메인 대시보드 "이번 달 생일자" 위젯을 위해 뒤늦게 추가했다(김영훈, v0.9).
--- 계정 생성 시에는 입력하지 않고 본인이 마이페이지에서 직접 입력하므로 NULL 허용.
-ALTER TABLE EMPLOYEE
-    ADD COLUMN BIRTH_DATE DATE NULL AFTER HIRE_DATE;
+-- (2026-07-28 정리) 아래 두 컬럼은 프로젝트 초반엔 위 CREATE TABLE에 없었고
+-- 나중에 ALTER TABLE로 추가됐던 이력이 있다 — 실제 schema.sql과 맞추기 위해
+-- 지금은 위 CREATE TABLE 안에 처음부터 포함시켰다(둘 다 NULL 허용 컬럼이라
+-- 기존 행에 영향 없이 그대로 옮겨도 안전함).
+-- · CALENDAR_EVENT.DEPT_ID/IS_HOLIDAY — TEAM 일정 "같은 부서만 CRUD" 스코프(김우주, v0.7)
+--   + 공휴일 표시(v0.10, 기존 문서 누락)
+-- · EMPLOYEE.BIRTH_DATE — 메인 대시보드 "이번 달 생일자" 위젯용(김영훈, v0.9)
 ```
 
 ---
