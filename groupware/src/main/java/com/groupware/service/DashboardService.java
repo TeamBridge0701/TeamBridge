@@ -18,7 +18,6 @@ import com.groupware.dto.AttendanceDTO;
 import com.groupware.dto.CalendarEventDTO;
 import com.groupware.dto.EmployeeDTO;
 import com.groupware.dto.NoticeDTO;
-import com.groupware.mapper.DashboardMapper;
 import com.groupware.mapper.EmployeeMapper;
 
 @Service
@@ -29,7 +28,6 @@ public class DashboardService {
     private static final int DASHBOARD_NOTICE_COUNT = 3;
     private static final int DASHBOARD_APPROVAL_COUNT = 3;
 
-    private final DashboardMapper dashboardMapper;
     private final NoticeService noticeService;
     // 전자결재 위젯도 새 SQL 없이 ApprovalService의 기존 조회(받은/보낸 결재함)를
     // 그대로 재사용한다 (공지 위젯과 같은 방식)
@@ -44,10 +42,9 @@ public class DashboardService {
     // 매퍼에 조회 메서드만 하나 추가해서 재사용한다(다른 위젯들과 같은 재사용 원칙)
     private final EmployeeMapper employeeMapper;
 
-    public DashboardService(DashboardMapper dashboardMapper, NoticeService noticeService,
+    public DashboardService(NoticeService noticeService,
             ApprovalService approvalService, CalendarService calendarService,
             AttendanceService attendanceService, EmployeeMapper employeeMapper) {
-        this.dashboardMapper = dashboardMapper;
         this.noticeService = noticeService;
         this.approvalService = approvalService;
         this.calendarService = calendarService;
