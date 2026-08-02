@@ -1352,15 +1352,17 @@
       font-weight: 700;
       white-space: nowrap;
     }
-    /* "OOO님이 입력 중..." 표시용 점 3개. 각 점의 애니메이션 시작 시각을
-       조금씩 늦춰서(animation-delay) 위아래로 순차 통통 튀는 것처럼 보이게 한다 */
+    /* 입력 중 점 세 개를 가운데에 둔 고정 크기의 회색 말풍선. */
     .chat-typing {
       display: inline-flex;
       align-items: center;
-      gap: 0.25rem;
+      justify-content: center;
+      width: 56px;
+      height: 32px;
+      gap: 0.35rem;
       background-color: var(--bg-tertiary);
-      padding: 0.6rem 0.9rem;
-      border-radius: 14px 14px 14px 2px;
+      padding: 0;
+      border-radius: 14px 14px 14px 3px;
     }
     .chat-typing span {
       width: 6px;

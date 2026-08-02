@@ -1034,6 +1034,7 @@ function createMessageBubble(message) {
     const fileBubble = document.createElement("a");
     fileBubble.className = "chat-bubble-file";
     fileBubble.href = `/chat/attachment/${message.attachment.attachId}`;
+    fileBubble.download = message.attachment.fileName;
 
     const icon = document.createElement("i");
     icon.className = "fa-solid fa-file-arrow-down";

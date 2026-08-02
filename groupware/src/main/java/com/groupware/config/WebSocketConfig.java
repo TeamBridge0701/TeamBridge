@@ -4,6 +4,7 @@ import java.security.Principal;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -40,6 +41,9 @@ import lombok.RequiredArgsConstructor;
 
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
+    @Value("${groupware.websocket.allowed-origins}")
+    private String[] allowedOrigins;
+
     // 이전 topic 주소와 현재 개인 큐 주소 모두에서 방 참여자·ACTIVE 상태를 검사한다.
     private static final Pattern ROOM_DESTINATION_PATTERN =
             Pattern.compile("^/(?:topic/room|user/queue/rooms)/(\\d+)(?:/(?:read|typing))?$");
@@ -70,9 +74,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
                 // 현재 프로젝트 서버 주소에서만 연결을 허용한다. (어느 사이트만 웹소켓 연결할 수 있는지 나타낸거.)
                 // 서버 포트는 application.properties의 8810이다.
-                .setAllowedOriginPatterns(
-                        "http://localhost:8810",
-                        "http://127.0.0.1:8810")
+                .setAllowedOriginPatterns(allowedOrigins)
 
                 // 브라우저가 WebSocket을 지원하지 않아도 SockJS 방식으로 연결한다.
                 .withSockJS();

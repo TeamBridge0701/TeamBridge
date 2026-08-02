@@ -332,7 +332,8 @@
 			            <!-- FILE 메시지는 원본 파일명을 누르면 참여자만 다운로드할 수 있다. -->
 			            <a class="chat-bubble-file"
 			               th:if="${message.messageType == 'FILE' and message.attachment != null}"
-			               th:href="@{/chat/attachment/{attachId}(attachId=${message.attachment.attachId})}">
+			               th:href="@{/chat/attachment/{attachId}(attachId=${message.attachment.attachId})}"
+			               th:attr="download=${message.attachment.fileName}">
 			              <i class="fa-solid fa-file-arrow-down" style="color:var(--color-primary);"></i>
 			              <div>
 			                <div style="font-weight:600;" th:text="${message.attachment.fileName}">파일 이름</div>
