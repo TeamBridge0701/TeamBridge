@@ -17,7 +17,7 @@
                dept_id AS deptId,
                is_holiday AS isHoliday,
                created_at AS createdAt
-        FROM calendar_event
+        FROM CALENDAR_EVENT
         WHERE (SUBSTR(start_date, 1, 7) = CONCAT(#{year}, '-', LPAD(#{month}, 2, '0'))
            OR SUBSTR(end_date, 1, 7) = CONCAT(#{year}, '-', LPAD(#{month}, 2, '0')))
           AND (
@@ -38,14 +38,14 @@
                dept_id AS deptId,
                is_holiday AS isHoliday,
                created_at AS createdAt
-        FROM calendar_event
+        FROM CALENDAR_EVENT
         WHERE event_id = #{eventId}
     </select>
 
     <!-- 출근율 계산용 - 그 달의 공휴일(IS_HOLIDAY=1인 COMPANY 일정)만 -->
     <select id="selectHolidayDates" resultType="com.groupware.dto.CalendarEventDTO">
         SELECT start_date AS startDate, end_date AS endDate
-        FROM calendar_event
+        FROM CALENDAR_EVENT
         WHERE event_category = 'COMPANY' AND is_holiday = 1
           AND (SUBSTR(start_date, 1, 7) = CONCAT(#{year}, '-', LPAD(#{month}, 2, '0'))
             OR SUBSTR(end_date, 1, 7) = CONCAT(#{year}, '-', LPAD(#{month}, 2, '0')))
@@ -53,13 +53,13 @@
 
     <!-- 새 일정 등록 -->
     <insert id="insertEvent" parameterType="com.groupware.dto.CalendarEventDTO" useGeneratedKeys="true" keyProperty="eventId">
-        INSERT INTO calendar_event (employee_id, event_title, start_date, end_date, event_category, dept_id, is_holiday, created_at)
+        INSERT INTO CALENDAR_EVENT (employee_id, event_title, start_date, end_date, event_category, dept_id, is_holiday, created_at)
         VALUES (#{employeeId}, #{eventTitle}, #{startDate}, #{endDate}, #{eventCategory}, #{deptId}, #{isHoliday}, NOW())
     </insert>
 
     <!-- 일정 수정 -->
     <update id="updateEvent" parameterType="com.groupware.dto.CalendarEventDTO">
-        UPDATE calendar_event
+        UPDATE CALENDAR_EVENT
         SET event_title = #{eventTitle},
             start_date = #{startDate},
             end_date = #{endDate},
@@ -71,7 +71,7 @@
 
     <!-- 일정 삭제 -->
     <delete id="deleteEvent" parameterType="int">
-        DELETE FROM calendar_event
+        DELETE FROM CALENDAR_EVENT
         WHERE event_id = #{eventId}
     </delete>
 
